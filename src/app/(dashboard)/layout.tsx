@@ -1,12 +1,26 @@
-const LayoutDashboard = () => {
+//import Navbar from "@/src/components/Navbar";
+import Link from "next/link";
+import Image from "next/image"
+import { Sidebar } from "@/src/components/Sidebar";
+import { Navbar } from "@/src/components/Navbar";
 
-    return ( 
-        <div className="h-screen flex">
-      {/* LEFT */}
-      <div className="w-[14%] md:w-[8%] lg:w-[16%] xl:w-[14%] p-4 bg-red-200">L</div>
-      {/* RIGHT */}
-      <div className="w-[86%] md:w-[92%] lg:w-[84%] xl:w-[86%]  overflow-scroll flex flex-colbg-blue-200"></div>R</div>
-     );
+export default function DashboardLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+     <div className="flex h-screen bg-gray-50">
+      {/* Sidebar Desktop */}
+      <Sidebar />
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col lg:ml-64">
+        <Navbar />
+        <main className="flex-1 overflow-y-auto p-4 lg:p-8">
+          {children}
+        </main>
+      </div>
+    </div>
+  );
 }
- 
-export default LayoutDashboard;
