@@ -1,5 +1,5 @@
 const AlunoPage = () => {
-    return ( <div>AlunoPage</div> );
+    return ( <div>AlunosPage</div> );
 }
  
 export default AlunoPage;

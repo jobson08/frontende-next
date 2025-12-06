@@ -11,7 +11,8 @@ import {
   LogOut,
   User,
 } from "lucide-react";
-import { cn } from "../lib/utils";
+import { cn } from "@/src/lib/utils";
+
 
 type MenuGroup = {
   title: string;
@@ -28,15 +29,16 @@ const menuItems: MenuGroup[] = [
     title: "MENU",
     items: [
       { href: "/dashboard", label: "Dashboard", icon: Home, roles: ["SUPER_ADMIN", "ADMIN", "FUNCIONARIO", "ALUNO", "RESPONSAVEL"] },
-      { href: "/dashboard/alunos", label: "Alunos", icon: Users, roles: ["ADMIN", "FUNCIONARIO"] },
-      { href: "/dashboard/responsaveis", label: "Responsáveis", icon: UserCheck, roles: ["ADMIN", "FUNCIONARIO"] },
-      { href: "/dashboard/tenants", label: "Tenants", icon: Building2, roles: ["SUPER_ADMIN"] },
+      { href: "/aluno", label: "Alunos", icon: Users, roles: ["ADMIN", "FUNCIONARIO"] },
+      { href: "/funcionario", label: "Funcionarios", icon: UserCheck, roles: ["ADMIN", "FUNCIONARIO"] },
+      { href: "/responsavel", label: "Responsáveis", icon: UserCheck, roles: ["ADMIN", "FUNCIONARIO"] },
+      { href: "/tenants", label: "Tenants", icon: Building2, roles: ["SUPER_ADMIN"] },
     ],
   },
   {
     title: "CONTA",
     items: [
-      { href: "/dashboard/perfil", label: "Perfil", icon: User, roles: ["SUPER_ADMIN", "ADMIN", "FUNCIONARIO", "ALUNO", "RESPONSAVEL"] },
+      { href: "/perfil", label: "Perfil", icon: User, roles: ["SUPER_ADMIN", "ADMIN", "FUNCIONARIO", "ALUNO", "RESPONSAVEL"] },
       { href: "/dashboard/configuracoes", label: "Configurações", icon: Settings, roles: ["ADMIN", "SUPER_ADMIN"] },
       { href: "/auth/logout", label: "Sair", icon: LogOut, roles: ["SUPER_ADMIN", "ADMIN", "FUNCIONARIO", "ALUNO", "RESPONSAVEL"] },
     ],

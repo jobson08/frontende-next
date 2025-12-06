@@ -1,16 +1,13 @@
 "use client";
 
-//import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+
+
 import { MobileMenu } from "./MobileMenu";
 import { LogOut, Settings, User } from "lucide-react";
+import { Avatar } from "@radix-ui/react-avatar";
+import { DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuItem } from "@radix-ui/react-dropdown-menu";
+import { DropdownMenu, DropdownMenuContent } from "../ui/dropdown-menu";
+import { AvatarFallback } from "../ui/avatar";
 
 export function Navbar() {
   // Simulação — depois vem do useAuth

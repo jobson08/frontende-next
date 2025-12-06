@@ -8,22 +8,23 @@ export function Sidebar() {
   const userRole = "ADMIN";
 
   return (
-    <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 bg-slate-900 text-white">
-      {/* Logo */}
+   <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 bg-slate-900 text-white z-40">
       <div className="flex h-16 items-center gap-3 px-6 border-b border-slate-800">
         <Shield className="h-8 w-8 text-blue-500" />
         <span className="text-xl font-bold">Meu SaaS</span>
       </div>
 
-      {/* Menu */}
       <div className="flex-1 overflow-y-auto py-6 px-3">
-        <Menu role={userRole} />
+        <Menu role="ADMIN" />
       </div>
 
-      {/* Footer (opcional) */}
+       {/* Footer */}
       <div className="p-4 border-t border-slate-800 text-center text-xs text-slate-400">
-        © 2025 Todos os direitos reservados
+        Edupay © 2025
       </div>
     </aside>
+
+     
+   
   );
 }

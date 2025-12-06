@@ -1,20 +1,18 @@
-//import Navbar from "@/src/components/Navbar";
-import Link from "next/link";
-import Image from "next/image"
-import { Sidebar } from "@/src/components/Sidebar";
-import { Navbar } from "@/src/components/Navbar";
+// src/app/(dashboard)/layout.tsx
 
-export default function DashboardLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+import { Navbar } from "@/src/components/Layout/Navbar";
+import { Sidebar } from "@/src/components/Layout/Sidebar";
+
+
+
+
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
-     <div className="flex h-screen bg-gray-50">
-      {/* Sidebar Desktop */}
+    <div className="flex h-screen bg-gray-50">
+      {/* Desktop: sidebar fixo */}
       <Sidebar />
 
-      {/* Main Content */}
+      {/* Mobile + Conteúdo */}
       <div className="flex-1 flex flex-col lg:ml-64">
         <Navbar />
         <main className="flex-1 overflow-y-auto p-4 lg:p-8">
