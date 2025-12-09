@@ -1,7 +1,7 @@
 // src/components/layout/MobileMenu.tsx
 "use client";
 
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger } from "@/src/components/ui/sheet";
 import { Menu as MenuIcon, Shield } from "lucide-react";
 import { Menu } from "./Menu";
 

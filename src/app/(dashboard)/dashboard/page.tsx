@@ -1,9 +1,8 @@
+"use client";
 
-//import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/src/components/ui/badge";
+import { Button } from "@/src/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/src/components/ui/card";
 import { AlertCircle, Building2, Calendar, DollarSign, TrendingUp, UserCheck, Users } from "lucide-react";
 
 const DashboardPage = () => {
@@ -11,7 +10,7 @@ const DashboardPage = () => {
     // Simulação de dados — depois vem do useQuery
   const user = {
     name: "João Silva",
-    role: "ADMIN", // Mude pra "SUPER_ADMIN" pra ver a versão dele
+    role: "ADMIN", // Mude pra "SUPER_ADMIN" ou "ADMIN" pra ver a versão dele
   };
 
   const stats = {
@@ -69,16 +68,17 @@ const DashboardPage = () => {
         )}
 
         {/* Alunos */}
-        <Card className="border-green-200 bg-green-50">
+        <Card className="border-orange-200 bg-orange-50">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-green-700">Alunos Ativos</CardTitle>
-            <Users className="h-5 w-5 text-green-600" />
+            <CardTitle className="text-sm font-medium text-orange-600">Alunos Ativos</CardTitle>
+            <Users className="h-5 w-5 text-orange-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-green-700">{stats.alunosAtivos}</div>
-            <p className="text-xs text-green-600 mt-1">Matriculados este mês</p>
+            <div className="text-3xl font-bold text-orange-600">{stats.alunosAtivos}</div>
+            <p className="text-xs text-orange-600 mt-1">Matriculados este mês</p>
           </CardContent>
         </Card>
+
         {/* Faturamento */}
         <Card className="border-emerald-200 bg-emerald-50">
           <CardHeader className="flex flex-row items-center justify-between pb-2">

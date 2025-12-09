@@ -2,6 +2,7 @@
 
 import { Navbar } from "@/src/components/Layout/Navbar";
 import { Sidebar } from "@/src/components/Layout/Sidebar";
+import { Toaster } from "@/src/components/ui/sonner";
 
 
 
@@ -17,6 +18,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <Navbar />
         <main className="flex-1 overflow-y-auto p-4 lg:p-8">
           {children}
+          <Toaster />
         </main>
       </div>
     </div>
