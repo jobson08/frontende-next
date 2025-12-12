@@ -47,7 +47,7 @@ const ResponsavelPage = () => {
           <p className="text-gray-600">Gerencie os responsáveis pelos alunos</p>
         </div>
         <Button asChild className="bg-blue-600 hover:bg-blue-700">
-          <Link href="/responsaveis/novo">
+          <Link href="/responsavel/novo">
             <UserPlus className="mr-2 h-4 w-4" />
             Novo Responsável
           </Link>

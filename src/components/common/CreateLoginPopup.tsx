@@ -22,7 +22,7 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>;
 
 interface CreateLoginModalProps {
-  type: "ALUNO" | "RESPONSAVEL";
+  type: "ALUNO" | "RESPONSAVEL" ;
   name: string;
   currentEmail?: string | null;
   isEdit?: boolean; // ← ESSA É A CHAVE!
@@ -30,7 +30,7 @@ interface CreateLoginModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
-const CreateLoginPopup = ({ type, name, open,currentEmail = null, onOpenChange }: CreateLoginModalProps) => {
+const CreateLoginPopup = ({  name, open,currentEmail = null, onOpenChange }: CreateLoginModalProps) => {
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isEdit = !!currentEmail;
@@ -65,7 +65,7 @@ const onSubmit = async (data: FormData) => {
         <DialogOverlay className="fixed inset-0 bg-black/70 z-50" />
         <DialogContent className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[95vw] max-w-md rounded-2xl bg-white p-8 shadow-2xl">
           <DialogHeader className="text-center mb-6">
-            <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-600">
+            <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-linear-to-br from-blue-500 to-purple-600">
               <Mail className="h-10 w-10 text-white" />
             </div>
             <DialogTitle className="text-2xl font-bold">
@@ -124,7 +124,7 @@ const onSubmit = async (data: FormData) => {
               <Button
                 type="submit"
                 disabled={isSubmitting}
-                className="flex-1 h-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                className="flex-1 h-12 bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
               >
                 {isSubmitting ? (
                   <>

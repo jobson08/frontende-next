@@ -114,7 +114,7 @@ return (
                 {isSubmitting ? "Criando..." : "Criar Responsável"}
               </Button>
               <Button type="button" variant="outline" asChild>
-                <Link href="/dashboard/responsaveis">Cancelar</Link>
+                <Link href="/responsavel">Cancelar</Link>
               </Button>
             </div>
           </form>

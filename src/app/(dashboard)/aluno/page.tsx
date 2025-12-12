@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/ca
 import { Button } from "@/src/components/ui/button";
 import { Input } from "@/src/components/ui/input";
 
-import { Search, UserPlus, Phone, Calendar,  UserCheck } from "lucide-react";
+import { Search, UserPlus, Phone, Calendar, UserCheck } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/src/components/ui/avatar";
 import { useState } from "react";
@@ -40,7 +40,7 @@ interface Aluno {
 
 const alunosMock: Aluno[] = [
   { id: "1", name: "Enzo Gabriel Silva", birthDate: "2018-05-12", phone: "11988887777", responsavel: "Ana Silva", status: "ATIVO", temLogin: true, email: "enzo.gabriel@gmail.com" },
-  { id: "2", name: "Maria Luiza Costa", birthDate: "2019-02-20", phone: "11977778888", responsavel: "Carlos Costa", status: "ATIVO", temLogin: false, email: "Carlos.costa@gmail.com"  },
+  { id: "2", name: "Maria Luiza Costa", birthDate: "2019-02-20", phone: "11977778888", responsavel: "Carlos Costa", status: "ATIVO", temLogin: false, email: "Carlos.costa@gmail.com" },
   { id: "3", name: "Lucas Andrade", birthDate: "2005-11-30", phone: "11966667777", responsavel: null, status: "ATIVO", temLogin: true, email: "lucas.andre@gmail.com" },
   { id: "4", name: "Valentina Souza", birthDate: "2020-08-15", phone: "11955556666", responsavel: "Juliana Souza", status: "INATIVO", temLogin: false, email: "valentina@gmail.com" },
   { id: "5", name: "Pedro Henrique Lima", birthDate: "2008-03-22", phone: "11944445555", responsavel: "Márcia Lima", status: "ATIVO", temLogin: true, email: null },
@@ -68,8 +68,8 @@ const AlunoPage = () => {
   const alunoSelecionado = filteredAlunos.find(a => a.id === openModalId
 
   );
-    return (
-      <div className="space-y-6 p-4 lg:p-8">
+  return (
+    <div className="space-y-6 p-4 lg:p-8">
       {/* Cabeçalho */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -77,7 +77,7 @@ const AlunoPage = () => {
           <p className="text-gray-600">Gerencie todos os alunos da sua academia</p>
         </div>
         <Button asChild className="bg-blue-600 hover:bg-blue-700">
-          <Link href="/dashboard/alunos/novo">
+          <Link href="/aluno/novo">
             <UserPlus className="mr-2 h-4 w-4" />
             Novo Aluno
           </Link>
@@ -100,7 +100,7 @@ const AlunoPage = () => {
         {filteredAlunos.map((aluno) => {
           const idade = calcularIdade(aluno.birthDate);
           const isMaior = idade >= 18;
-          {/* caso meno ou ingual a 18  */}
+          {/* caso meno ou ingual a 18  */ }
           return (
             <Card key={aluno.id} className="hover:shadow-lg transition-shadow">
               <CardHeader>
@@ -174,8 +174,8 @@ const AlunoPage = () => {
       {alunoSelecionado && (
         <CreateLoginPopup
           type="ALUNO"
-          name={alunoSelecionado .name}
-          currentEmail={alunoSelecionado .email}
+          name={alunoSelecionado.name}
+          currentEmail={alunoSelecionado.email}
           open={!!openModalId}
           onOpenChange={(open) => !open && setOpenModalId(null)}
         />
@@ -183,5 +183,5 @@ const AlunoPage = () => {
     </div>
   );
 }
- 
+
 export default AlunoPage;

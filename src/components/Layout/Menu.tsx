@@ -30,8 +30,8 @@ const menuItems: MenuGroup[] = [
     items: [
       { href: "/dashboard", label: "Dashboard", icon: Home, roles: ["SUPER_ADMIN", "ADMIN", "FUNCIONARIO", "ALUNO", "RESPONSAVEL"] },
       { href: "/aluno", label: "Alunos", icon: Users, roles: ["ADMIN", "FUNCIONARIO"] },
-      { href: "/funcionario", label: "Funcionarios", icon: UserCheck, roles: ["ADMIN", "FUNCIONARIO"] },
       { href: "/responsavel", label: "Responsáveis", icon: UserCheck, roles: ["ADMIN", "FUNCIONARIO"] },
+      { href: "/funcionario", label: "Funcionarios", icon: UserCheck, roles: ["ADMIN", "FUNCIONARIO"] },
       { href: "/tenants", label: "Tenants", icon: Building2, roles: ["SUPER_ADMIN"] },
     ],
   },
