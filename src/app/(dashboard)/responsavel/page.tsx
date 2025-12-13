@@ -103,8 +103,13 @@ const ResponsavelPage = () => {
               </div>
 
               <div className="pt-4 flex gap-2">
-                <Button size="sm" variant="outline">Ver</Button>
-                {/* BOTÃO MOAL CRIA EDITAR LOGIN */}
+               {/* BOTÃO VER DETALHE */}
+                <Button size="sm" variant="outline" asChild>
+                  <Link href={`/responsavel/${r.id}`}>
+                    Ver detalhes
+                  </Link>
+                </Button>
+                              {/* BOTÃO MOAL CRIA EDITAR LOGIN */}
                 {!r.temLogin ? (
                   <Button
                     size="sm"

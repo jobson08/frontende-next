@@ -1,0 +1,122 @@
+// src/app/(dashboard)/responsaveis/[id]/page.tsx
+"use client";
+
+import { Avatar, AvatarFallback } from "@/src/components/ui/avatar";
+import { Badge } from "@/src/components/ui/badge";
+import { Button } from "@/src/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/card";
+import { ChevronLeft, Edit, Mail, Phone, Users } from "lucide-react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+
+
+const responsavelMock = {
+  id: "1",
+  name: "Ana Clara Santos",
+  phone: "1198888-7777",
+  email: "ana@email.com",
+  cpf: "123.456.789-00",
+  alunos: ["Enzo Gabriel Silva", "Maria Luiza Costa"],
+  temLogin: true,
+  dataCadastro: "2024-01-10",
+};
+
+const ResponsavelDetalhePage = () => {
+    const { id } = useParams();
+    return ( 
+    <div className="p-4 lg:p-8 max-w-5xl mx-auto space-y-8">
+      <div className="flex items-center gap-4">
+        <Button variant="ghost" size="icon" asChild>
+          <Link href="/responsavel">
+            <ChevronLeft className="h-5 w-5" />
+          </Link>
+        </Button>
+        <div>
+          <h1 className="text-3xl font-bold">Detalhes do Responsável</h1>
+          <p className="text-gray-600">Todas as informações de {responsavelMock.name}</p>
+        </div>
+      </div>
+
+      <Card className="overflow-hidden">
+        <div className="bg-gradient-to-r from-purple-600 to-pink-600 h-32" />
+        <CardContent className="relative pt-0">
+          <div className="flex flex-col sm:flex-row items-center sm:items-end gap-6 -mt-16">
+            <Avatar className="h-32 w-32 ring-8 ring-white shadow-2xl">
+              <AvatarFallback className="bg-gradient-to-br from-purple-600 to-pink-600 text-white text-4xl font-bold">
+                {responsavelMock.name.split(" ").map(n => n[0]).join("")}
+              </AvatarFallback>
+            </Avatar>
+            <div className="text-center sm:text-left">
+              <h2 className="text-3xl font-bold">{responsavelMock.name}</h2>
+              <div className="flex flex-wrap items-center gap-3 mt-2 justify-center sm:justify-start">
+                {responsavelMock.temLogin && <Badge className="bg-green-600">Tem acesso ao app</Badge>}
+              </div>
+            </div>
+              {/* Botão ediar*/}
+            <div className="ml-auto flex gap-3">
+              <Button size="lg">
+                <Edit className="mr-2 h-5 w-5" />
+                Editar Responsavel
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Contato</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex justify-between">
+              <span className="text-gray-600">Telefone</span>
+              <span className="font-medium flex items-center gap-2">
+                <Phone className="h-4 w-4" />
+                {responsavelMock.phone}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">E-mail</span>
+              <span className="font-medium flex items-center gap-2">
+                <Mail className="h-4 w-4" />
+                {responsavelMock.email}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">CPF</span>
+              <span className="font-medium">{responsavelMock.cpf}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Data de Cadastro</span>
+              <span className="font-medium">
+                {new Date(responsavelMock.dataCadastro).toLocaleDateString("pt-BR")}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Alunos Vinculados ({responsavelMock.alunos.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {responsavelMock.alunos.map((aluno, i) => (
+                <div key={i} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <span className="font-medium">{aluno}</span>
+                  <Badge variant="secondary">Ativo</Badge>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+     );
+}
+ 
+export default ResponsavelDetalhePage;

@@ -143,7 +143,12 @@ const AlunoPage = () => {
                 )}
 
                 <div className="pt-4 flex gap-2">
-                  <Button size="sm" variant="outline">Ver</Button>
+                 {/* BOTÃO VER DETALHE */}
+                  <Button size="sm" variant="outline" asChild>
+                    <Link href={`/aluno/${aluno.id}`}>
+                      Ver detalhes
+                    </Link>
+                  </Button>
 
                   {/* BOTÃO QUE ABRE O MODAL — EXATAMENTE IGUAL AO RESPONSÁVEL */}
                   {!aluno.temLogin ? (
