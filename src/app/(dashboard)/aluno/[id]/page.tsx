@@ -10,28 +10,58 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 
 // Mock de aluno (depois vem do backend)
-const alunoMock = {
-  id: "1",
-  name: "Enzo Gabriel Silva",
-  birthDate: "2018-05-12",
-  phone: "1198888-7777",
-  email: "enzo@email.com",
-  responsavel: "Ana Clara Santos",
-  responsavelPhone: "1199999-8888",
-  responsavelEmail: "ana@email.com",
-  status: "ATIVO",
-  temLogin: true,
-  dataMatricula: "2024-03-15",
-  observacoes: "Alergia a amendoim. Usa óculos. Muito educado!",
-};
-const AlunoDetalhePage = () => {
-    const { id } = useParams();
+const alunosMock = [
+  {
+    id: "1",
+    name: "Enzo Gabriel Silva",
+    birthDate: "2018-05-12",
+    phone: "11988887777",
+    email: "enzo@email.com",
+    responsavel: "Ana Clara Santos",
+    responsavelPhone: "11999998888",
+    responsavelEmail: "ana@email.com",
+    status: "ATIVO",
+    temLogin: true,
+    dataMatricula: "2024-03-15",
+    observacoes: "Alergia a amendoim. Usa óculos.",
+  },
+   {
+    id: "2",
+    name: "Maria Luiza Costa",
+    birthDate: "2019-02-20",
+    phone: "11977778888",
+    email: "enzo@email.com",
+    responsavel: "Ana Clara Santos",
+    responsavelPhone: "11999998888",
+    responsavelEmail: "ana@email.com",
+    status: "ATIVO",
+    temLogin: true,
+    dataMatricula: "2024-03-15",
+    observacoes: "Adora natação!",
+  },
+];
+const AlunoDetalhePage = () => {      //inicio da função
 
-  const idade = new Date().getFullYear() - new Date(alunoMock.birthDate).getFullYear();
+const { id } = useParams();
+
+  const aluno = alunosMock.find(a => a.id === id);
+
+  if (!aluno) {
+    return (
+      <div className="p-8 text-center">
+        <h1 className="text-2xl font-bold">Aluno não encontrado</h1>
+        <Button asChild className="mt-4">
+          <Link href="/aluno">Voltar</Link>
+        </Button>
+      </div>
+    );
+  }
+
+  const idade = new Date().getFullYear() - new Date(aluno.birthDate).getFullYear();
   const isMaior = idade >= 18;
 
     return ( 
-        <div className="p-4 lg:p-8 max-w-5xl mx-auto space-y-8">
+      <div className="p-4 lg:p-8 max-w-5xl mx-auto space-y-8">
       {/* Cabeçalho */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild>
@@ -41,7 +71,7 @@ const AlunoDetalhePage = () => {
         </Button>
         <div>
           <h1 className="text-3xl font-bold">Detalhes do Aluno</h1>
-          <p className="text-gray-600">Todas as informações de {alunoMock.name}</p>
+          <p className="text-gray-600">Informações completas de {aluno.name}</p>
         </div>
       </div>
 
@@ -52,23 +82,22 @@ const AlunoDetalhePage = () => {
           <div className="flex flex-col sm:flex-row items-center sm:items-end gap-6 -mt-16">
             <Avatar className="h-32 w-32 ring-8 ring-white shadow-2xl">
               <AvatarFallback className="bg-gradient-to-br from-blue-600 to-purple-600 text-white text-4xl font-bold">
-                {alunoMock.name.split(" ").map(n => n[0]).join("")}
+                {aluno.name.split(" ").map(n => n[0]).join("")}
               </AvatarFallback>
             </Avatar>
             <div className="text-center sm:text-left">
-              <h2 className="text-3xl font-bold">{alunoMock.name}</h2>
+              <h2 className="text-3xl font-bold">{aluno.name}</h2>
               <div className="flex flex-wrap items-center gap-3 mt-2 justify-center sm:justify-start">
-                <Badge variant={alunoMock.status === "ATIVO" ? "default" : "secondary"} className="text-sm">
-                  {alunoMock.status}
+                <Badge variant={aluno.status === "ATIVO" ? "default" : "secondary"}>
+                  {aluno.status}
                 </Badge>
-                {isMaior && <Badge variant="outline" className="text-sm ml-2">Maior de idade</Badge>}
-                {alunoMock.temLogin && <Badge className="bg-green-600 ml-2 text-sm">Tem acesso ao app</Badge>}
+                {isMaior && <Badge variant="outline">Maior de idade</Badge>}
+                {aluno.temLogin && <Badge className="bg-green-600">Tem acesso ao app</Badge>}
               </div>
             </div>
-            {/* Botão ediar*/}
-            <div className="ml-auto flex gap-3">
+            <div className="ml-auto">
               <Button size="lg" asChild>
-                <Link href={`/aluno/${alunoMock.id}/editar`}>
+                <Link href={`/aluno/${aluno.id}/editar`}>
                   <Edit className="mr-2 h-5 w-5" />
                   Editar Aluno
                 </Link>
@@ -78,9 +107,8 @@ const AlunoDetalhePage = () => {
         </CardContent>
       </Card>
 
-      {/* Informações em Cards */}
+      {/* Dados Pessoais */}
       <div className="grid gap-6 md:grid-cols-2">
-        {/* Dados Pessoais */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -92,27 +120,27 @@ const AlunoDetalhePage = () => {
             <div className="flex justify-between">
               <span className="text-gray-600">Data de Nascimento</span>
               <span className="font-medium">
-                {new Date(alunoMock.birthDate).toLocaleDateString("pt-BR")} ({idade} anos)
+                {new Date(aluno.birthDate).toLocaleDateString("pt-BR")} ({idade} anos)
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Telefone</span>
               <span className="font-medium flex items-center gap-2">
                 <Phone className="h-4 w-4" />
-                {alunoMock.phone}
+                {aluno.phone}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">E-mail</span>
               <span className="font-medium flex items-center gap-2">
                 <Mail className="h-4 w-4" />
-                {alunoMock.email || "Não informado"}
+                {aluno.email || "Não informado"}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Data de Matrícula</span>
               <span className="font-medium">
-                {new Date(alunoMock.dataMatricula).toLocaleDateString("pt-BR")}
+                {new Date(aluno.dataMatricula).toLocaleDateString("pt-BR")}
               </span>
             </div>
           </CardContent>
@@ -126,27 +154,9 @@ const AlunoDetalhePage = () => {
               Responsável
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center gap-3">
-              <Avatar>
-                <AvatarFallback className="bg-purple-600 text-white">
-                  {alunoMock.responsavel.split(" ").map(n => n[0]).join("")}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <p className="font-medium">{alunoMock.responsavel}</p>
-                <p className="text-sm text-gray-500">Responsável legal</p>
-              </div>
-            </div>
-            <div className="space-y-2 pt-4 border-t">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Telefone</span>
-                <span className="font-medium">{alunoMock.responsavelPhone}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">E-mail</span>
-                <span className="font-medium">{alunoMock.responsavelEmail}</span>
-              </div>
+          <CardContent>
+            <div className="text-center py-8 text-gray-500">
+              {aluno.responsavel || "Aluno maior de idade (sem responsável)"}
             </div>
           </CardContent>
         </Card>
@@ -159,23 +169,10 @@ const AlunoDetalhePage = () => {
         </CardHeader>
         <CardContent>
           <p className="text-gray-700 leading-relaxed">
-            {alunoMock.observacoes || "Nenhuma observação cadastrada."}
+            {aluno.observacoes || "Nenhuma observação cadastrada."}
           </p>
         </CardContent>
       </Card>
-
-      {/* Ações Rápidas */}
-      <div className="p-2 lg:p-2 max-w-5xl mx-auto space-y-2">
-        <Button className="flex-1" size="lg">
-          Enviar Mensagem
-        </Button>
-        <Button variant="outline" className="flex-1" size="lg">
-          Histórico de Pagamentos
-        </Button>
-        <Button variant="outline" className="flex-1" size="lg">
-          Frequência
-        </Button>
-      </div>
     </div>
      );
 }

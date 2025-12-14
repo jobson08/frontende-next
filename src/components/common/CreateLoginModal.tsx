@@ -1,6 +1,6 @@
 "use client";
 
-import { Dialog, DialogContent, DialogHeader, DialogOverlay, DialogPortal, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogOverlay, DialogPortal, DialogTitle } from "@/src/components/ui/dialog";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Mail, Lock  } from "lucide-react";
 import { useState } from "react";

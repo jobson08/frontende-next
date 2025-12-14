@@ -67,8 +67,7 @@ const responsaveisMock = [
   { id: "3", name: "Juliana Costa" },
 ];
 
-const EditarAlunoPage = () => {
-
+const EditarAlunoPage = () => {     //inicio da função
 const { id } = useParams();
 
   // HOOKS SEMPRE NO TOPO — NUNCA DEPOIS DE RETURN!
@@ -94,8 +93,8 @@ const { id } = useParams();
   // BUSCA O ALUNO DEPOIS DOS HOOKS
   const aluno = alunosMock.find(a => a.id === id);
 
-  // PREENCHE OS DADOS (FORA DO useEffect pra evitar aviso, mas sem loop)
-  if (aluno) {
+  // PREENCHE OS DADOS — DENTRO DO CORPO, MAS SÓ UMA VEZ (não causa loop porque é condicional)
+  if (aluno && date === undefined) { // ← IMPORTANTE: evita loop!
     const birthDate = new Date(aluno.birthDate);
     setDate(birthDate);
 
@@ -113,7 +112,7 @@ const { id } = useParams();
       <div className="flex min-h-screen flex-col items-center justify-center">
         <h1 className="text-2xl font-bold mb-4">Aluno não encontrado</h1>
         <Button asChild>
-          <Link href="aluno">Voltar para lista</Link>
+          <Link href="/aluno">Voltar para lista</Link>
         </Button>
       </div>
     );
@@ -159,7 +158,7 @@ const { id } = useParams();
             </div>
 
             {/* Data de Nascimento */}
-            <div className="space-y-2">
+           <div className="space-y-2">
               <Label>Data de nascimento *</Label>
               <Popover>
                 <PopoverTrigger asChild>
@@ -179,12 +178,11 @@ const { id } = useParams();
                       setDate(newDate || undefined);
                       if (newDate) setValue("birthDate", newDate);
                     }}
-                    disabled={(d) => d > new Date() || d < new Date("1900-01-01")}
+                    disabled={(d) => d > new Date()}
                     initialFocus
                   />
                 </PopoverContent>
               </Popover>
-              {errors.birthDate && <p className="text-sm text-red-600">Data de nascimento é obrigatória</p>}
             </div>
 
             {/* Telefone */}
@@ -244,22 +242,12 @@ const { id } = useParams();
 
             {/* Botões */}
             <div className="flex gap-4 pt-6">
-              <Button type="submit" disabled={isSubmitting} className="flex-1">
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Salvando...
-                  </>
-                ) : (
-                  <>
-                    <Save className="mr-2 h-4 w-4" />
-                    Salvar Alterações
-                  </>
-                )}
-              </Button>
-              <Button type="button" variant="outline" asChild>
-                <Link href={`/aluno/${id}`}>Cancelar</Link>
-              </Button>
+                      <Button type="submit" disabled={isSubmitting} className="flex-1">
+                        {isSubmitting ? "Salvando..." : "Salvar"}
+                      </Button>
+                      <Button variant="outline" asChild>
+                        <Link href={`/aluno/${id}`}>Cancelar</Link>
+                      </Button>
             </div>
           </form>
         </CardContent>
