@@ -10,19 +10,46 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 
 
-const responsavelMock = {
-  id: "1",
-  name: "Ana Clara Santos",
-  phone: "1198888-7777",
-  email: "ana@email.com",
-  cpf: "123.456.789-00",
-  alunos: ["Enzo Gabriel Silva", "Maria Luiza Costa"],
-  temLogin: true,
-  dataCadastro: "2024-01-10",
-};
+
+const responsaveisMock = [
+  {
+    id: "1",
+    name: "Ana Clara Santos",
+    phone: "11988887777",
+    email: "ana@email.com",
+    cpf: "123.456.789-00",
+    alunos: ["Enzo Gabriel Silva", "Maria Luiza Costa"],
+    temLogin: true,
+    dataCadastro: "2024-01-10",
+  },
+  {
+    id: "2",
+    name: "Carlos Oliveira",
+    phone: "11977778888",
+    email: "carlos@email.com",
+    cpf: "987.654.321-00",
+    alunos: ["Pedro Henrique"],
+    temLogin: false,
+    dataCadastro: "2024-02-15",
+  },
+];
 
 const ResponsavelDetalhePage = () => {
     const { id } = useParams();
+
+    // DECLARA A VARIÁVEL PRIMEIRO — ANTES DE USAR!
+  const responsavel = responsaveisMock.find(r => r.id === id);
+
+  if (!responsavel) {
+    return (
+      <div className="p-8 text-center">
+        <h1 className="text-2xl font-bold">Responsável não encontrado</h1>
+        <Button asChild className="mt-4">
+          <Link href="/responsavel">Voltar</Link>
+        </Button>
+      </div>
+    );
+  }
     return ( 
     <div className="p-4 lg:p-8 max-w-5xl mx-auto space-y-8">
       <div className="flex items-center gap-4">
@@ -33,7 +60,7 @@ const ResponsavelDetalhePage = () => {
         </Button>
         <div>
           <h1 className="text-3xl font-bold">Detalhes do Responsável</h1>
-          <p className="text-gray-600">Todas as informações de {responsavelMock.name}</p>
+          <p className="text-gray-600">Todas as informações de {responsavel.name}</p>
         </div>
       </div>
 
@@ -43,20 +70,22 @@ const ResponsavelDetalhePage = () => {
           <div className="flex flex-col sm:flex-row items-center sm:items-end gap-6 -mt-16">
             <Avatar className="h-32 w-32 ring-8 ring-white shadow-2xl">
               <AvatarFallback className="bg-gradient-to-br from-purple-600 to-pink-600 text-white text-4xl font-bold">
-                {responsavelMock.name.split(" ").map(n => n[0]).join("")}
+                {responsavel.name.split(" ").map(n => n[0]).join("")}
               </AvatarFallback>
             </Avatar>
             <div className="text-center sm:text-left">
-              <h2 className="text-3xl font-bold">{responsavelMock.name}</h2>
+              <h2 className="text-3xl font-bold">{responsavel.name}</h2>
               <div className="flex flex-wrap items-center gap-3 mt-2 justify-center sm:justify-start">
-                {responsavelMock.temLogin && <Badge className="bg-green-600">Tem acesso ao app</Badge>}
+                {responsavel.temLogin && <Badge className="bg-green-600">Tem acesso ao app</Badge>}
               </div>
             </div>
-              {/* Botão ediar*/}
-            <div className="ml-auto flex gap-3">
-              <Button size="lg">
-                <Edit className="mr-2 h-5 w-5" />
-                Editar Responsavel
+              {/* Botão editar*/}
+           <div className="ml-auto">
+              <Button size="lg" asChild className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
+                <Link href={`/responsavel/${responsavel.id}/editar`}>
+                  <Edit className="mr-2 h-5 w-5" />
+                  Editar Responsável
+                </Link>
               </Button>
             </div>
           </div>
@@ -73,24 +102,24 @@ const ResponsavelDetalhePage = () => {
               <span className="text-gray-600">Telefone</span>
               <span className="font-medium flex items-center gap-2">
                 <Phone className="h-4 w-4" />
-                {responsavelMock.phone}
+                {responsavel.phone}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">E-mail</span>
               <span className="font-medium flex items-center gap-2">
                 <Mail className="h-4 w-4" />
-                {responsavelMock.email}
+                {responsavel.email}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">CPF</span>
-              <span className="font-medium">{responsavelMock.cpf}</span>
+              <span className="font-medium">{responsavel.cpf}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Data de Cadastro</span>
               <span className="font-medium">
-                {new Date(responsavelMock.dataCadastro).toLocaleDateString("pt-BR")}
+                {new Date(responsavel.dataCadastro).toLocaleDateString("pt-BR")}
               </span>
             </div>
           </CardContent>
@@ -100,12 +129,12 @@ const ResponsavelDetalhePage = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Users className="h-5 w-5" />
-              Alunos Vinculados ({responsavelMock.alunos.length})
+              Alunos Vinculados ({responsavel.alunos.length})
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {responsavelMock.alunos.map((aluno, i) => (
+              {responsavel.alunos.map((aluno, i) => (
                 <div key={i} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                   <span className="font-medium">{aluno}</span>
                   <Badge variant="secondary">Ativo</Badge>
