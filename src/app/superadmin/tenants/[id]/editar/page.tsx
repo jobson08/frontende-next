@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
@@ -36,16 +36,16 @@ type EditTenantFormData = z.infer<typeof editTenantSchema>;
 // Mock
 const tenantsMock = [
   {
-    id: "1",
+id: "1",
     name: "Escolinha Gol de Placa",
     cidade: "São Paulo",
-    estado: "SP",
-    endereco: "Rua das Flores, 123 - Jardim Paulista",
+    estado: "SP" as const,
+    endereco: "Rua das Flores, 123",
     telefone: "(11) 99999-8888",
     emailAdmin: "admin@goldeplaca.com",
     nomeAdmin: "João Silva",
     plano: "Pro" as const,
-    observacoes: "Escolinha com foco em categorias sub-11 e sub-13. Campo próprio.",
+    observacoes: "Foco em sub-11 e sub-13.",
   },
   // outros...
 ];
@@ -59,7 +59,7 @@ const { id } = useParams();
     register,
     handleSubmit,
     reset,
-    setValue,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<EditTenantFormData>({
     resolver: zodResolver(editTenantSchema),
@@ -136,28 +136,30 @@ const { id } = useParams();
             </div>
 
             {/* Localização */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="cidade">Cidade *</Label>
-                <Input id="cidade" {...register("cidade")} />
-                {errors.cidade && <p className="text-sm text-red-600">{errors.cidade.message}</p>}
+                <Label>Cidade</Label>
+                <Input {...register("cidade")} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="estado">Estado *</Label>
-                <Select onValueChange={(value) => setValue("estado", value as any)} defaultValue={tenant.estado}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="SP">São Paulo</SelectItem>
-                    <SelectItem value="RJ">Rio de Janeiro</SelectItem>
-                    <SelectItem value="MG">Minas Gerais</SelectItem>
-                    <SelectItem value="RS">Rio Grande do Sul</SelectItem>
-                    <SelectItem value="BA">Bahia</SelectItem>
-                    {/* Adicione mais estados */}
-                  </SelectContent>
-                </Select>
-                {errors.estado && <p className="text-sm text-red-600">Estado obrigatório</p>}
+                <Label>Estado</Label>
+                <Controller
+                  name="estado"
+                  control={control}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o estado" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="SP">São Paulo</SelectItem>
+                        <SelectItem value="RJ">Rio de Janeiro</SelectItem>
+                        <SelectItem value="MG">Minas Gerais</SelectItem>
+                        {/* Adicione mais */}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
               </div>
             </div>
 
@@ -193,21 +195,25 @@ const { id } = useParams();
             </div>
 
             {/* Plano */}
-            <div className="space-y-2">
-              <Label>Plano da Escolinha *</Label>
-              <Select onValueChange={(value) => setValue("plano", value as any)} defaultValue={tenant.plano}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Básico">Básico - R$ 299/mês</SelectItem>
-                  <SelectItem value="Pro">Pro - R$ 599/mês</SelectItem>
-                  <SelectItem value="Enterprise">Enterprise - R$ 999/mês</SelectItem>
-                </SelectContent>
-              </Select>
-              {errors.plano && <p className="text-sm text-red-600">Plano obrigatório</p>}
+         <div className="space-y-2">
+              <Label>Plano</Label>
+              <Controller
+                name="plano"
+                control={control}
+                render={({ field }) => (
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o plano" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Básico">Básico</SelectItem>
+                      <SelectItem value="Pro">Pro</SelectItem>
+                      <SelectItem value="Enterprise">Enterprise</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
             </div>
-
             {/* Observações */}
             <div className="space-y-2">
               <Label htmlFor="observacoes">Observações</Label>
