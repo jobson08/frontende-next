@@ -2,17 +2,17 @@
 
 import { Navbar } from "@/src/components/Layout/Navbar";
 import { Sidebar } from "@/src/components/Layout/Sidebar";
+
 import { Toaster } from "@/src/components/ui/sonner";
-
-
-
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-screen bg-gray-50">
-      {/* Desktop: sidebar fixo */}
-      <Sidebar />
-
+    {/* Sidebar do Admin da Academia */}
+      <Sidebar 
+        userType="ADMIN" 
+        userName="Admin da Academia Elite" // Pode vir do contexto/auth depois
+      />
       {/* Mobile + Conteúdo */}
       <div className="flex-1 flex flex-col lg:ml-64">
         <Navbar />
