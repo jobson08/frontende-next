@@ -22,7 +22,7 @@ export function MobileMenu() {
         </div>
 
         <div className="py-6 px-3">
-          <Menu role="ADMIN" />
+          <Menu role="SUPERADMIN" />
         </div>
       </SheetContent>
     </Sheet>

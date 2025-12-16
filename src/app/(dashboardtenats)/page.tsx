@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/ca
 import { TrendingUp, Users, DollarSign, Calendar, AlertCircle, Activity } from "lucide-react";
 import Link from "next/link";
 
-const  AdminDashboard = () => {
+const  AdminDashboard = () => {   //inicio da função
     const stats = {
     totalAlunos: 248,
     alunosAtivos: 215,
@@ -28,10 +28,10 @@ const  AdminDashboard = () => {
     { nome: "Maria Luiza Costa", idade: 6 },
   ];
     return ( 
-       <div className="p-4 lg:p-8 space-y-8">
+  <div className="p-4 lg:p-8 space-y-8">
       {/* Cabeçalho */}
       <div>
-        <h1 className="text-4xl font-bold">Dashboard da Escolinha</h1>
+        <h1 className="text-4xl font-bold">Dashboard da Academia</h1>
         <p className="text-gray-600 text-lg mt-2">Visão geral da sua unidade - Dezembro 2025</p>
       </div>
 
@@ -169,7 +169,7 @@ const  AdminDashboard = () => {
           </CardContent>
         </Card>
       </div>
-    </div> 
+    </div>
      );
 }
  

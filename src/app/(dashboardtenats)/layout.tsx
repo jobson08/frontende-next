@@ -1,21 +1,18 @@
-// src/app/superadmin/layout.tsx
-
-//type UserType = "ADMIN" | "ALUNO" | "RESPONSAVEL" | "FUNCIONARIO" | "SUPERADMIN"; para der usado para conectar 
+// src/app/(dashboard)/layout.tsx
 
 import { Navbar } from "@/src/components/Layout/Navbar";
 import { Sidebar } from "@/src/components/Layout/Sidebar";
-import { SidebarMobile } from "@/src/components/Layout/SidebarMobile";
+
 import { Toaster } from "@/src/components/ui/sonner";
 
-const SuperAdminLayout = ({children,}: {children: React.ReactNode;}) => { // iNICIO DA FUNÇÃO
-  // Defina aqui o tipo de usuário (depois vem do auth)
-  const userType = "SUPERADMIN" as const;
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const userType = "ADMIN" as const;
  const user = {
     name: "João Silva",
     email: "admin@escolinha.com",
   };
-    return ( 
-    <div className="min-h-screen bg-gray-50">
+  return (
+<div className="min-h-screen bg-gray-50">
       {/* NAVBAR FIXA NO TOPO */}
       <Navbar userType={userType} user={user} />
 
@@ -33,7 +30,5 @@ const SuperAdminLayout = ({children,}: {children: React.ReactNode;}) => { // iNI
         </main>
       </div>
     </div>
-     );
+  );
 }
- 
-export default SuperAdminLayout;

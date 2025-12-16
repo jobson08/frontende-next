@@ -40,10 +40,11 @@ const menuItems = {
   { icon: LifeBuoy, label: "Suporte", href: "/superadmin/suporte" },
 ],
   ADMIN: [
-    { icon: Home, label: "Dashboard", href: "/dashboard" },
+    { icon: Home, label: "Admin", href: "/admin" },
     { icon: Users, label: "Alunos", href: "/aluno" },
     { icon: User, label: "Responsáveis", href: "/responsavel" },
-    { icon: Users, label: "Funcionários", href: "/funcionario" },
+    { icon: Users, label: "Funcionarios", href: "/funcionario" },
+    { icon: Calendar, label: "Treinos", href: "/treinos" },
     { icon: DollarSign, label: "Financeiro", href: "/financeiro" },
     { icon: Settings, label: "Configurações", href: "/configuracoes" },
   ],

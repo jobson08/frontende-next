@@ -2,19 +2,29 @@
 "use client";
 
 import { Shield } from "lucide-react";
-import { Menu } from "./Menu";
+import { Menu } from "lucide-react";
+import { Sheet, SheetContent, SheetTrigger } from "../ui/sheet";
+import { Button } from "../ui/button";
+import { Sidebar } from "./Sidebar";
+import { useState } from "react";
 
-export function SidebarMobile() {
+interface MobileSidebarProps {
+  userType: "ADMIN" | "SUPERADMIN" | "ALUNO" | "RESPONSAVEL" | "FUNCIONARIO";
+  userName: string;
+}
+export function SidebarMobile({ userType, userName }: MobileSidebarProps) {   //Inicio da função
+
+  const [open, setOpen] = useState(false);
   return (
-    <div className="flex flex-col w-64 bg-slate-900 text-white h-full">
-      <div className="flex h-16 items-center gap-3 px-6 border-b border-slate-800">
-        <Shield className="h-8 w-8 text-blue-500" />
-        <span className="text-xl font-bold">Meu SaaS</span>
-      </div>
-
-      <div className="flex-1 overflow-y-auto py-6 px-3">
-        <Menu role="ADMIN" />
-      </div>
-    </div>
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <Button variant="ghost" size="icon" className="fixed top-4 left-4 z-50 bg-white shadow-lg rounded-full">
+          <Menu className="h-6 w-6" />
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="left" className="p-0 w-64 bg-slate-900 text-white lg:border-r lg:border-gray-200">
+        <Sidebar userType={userType} userName={userName} />
+      </SheetContent>
+    </Sheet>
   );
 }

@@ -106,7 +106,7 @@ const { id } = useParams();
     }
   };
     return ( 
-   <div className="p-4 lg:p-8 max-w-4xl mx-auto">
+   <div className="p-4 lg:p-8 max-w-5xl mx-auto space-y-8">
       <div className="flex items-center gap-4 mb-8">
         <Button variant="ghost" size="icon" asChild>
           <Link href={`/superadmin/tenants/${id}`}>
@@ -119,7 +119,7 @@ const { id } = useParams();
         </div>
       </div>
 
-      <Card>
+      <Card className="overflow-hidden">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Save className="h-6 w-6 text-green-600" />
