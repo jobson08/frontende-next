@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/ca
 import { Badge } from "@/src/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/src/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/src/components/ui/select";
-import { Search, Plus, Calendar, Users} from "lucide-react";
+import { Search, Plus, Calendar, Users, Edit} from "lucide-react";
 import Link from "next/link";
 
 
@@ -209,9 +209,12 @@ const TreinosPage = () => {//Inicio da função
                     Ver detalhes
                   </Link>
                 </Button>
-                <Button size="sm" variant="outline">
-                  Editar
-                </Button>
+              <Button asChild className="bg-linear-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700">
+                <Link href={`/treinos/${treino.id}/editar`}>
+                <Edit className="mr-2 h-5 w-5" />
+                Editar Treino
+                </Link>
+            </Button>
               </div>
             </CardContent>
           </Card>

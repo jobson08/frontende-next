@@ -144,7 +144,7 @@ const NovoTreinoPage = () => {      //Inicio da função
             </div>
 
             <div className="flex gap-4 pt-6">
-              <Button type="submit" disabled={isSubmitting} className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700">
+              <Button type="submit" disabled={isSubmitting} className="flex-1 bg-linear-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700">
                 {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
