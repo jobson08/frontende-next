@@ -1,8 +1,7 @@
 // src/components/layout/Sidebar.tsx
 "use client";
 
-import { Menu } from "./Menu";
-import { BarChart3, Building2, Clock, CreditCard, LifeBuoy, Shield, UserPlus } from "lucide-react";
+import { BarChart3, Building2, Clock, CreditCard, LifeBuoy, UserPlus } from "lucide-react";
 import {
   Home,
   Users,
@@ -49,25 +48,25 @@ const menuItems = {
     { icon: Settings, label: "Configurações", href: "/configuracoes" },
   ],
   ALUNO: [
-    { icon: Home, label: "Meu Dashboard", href: "/aluno" },
-    { icon: Calendar, label: "Minhas Aulas", href: "/aluno/aulas" },
-    { icon: Trophy, label: "Meu Progresso", href: "/aluno/progresso" },
-    { icon: BookOpen, label: "Treinos", href: "/aluno/treinos" },
-    { icon: MessageSquare, label: "Mensagens", href: "/aluno/mensagens" },
+    { icon: Home, label: "Meu Dashboard", href: "/dashboarduser/aluno-dashboard" },
+    { icon: Calendar, label: "Minhas Aulas", href: "/dashboarduser/aluno-dashboard/aulas" },
+    { icon: Trophy, label: "Meu Progresso", href: "/dashboarduser/aluno-dashboard/progresso" },
+    { icon: BookOpen, label: "Treinos", href: "/dashboarduser/aluno-dashboard/treinos" },
+    { icon: MessageSquare, label: "Mensagens", href: "/dashboarduser/aluno-dashboard/mensagens" },
   ],
   RESPONSAVEL: [
-    { icon: Home, label: "Meu Dashboard", href: "/responsavel" },
-    { icon: Users, label: "Meus Filhos", href: "/responsavel/filhos" },
-    { icon: Calendar, label: "Aulas dos Filhos", href: "/responsavel/aulas" },
-    { icon: DollarSign, label: "Pagamentos", href: "/responsavel/pagamentos" },
-    { icon: MessageSquare, label: "Comunicados", href: "/responsavel/comunicados" },
+    { icon: Home, label: "Meu Dashboard", href: "/dashboarduser/responsavel-dashboard" },
+    { icon: Users, label: "Meus Filhos", href: "/dashboarduser/responsavel-dashboard/filhos" },
+    { icon: Calendar, label: "Aulas dos Filhos", href: "/dashboarduser/responsavel-dashboard/aulas" },
+    { icon: DollarSign, label: "Pagamentos", href: "/dashboarduser/responsavel-dashboard/pagamentos" },
+    { icon: MessageSquare, label: "Comunicados", href: "/dashboarduser/responsavel-dashboard/comunicados" },
   ],
   FUNCIONARIO: [
-    { icon: Home, label: "Meu Dashboard", href: "/funcionario" },
-    { icon: Calendar, label: "Minhas Aulas", href: "/funcionario/aulas" },
-    { icon: Users, label: "Meus Alunos", href: "/funcionario/alunos" },
-    { icon: Clock, label: "Horário", href: "/funcionario/horario" },
-    { icon: MessageSquare, label: "Mensagens", href: "/funcionario/mensagens" },
+    { icon: Home, label: "Meu Dashboard", href: "/dashboarduser/funcionario-dashboard" },
+    { icon: Calendar, label: "Minhas Aulas", href: "/dashboarduser/funcionario-dashboard/aulas" },
+    { icon: Users, label: "Meus Alunos", href: "/dashboarduser/funcionario-dashboard/alunos" },
+    { icon: Clock, label: "Horário", href: "/dashboarduser/funcionario-dashboard/horario" },
+    { icon: MessageSquare, label: "Mensagens", href: "/dashboarduser/funcionario-dashboard/mensagens" },
   ],
 };
 
@@ -81,7 +80,7 @@ const pathname = usePathname();
       <div className="flex flex-col h-full">
         {/* Logo */}
         <div className="flex items-center justify-center h-16 border-b border-gray-200">
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <h1 className="text-2xl font-bold bg-linear-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
             EDUPAY
           </h1>
         </div>
@@ -109,7 +108,7 @@ const pathname = usePathname();
         <div className="border-t border-gray-200 p-4">
           <div className="flex items-center gap-3">
             <Avatar>
-              <AvatarFallback className="bg-gradient-to-br from-blue-600 to-purple-600 text-white">
+              <AvatarFallback className="bg-linear-to-r from-blue-600 to-purple-600 text-white">
                 {userName.split(" ").map((n) => n[0]).join("")}
               </AvatarFallback>
             </Avatar>

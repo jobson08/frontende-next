@@ -11,8 +11,8 @@ const SuperAdminLayout = ({children,}: {children: React.ReactNode;}) => { // iNI
   // Defina aqui o tipo de usuário (depois vem do auth)
   const userType = "SUPERADMIN" as const;
  const user = {
-    name: "João Silva",
-    email: "admin@escolinha.com",
+    name: "Jobson",
+    email: "superadmin@edupay.com",
   };
     return ( 
     <div className="min-h-screen bg-gray-50">

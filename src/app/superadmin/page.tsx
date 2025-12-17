@@ -101,9 +101,9 @@ const SuperAdminPage = () => {  //inicio da função
         <CardContent>
           <div className="space-y-4">
             {topAcademias.map((academia, i) => (
-              <div key={i} className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg">
+              <div key={i} className="flex items-center justify-between p-4 bg-linear-to-r from-gray-50 to-gray-100 rounded-lg">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
+                  <div className="w-12 h-12 rounded-full bg-linear-to-r from-blue-600 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
                     {i + 1}
                   </div>
                   <div>

@@ -7,7 +7,6 @@ import { DropdownMenu, DropdownMenuContent } from "../ui/dropdown-menu";
 import { DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@radix-ui/react-dropdown-menu";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { useState } from "react";
-import { Sidebar } from "./Sidebar";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -41,25 +40,25 @@ const menuItems = {
     { icon: Settings, label: "Configurações", href: "/configuracoes" },
   ],
   ALUNO: [
-    { icon: Home, label: "Meu Dashboard", href: "/aluno" },
-    { icon: Calendar, label: "Minhas Aulas", href: "/aluno/aulas" },
-    { icon: Trophy, label: "Meu Progresso", href: "/aluno/progresso" },
-    { icon: BookOpen, label: "Treinos", href: "/aluno/treinos" },
-    { icon: MessageSquare, label: "Mensagens", href: "/aluno/mensagens" },
+    { icon: Home, label: "Meu Dashboard", href: "/dashboarduser/aluno-dashboard" },
+    { icon: Calendar, label: "Minhas Aulas", href: "/dashboarduser/aluno-dashboard/aulas" },
+    { icon: Trophy, label: "Meu Progresso", href: "/dashboarduser/aluno-dashboard/progresso" },
+    { icon: BookOpen, label: "Treinos", href: "/dashboarduser/aluno-dashboard/treinos" },
+    { icon: MessageSquare, label: "Mensagens", href: "/dashboarduser/aluno-dashboard/mensagens" },
   ],
   RESPONSAVEL: [
-    { icon: Home, label: "Meu Dashboard", href: "/responsavel" },
-    { icon: Users, label: "Meus Filhos", href: "/responsavel/filhos" },
-    { icon: Calendar, label: "Aulas dos Filhos", href: "/responsavel/aulas" },
-    { icon: DollarSign, label: "Pagamentos", href: "/responsavel/pagamentos" },
-    { icon: MessageSquare, label: "Comunicados", href: "/responsavel/comunicados" },
+    { icon: Home, label: "Meu Dashboard", href: "/dashboarduser/responsavel-dashboard" },
+    { icon: Users, label: "Meus Filhos", href: "/dashboarduser/responsavel-dashboard/filhos" },
+    { icon: Calendar, label: "Aulas dos Filhos", href: "/dashboarduser/responsavel-dashboard/aulas" },
+    { icon: DollarSign, label: "Pagamentos", href: "/dashboarduser/responsavel-dashboard/pagamentos" },
+    { icon: MessageSquare, label: "Comunicados", href: "/dashboarduser/responsavel-dashboard/comunicados" },
   ],
   FUNCIONARIO: [
-    { icon: Home, label: "Meu Dashboard", href: "/funcionario" },
-    { icon: Calendar, label: "Minhas Aulas", href: "/funcionario/aulas" },
-    { icon: Users, label: "Meus Alunos", href: "/funcionario/alunos" },
-    { icon: Clock, label: "Horário", href: "/funcionario/horario" },
-    { icon: MessageSquare, label: "Mensagens", href: "/funcionario/mensagens" },
+    { icon: Home, label: "Meu Dashboard", href: "/dashboarduser/funcionario-dashboard" },
+    { icon: Calendar, label: "Minhas Aulas", href: "/dashboarduser/funcionario-dashboard/aulas" },
+    { icon: Users, label: "Meus Alunos", href: "/dashboarduser/funcionario-dashboard/alunos" },
+    { icon: Clock, label: "Horário", href: "/dashboarduser/funcionario-dashboard/horario" },
+    { icon: MessageSquare, label: "Mensagens", href: "/dashboarduser/funcionario-dashboard/mensagens" },
   ],
 };
 export function Navbar({ userType, user }: NavbarProps) {
@@ -83,7 +82,7 @@ const [mobileOpen, setMobileOpen] = useState(false);
           <SheetContent side="left" className="p-0 w-72 bg-white">
             <div className="flex flex-col h-full">
               <div className="flex items-center justify-center h-16 border-b border-gray-200">
-                  <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  <h1 className="text-2xl font-bold bg-linear-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                     EDUPAY
                   </h1>
               </div>
@@ -110,7 +109,7 @@ const [mobileOpen, setMobileOpen] = useState(false);
               <div className="border-t border-gray-200 p-4">
                 <div className="flex items-center gap-3">
                   <Avatar className="h-10 w-10">
-                    <AvatarFallback className="bg-gradient-to-br from-green-600 to-emerald-600 text-white">
+                    <AvatarFallback className="bg-linear-to-br from-blue-600 to-purple-600 text-white">
                       {user.name.split(" ").map((n) => n[0]).join("")}
                     </AvatarFallback>
                   </Avatar>
@@ -126,7 +125,7 @@ const [mobileOpen, setMobileOpen] = useState(false);
 
         {/* LOGO */}
        <div className="flex items-center justify-center h-16 border-b border-gray-200">
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <h1 className="text-2xl font-bold bg-linear-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
             EDUPAY
           </h1>
        </div>
@@ -134,8 +133,8 @@ const [mobileOpen, setMobileOpen] = useState(false);
         {/* AVATAR DROPDOWN */}
         <DropdownMenu>
           <DropdownMenuTrigger className="flex items-center gap-3 rounded-full focus:outline-none">
-            <Avatar className="h-9 w-9 ring-2 ring-offset-2 ring-green-600">
-              <AvatarFallback className="bg-gradient-to-br from-green-600 to-emerald-600 text-white text-sm font-medium">
+            <Avatar className="h-9 w-9 ring-2 ring-offset-2 ring-purple-400">
+              <AvatarFallback className="bg-linear-to-br from-blue-600 to-purple-600 text-white text-sm font-medium">
                 {user.name.split(" ").map((n) => n[0]).join("").toUpperCase()}
               </AvatarFallback>
             </Avatar>
