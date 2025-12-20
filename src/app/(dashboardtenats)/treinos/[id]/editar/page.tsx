@@ -103,7 +103,7 @@ useEffect(() => {
         <div className="p-4 lg:p-8 max-w-4xl mx-auto">
       <div className="flex items-center gap-4 mb-8">
         <Button variant="ghost" size="icon" asChild>
-          <Link href={`/treinos/${id}`}>
+          <Link href={`/treinos/${treino.id}`}>
             <ChevronLeft className="h-5 w-5" />
           </Link>
         </Button>

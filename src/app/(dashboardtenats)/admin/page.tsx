@@ -113,7 +113,7 @@ const  AdminDashboardPage = () => {   //inicio da função
               ))}
             </div>
             <Button variant="outline" className="w-full mt-4" asChild>
-              <Link href="/dashboard/funcionarios">Ver agenda completa</Link>
+              <Link href="/funcionarios">Ver agenda completa</Link>
             </Button>
           </CardContent>
         </Card>
@@ -127,8 +127,8 @@ const  AdminDashboardPage = () => {   //inicio da função
             {aniversariantes.length > 0 ? (
               <div className="space-y-4">
                 {aniversariantes.map((a, i) => (
-                  <div key={i} className="flex items-center gap-4 p-3 bg-gradient-to-r from-purple-100 to-pink-100 rounded-lg">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center text-white font-bold">
+                  <div key={i} className="flex items-center gap-4 p-3 bg-linear-to-r from-purple-100 to-pink-100 rounded-lg">
+                    <div className="w-12 h-12 rounded-full bg-linear-to-ro-br from-purple-600 to-pink-600 flex items-center justify-center text-white font-bold">
                       {a.idade}
                     </div>
                     <div>
@@ -150,19 +150,19 @@ const  AdminDashboardPage = () => {   //inicio da função
             <CardTitle>Ações Rápidas</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <Button asChild className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-              <Link href="/dashboard/alunos/novo">
+            <Button asChild className="w-full bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+              <Link href="/alunos/novo">
                 <Users className="mr-2 h-4 w-4" />
                 Novo Aluno
               </Link>
             </Button>
             <Button asChild variant="outline" className="w-full">
-              <Link href="/dashboard/funcionarios/novo">
+              <Link href="/funcionario/novo">
                 Novo Funcionário
               </Link>
             </Button>
             <Button asChild variant="outline" className="w-full">
-              <Link href="/dashboard/financeiro">
+              <Link href="/financeiro">
                 Ver Financeiro Completo
               </Link>
             </Button>
