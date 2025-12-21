@@ -6,6 +6,7 @@ import { useState } from "react";
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/src/components/ui/card";
@@ -32,6 +33,8 @@ import {
 } from "chart.js";
 import { Line, Doughnut } from "react-chartjs-2";
 import type { ChartOptions } from "chart.js";
+import Link from "next/link";
+import { Button } from "@/src/components/ui/button";
 
 ChartJS.register(
   CategoryScale,
@@ -116,6 +119,8 @@ const [mesSelecionado, setMesSelecionado] = useState("2025-12");
 
   const dados = dadosMensais[mesSelecionado] || dadosMensais["2025-12"];
 
+  const mesLabel = meses.find(m => m.value === mesSelecionado)?.label || "Dezembro 2025";
+
   const porcentagemMeta = Math.round((dados.receitaReal / dados.metaReceita) * 100);
 
   // Dados do Line Chart
@@ -188,16 +193,19 @@ const doughnutOptions: ChartOptions<"doughnut"> = {
   },
 };
     return (
-    <div className="p-4 lg:p-8 space-y-8">
-      {/* Cabeçalho e Filtro */}
+<div className="p-4 lg:p-8 space-y-8">
+      {/* Cabeçalho com mês e botão para inadimplentes */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">Financeiro</h1>
-          <p className="text-gray-600">Visão completa das finanças da escolinha</p>
+          <p className="text-xl text-gray-600">
+            Visão completa das finanças —{" "}
+            <span className="font-bold text-blue-600">{mesLabel}</span>
+          </p>
         </div>
-        <div className="w-full sm:w-64">
+        <div className="flex items-center gap-4">
           <Select value={mesSelecionado} onValueChange={setMesSelecionado}>
-            <SelectTrigger>
+            <SelectTrigger className="w-64">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -208,65 +216,77 @@ const doughnutOptions: ChartOptions<"doughnut"> = {
               ))}
             </SelectContent>
           </Select>
+
+          {/* BOTÃO PARA INADIMPLENTES */}
+          <Button asChild className="bg-linear-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700">
+            <Link href="/inadimplentes">
+              Ver Inadimplentes
+            </Link>
+          </Button>
         </div>
       </div>
 
-{/* Resumo Rápido */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Receita do Mês</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-green-600">
-              R$ {dados.receitaReal.toLocaleString("pt-BR")}
-            </div>
-            <p className="text-xs text-gray-600 mt-1">
-              {porcentagemMeta}% da meta (R$ {dados.metaReceita.toLocaleString("pt-BR")})
-            </p>
-          </CardContent>
-        </Card>
+      {/* Resumo Rápido */}
+    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+    <Card>
+        <CardHeader className="pb-2">
+        <CardTitle className="text-sm font-medium">Receita do Mês</CardTitle>
+        </CardHeader>
+        <CardContent>
+        <div className="text-3xl font-bold text-green-600">
+            R$ {dados.receitaReal.toLocaleString("pt-BR")}
+        </div>
+        <p className="text-xs text-gray-600 mt-1">
+            {porcentagemMeta}% da meta (R$ {dados.metaReceita.toLocaleString("pt-BR")})
+        </p>
+        </CardContent>
+  </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Inadimplência</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-orange-600">
-              R$ {dados.inadimplencia.toLocaleString("pt-BR")}
-            </div>
-          </CardContent>
-        </Card>
+  {/* CARD CLICÁVEL CORRIGIDO */}
+  <Link href="/inadimplentes" className="block">
+    <Card className="hover:shadow-lg transition-shadow hover:border-orange-400">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm font-medium">Inadimplência</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="text-3xl font-bold text-orange-600">
+          R$ {dados.inadimplencia.toLocaleString("pt-BR")}
+        </div>
+        <p className="text-xs text-gray-600 mt-1">Clique para ver detalhes →</p>
+      </CardContent>
+    </Card>
+  </Link>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Alunos Pagantes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">
-              {dados.alunosPagantes}/{dados.alunosTotais}
-            </div>
-            <p className="text-xs text-gray-600 mt-1">alunos ativos</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Status Geral</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Badge className={porcentagemMeta >= 100 ? "bg-green-600" : "bg-orange-600"}>
-              {porcentagemMeta >= 100 ? "Meta Atingida!" : "Em Andamento"}
-            </Badge>
-          </CardContent>
-        </Card>
+  <Card>
+    <CardHeader className="pb-2">
+      <CardTitle className="text-sm font-medium">Alunos Pagantes</CardTitle>
+    </CardHeader>
+    <CardContent>
+      <div className="text-3xl font-bold">
+        {dados.alunosPagantes}/{dados.alunosTotais}
       </div>
+      <p className="text-xs text-gray-600 mt-1">alunos ativos</p>
+    </CardContent>
+  </Card>
+
+  <Card>
+    <CardHeader className="pb-2">
+      <CardTitle className="text-sm font-medium">Status Geral</CardTitle>
+    </CardHeader>
+    <CardContent>
+      <Badge className={porcentagemMeta >= 100 ? "bg-green-600" : "bg-orange-600"}>
+        {porcentagemMeta >= 100 ? "Meta Atingida!" : "Em Andamento"}
+      </Badge>
+    </CardContent>
+  </Card>
+</div>
 
       {/* Gráficos */}
-<div className="grid gap-8 md:grid-cols-1 lg:grid-cols-2">
+      <div className="grid gap-8 md:grid-cols-1 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Evolução da Receita 2025</CardTitle>
+            <CardDescription>Comparação mês a mês</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-80">
@@ -278,6 +298,7 @@ const doughnutOptions: ChartOptions<"doughnut"> = {
         <Card>
           <CardHeader>
             <CardTitle>Status das Mensalidades</CardTitle>
+            <CardDescription>{mesLabel}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-80">
@@ -286,7 +307,7 @@ const doughnutOptions: ChartOptions<"doughnut"> = {
           </CardContent>
         </Card>
       </div>
-    </div> 
+    </div>
      );
 }
  
