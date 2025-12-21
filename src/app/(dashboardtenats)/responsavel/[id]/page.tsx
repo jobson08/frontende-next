@@ -59,29 +59,29 @@ const ResponsavelDetalhePage = () => {
           </Link>
         </Button>
         <div>
-          <h1 className="text-3xl font-bold">Detalhes do Responsável</h1>
+          <h1 className="text-1xl font-bold">Detalhes do Responsável</h1>
           <p className="text-gray-600">Todas as informações de {responsavel.name}</p>
         </div>
       </div>
 
       <Card className="overflow-hidden">
-        <div className="bg-gradient-to-r from-purple-600 to-pink-600 h-32" />
+        <div className="bg-linear-to-r from-purple-600 to-pink-600 h-32" />
         <CardContent className="relative pt-0">
           <div className="flex flex-col sm:flex-row items-center sm:items-end gap-6 -mt-16">
             <Avatar className="h-32 w-32 ring-8 ring-white shadow-2xl">
-              <AvatarFallback className="bg-gradient-to-br from-purple-600 to-pink-600 text-white text-4xl font-bold">
+              <AvatarFallback className="bg-linear-to-br from-purple-600 to-pink-600 text-white text-4xl font-bold">
                 {responsavel.name.split(" ").map(n => n[0]).join("")}
               </AvatarFallback>
             </Avatar>
             <div className="text-center sm:text-left">
-              <h2 className="text-3xl font-bold">{responsavel.name}</h2>
+              <h2 className="text-2xl font-bold">{responsavel.name}</h2>
               <div className="flex flex-wrap items-center gap-3 mt-2 justify-center sm:justify-start">
                 {responsavel.temLogin && <Badge className="bg-green-600">Tem acesso ao app</Badge>}
               </div>
             </div>
               {/* Botão editar*/}
            <div className="ml-auto">
-              <Button size="lg" asChild className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
+              <Button size="lg" asChild className="bg-linear-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
                 <Link href={`/responsavel/${responsavel.id}/editar`}>
                   <Edit className="mr-2 h-5 w-5" />
                   Editar Responsável

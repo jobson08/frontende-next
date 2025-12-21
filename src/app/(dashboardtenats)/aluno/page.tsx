@@ -73,8 +73,8 @@ const AlunoPage = () => {
       {/* Cabeçalho */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Alunos</h1>
-          <p className="text-gray-600">Gerencie todos os alunos da sua academia</p>
+          <h1 className="text-2xl font-bold">Alunos</h1>
+          <p className="text-gray-600">Gerencie todos os alunos </p>
         </div>
         <Button asChild className="bg-blue-600 hover:bg-blue-700">
           <Link href="/aluno/novo">
@@ -121,9 +121,9 @@ const AlunoPage = () => {
                     </div>
                   </div>
                   {aluno.temLogin ? (
-                    <Badge className="bg-green-600">Tem login</Badge>
+                    <Badge className="text-xs bg-green-600">Tem login</Badge>
                   ) : (
-                    <Badge variant="outline" className="text-orange-600 border-orange-600">
+                    <Badge variant="outline" className="text-xs text-orange-600 border-orange-600">
                       Sem login
                     </Badge>
                   )}

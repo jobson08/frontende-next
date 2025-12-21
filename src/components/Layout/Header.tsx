@@ -1,16 +1,26 @@
+// src/components/layout/Navbar.tsx (atualizado)
 "use client";
 
-import { BarChart3, BookOpen, Building2, Calendar, Clock, CreditCard, DollarSign, Home, LifeBuoy, LogOut, Menu, MessageSquare, Settings, Trophy, User, UserPlus, Users } from "lucide-react";
+import { useState } from "react";
 import { Button } from "../ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "../ui/sheet";
-import { DropdownMenu, DropdownMenuContent } from "../ui/dropdown-menu";
-import { DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@radix-ui/react-dropdown-menu";
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuLabel, 
+  DropdownMenuSeparator, 
+  DropdownMenuTrigger 
+} from "@/src/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "../ui/avatar";
-import { useState } from "react";
+import { Badge } from "@/src/components/ui/badge";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-
-
+import { 
+  BarChart3, BookOpen, Building2, Calendar, Clock, CreditCard, DollarSign, Home, 
+  LifeBuoy, LogOut, Menu, MessageSquare, Settings, Trophy, User, UserPlus, Users, 
+  Bell // ← ÍCONE DO SINO
+} from "lucide-react";
 
 interface NavbarProps {
   userType: "ADMIN" | "SUPERADMIN" | "ALUNO" | "RESPONSAVEL" | "FUNCIONARIO";
@@ -18,9 +28,11 @@ interface NavbarProps {
     name: string;
     email: string;
   };
+  inadimplentesCount?: number; // ← Só usado no ADMIN
 }
+
 const menuItems = {
-   SUPERADMIN: [
+  SUPERADMIN: [
   { icon: Home, label: "Dashboard Global", href: "/superadmin" },
   { icon: Building2, label: "Escolinhas", href: "/superadmin/tenants" },
   { icon: UserPlus, label: "Criar Nova Escolinha", href: "/superadmin/tenants/novo" },
@@ -61,15 +73,17 @@ const menuItems = {
     { icon: MessageSquare, label: "Mensagens", href: "/dashboarduser/funcionario-dashboard/mensagens" },
   ],
 };
-export function Navbar({ userType, user }: NavbarProps) {
-  // Simulação — depois vem do useAuth
-const [mobileOpen, setMobileOpen] = useState(false);
+
+const Header = ({ userType, user, inadimplentesCount = 0 }: NavbarProps) => {      //Inicio da função
+
+    const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
 
   const items = menuItems[userType] || [];
 
-  return (
-<header className="fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-200 shadow-sm">
+  const isAdmin = userType === "ADMIN";
+    return ( 
+       <header className="fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-200 shadow-sm">
       <div className="flex items-center justify-between h-16 px-4 lg:px-8">
         {/* MOBILE MENU INICIO*/}
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
@@ -124,48 +138,68 @@ const [mobileOpen, setMobileOpen] = useState(false);
             </div>
           </SheetContent>
         </Sheet>
-        {/* MOBILE MENU FIM*/}        
-        
-        {/* LOGO */}
-       <div className="flex items-center justify-center h-16 border-b border-gray-200">
+        {/* MOBILE MENU FIM*/}
+
+        {/* LOGO CENTRAL */}
+        <div className="flex items-center">
           <h1 className="text-2xl font-bold bg-linear-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
             EDUPAY
           </h1>
-       </div>
+        </div>
 
-        {/* AVATAR DROPDOWN */}
-        <DropdownMenu>
-          <DropdownMenuTrigger className="flex items-center gap-3 rounded-full focus:outline-none">
-            <Avatar className="h-9 w-9 ring-2 ring-offset-2 ring-purple-400">
-              <AvatarFallback className="bg-linear-to-br from-blue-600 to-purple-600 text-white text-sm font-medium">
-                {user.name.split(" ").map((n) => n[0]).join("").toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div className="hidden text-left sm:block">
-              <p className="text-sm font-medium leading-none">{user.name}</p>
-              <p className="text-xs text-gray-500">{user.email}</p>
-            </div>
-          </DropdownMenuTrigger>
+        {/* DIREITA: NOTIFICAÇÕES (SÓ PARA ADMIN) + AVATAR */}
+        <div className="flex items-center gap-4">
+          {/* SINO COM BADGE — SÓ MOSTRA SE FOR ADMIN E TIVER INADIMPLENTES */}
+          {isAdmin && (
+            <Button variant="ghost" size="icon" className="relative" asChild>
+              <Link href="/inadimplentes">
+                <Bell className="h-5 w-5 text-gray-700" />
+                {inadimplentesCount > 0 && (
+                  <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs bg-red-600 text-white">
+                    {inadimplentesCount > 99 ? "99+" : inadimplentesCount}
+                  </Badge>
+                )}
+                <span className="sr-only">Inadimplentes pendentes</span>
+              </Link>
+            </Button>
+          )}
 
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <User className="mr-2 h-4 w-4" />
-              Perfil
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <Settings className="mr-2 h-4 w-4" />
-              Configurações
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-red-600">
-              <LogOut className="mr-2 h-4 w-4" />
-              Sair
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+          {/* AVATAR DROPDOWN */}
+          <DropdownMenu>
+            <DropdownMenuTrigger className="flex items-center gap-3 rounded-full focus:outline-none">
+              <Avatar className="h-9 w-9 ring-2 ring-offset-2 ring-purple-400">
+                <AvatarFallback className="bg-linear-to-br from-blue-600 to-purple-600 text-white text-sm font-medium">
+                  {user.name.split(" ").map((n) => n[0]).join("").toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="hidden text-left sm:block">
+                <p className="text-sm font-medium leading-none">{user.name}</p>
+                <p className="text-xs text-gray-500">{user.email}</p>
+              </div>
+            </DropdownMenuTrigger>
+
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>
+                <User className="mr-2 h-4 w-4" />
+                Perfil
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Settings className="mr-2 h-4 w-4" />
+                Configurações
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="text-red-600">
+                <LogOut className="mr-2 h-4 w-4" />
+                Sair
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
-    </header>
-  );
+    </header> 
+     );
 }
+ 
+export default Header;

@@ -78,7 +78,7 @@ const { id } = useParams();
   if (!responsavel) {
     return (
       <div className="p-8 text-center">
-        <h1 className="text-2xl font-bold">Responsável não encontrado</h1>
+        <h1 className="text-1xl font-bold">Responsável não encontrado</h1>
         <Button asChild className="mt-4">
           <Link href="responsavel">Voltar</Link>
         </Button>
@@ -108,7 +108,7 @@ const { id } = useParams();
           </Link>
         </Button>
         <div>
-          <h1 className="text-3xl font-bold">Editar Responsável</h1>
+          <h1 className="text-2xl font-bold">Editar Responsável</h1>
           <p className="text-gray-600">Atualize as informações de {responsavel.name}</p>
         </div>
       </div>
@@ -162,7 +162,7 @@ const { id } = useParams();
 
             {/* Botões */}
             <div className="flex gap-4 pt-6">
-              <Button type="submit" disabled={isSubmitting} className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
+              <Button type="submit" disabled={isSubmitting} className="flex-1 bg-linear-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
                 {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />

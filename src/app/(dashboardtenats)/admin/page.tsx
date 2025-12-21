@@ -1,21 +1,76 @@
 // src/app/(dashboard)/page.tsx
 "use client";
 
+import { useState } from "react";
+import Link from "next/link";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/src/components/ui/card";
 import { Badge } from "@/src/components/ui/badge";
 import { Button } from "@/src/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/card";
-import { TrendingUp, Users, DollarSign, Calendar, AlertCircle, Activity } from "lucide-react";
-import Link from "next/link";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/src/components/ui/select";
+import {
+  Users,
+  DollarSign,
+  Calendar,
+  TrendingUp,
+  AlertCircle,
+  Activity,
+} from "lucide-react";
 
-const  AdminDashboardPage = () => {   //inicio da função
-    const stats = {
+const meses = [
+  { value: "2025-01", label: "Janeiro 2025" },
+  { value: "2025-02", label: "Fevereiro 2025" },
+  { value: "2025-03", label: "Março 2025" },
+  { value: "2025-04", label: "Abril 2025" },
+  { value: "2025-05", label: "Maio 2025" },
+  { value: "2025-06", label: "Junho 2025" },
+  { value: "2025-07", label: "Julho 2025" },
+  { value: "2025-08", label: "Agosto 2025" },
+  { value: "2025-09", label: "Setembro 2025" },
+  { value: "2025-10", label: "Outubro 2025" },
+  { value: "2025-11", label: "Novembro 2025" },
+  { value: "2025-12", label: "Dezembro 2025" },
+];
+
+// Tipos
+interface DadosDoMes {
+  totalAlunos: number;
+  alunosAtivos: number;
+  receitaMes: string;
+  aulasHoje: number;
+  pagamentosPendentes: number;
+  crescimentoMes: string;
+}
+// Dados mock por mês (você pode expandir depois)
+const dadosPorMes: Record<string, DadosDoMes> = {
+  "2025-12": {
     totalAlunos: 248,
     alunosAtivos: 215,
     receitaMes: "R$ 42.800,00",
     aulasHoje: 28,
     pagamentosPendentes: 12,
     crescimentoMes: "+14%",
-  };
+  },
+  // Adicione outros meses aqui
+};
+
+const  AdminDashboardPage = () => {   //inicio da função
+ 
+  const [mesSelecionado, setMesSelecionado] = useState("2025-12");
+
+  const mesLabel = meses.find((m) => m.value === mesSelecionado)?.label || "Dezembro 2025";
+
+ const stats = dadosPorMes[mesSelecionado] || dadosPorMes["2025-12"];
 
   const proximasAulas = [
     { hora: "09:00", aula: "Musculação - Turma A", professor: "Mariana Costa", alunos: 12 },
@@ -28,11 +83,31 @@ const  AdminDashboardPage = () => {   //inicio da função
     { nome: "Maria Luiza Costa", idade: 6 },
   ];
     return ( 
-  <div className="p-4 lg:p-8 space-y-8">
-      {/* Cabeçalho */}
-      <div>
-        <h1 className="text-4xl font-bold">Dashboard da Academia</h1>
-        <p className="text-gray-600 text-lg mt-2">Visão geral da sua unidade - Dezembro 2025</p>
+      <div className="p-4 lg:p-8 space-y-8">
+      {/* Cabeçalho com mês atual/selecionado e filtro */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold">Dashboard da escolinha</h1>
+          <p className="text-gray-600 text-lg mt-2">
+            Visão geral da sua unidade —{" "}
+            <span className="font-bold text-blue-600">{mesLabel}</span>
+          </p>
+        </div>
+
+        <div className="w-full sm:w-64">
+          <Select value={mesSelecionado} onValueChange={setMesSelecionado}>
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione o mês" />
+            </SelectTrigger>
+            <SelectContent>
+              {meses.map((mes) => (
+                <SelectItem key={mes.value} value={mes.value}>
+                  {mes.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Cards Principais */}
@@ -43,7 +118,7 @@ const  AdminDashboardPage = () => {   //inicio da função
             <Users className="h-4 w-4 text-gray-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{stats.totalAlunos}</div>
+            <div className="text-2xl font-bold">{stats.totalAlunos}</div>
             <p className="text-xs text-gray-500 mt-1">
               <span className="text-green-600 font-medium">{stats.alunosAtivos} ativos</span> este mês
             </p>
@@ -56,7 +131,7 @@ const  AdminDashboardPage = () => {   //inicio da função
             <DollarSign className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-green-600">{stats.receitaMes}</div>
+            <div className="text-2xl font-bold text-green-600">{stats.receitaMes}</div>
             <div className="flex items-center gap-1 text-xs text-green-600 mt-1">
               <TrendingUp className="h-3 w-3" />
               {stats.crescimentoMes} vs mês anterior
@@ -70,7 +145,7 @@ const  AdminDashboardPage = () => {   //inicio da função
             <Calendar className="h-4 w-4 text-gray-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{stats.aulasHoje}</div>
+            <div className="text-2xl font-bold">{stats.aulasHoje}</div>
             <p className="text-xs text-gray-500 mt-1">programadas</p>
           </CardContent>
         </Card>
@@ -85,7 +160,7 @@ const  AdminDashboardPage = () => {   //inicio da função
             )}
           </CardHeader>
           <CardContent>
-            <div className={`text-3xl font-bold ${stats.pagamentosPendentes > 0 ? "text-red-600" : "text-green-600"}`}>
+            <div className={`text-2xl font-bold ${stats.pagamentosPendentes > 0 ? "text-red-600" : "text-green-600"}`}>
               {stats.pagamentosPendentes}
             </div>
             <p className="text-xs text-gray-500 mt-1">mensalidades em aberto</p>
@@ -128,7 +203,7 @@ const  AdminDashboardPage = () => {   //inicio da função
               <div className="space-y-4">
                 {aniversariantes.map((a, i) => (
                   <div key={i} className="flex items-center gap-4 p-3 bg-linear-to-r from-purple-100 to-pink-100 rounded-lg">
-                    <div className="w-12 h-12 rounded-full bg-linear-to-ro-br from-purple-600 to-pink-600 flex items-center justify-center text-white font-bold">
+                    <div className="w-12 h-12 rounded-full bg-linear-to-br from-purple-600 to-pink-600 flex items-center justify-center text-white font-bold">
                       {a.idade}
                     </div>
                     <div>

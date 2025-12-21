@@ -194,120 +194,127 @@ const doughnutOptions: ChartOptions<"doughnut"> = {
 };
     return (
 <div className="p-4 lg:p-8 space-y-8">
-      {/* Cabeçalho com mês e botão para inadimplentes */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">Financeiro</h1>
-          <p className="text-xl text-gray-600">
-            Visão completa das finanças —{" "}
-            <span className="font-bold text-blue-600">{mesLabel}</span>
-          </p>
-        </div>
-        <div className="flex items-center gap-4">
-          <Select value={mesSelecionado} onValueChange={setMesSelecionado}>
-            <SelectTrigger className="w-64">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {meses.map((mes) => (
-                <SelectItem key={mes.value} value={mes.value}>
-                  {mes.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+  {/* Cabeçalho com mês e botão */}
+  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="text-center sm:text-left">
+      <h1 className="text-2xl sm:text-3xl font-bold">Financeiro</h1>
+      <p className="text-lg sm:text-xl text-gray-600 mt-1">
+        Visão completa —{" "}
+        <span className="font-bold text-blue-600">{mesLabel}</span>
+      </p>
+    </div>
 
-          {/* BOTÃO PARA INADIMPLENTES */}
-          <Button asChild className="bg-linear-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700">
-            <Link href="/inadimplentes">
-              Ver Inadimplentes
-            </Link>
-          </Button>
-        </div>
-      </div>
+    <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+      <Select value={mesSelecionado} onValueChange={setMesSelecionado}>
+        <SelectTrigger className="w-full sm:w-48">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {meses.map((mes) => (
+            <SelectItem key={mes.value} value={mes.value}>
+              {mes.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
 
-      {/* Resumo Rápido */}
-    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-    <Card>
-        <CardHeader className="pb-2">
+      <Button asChild className="w-full sm:w-auto bg-linear-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700">
+        <Link href="/inadimplentes">
+          Inadimplentes
+        </Link>
+      </Button>
+    </div>
+  </div>
+
+  {/* Resumo Rápido — RESPONSIVO E CENTRALIZADO */}
+  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+    {/* Receita do Mês */}
+    <Card className="flex flex-col justify-center items-center text-center p-6">
+      <CardHeader className="pb-3">
         <CardTitle className="text-sm font-medium">Receita do Mês</CardTitle>
-        </CardHeader>
-        <CardContent>
-        <div className="text-3xl font-bold text-green-600">
-            R$ {dados.receitaReal.toLocaleString("pt-BR")}
-        </div>
-        <p className="text-xs text-gray-600 mt-1">
-            {porcentagemMeta}% da meta (R$ {dados.metaReceita.toLocaleString("pt-BR")})
-        </p>
-        </CardContent>
-  </Card>
-
-  {/* CARD CLICÁVEL CORRIGIDO */}
-  <Link href="/inadimplentes" className="block">
-    <Card className="hover:shadow-lg transition-shadow hover:border-orange-400">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium">Inadimplência</CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className="text-3xl font-bold text-orange-600">
-          R$ {dados.inadimplencia.toLocaleString("pt-BR")}
+      <CardContent className="space-y-2">
+        <div className="text-2xl sm:text-3xl font-bold text-green-600">
+          R$ {dados.receitaReal.toLocaleString("pt-BR")}
         </div>
-        <p className="text-xs text-gray-600 mt-1">Clique para ver detalhes →</p>
+        <p className="text-xs text-gray-600">
+          {porcentagemMeta}% da meta
+          <br />
+          (R$ {dados.metaReceita.toLocaleString("pt-BR")})
+        </p>
       </CardContent>
     </Card>
-  </Link>
 
-  <Card>
-    <CardHeader className="pb-2">
-      <CardTitle className="text-sm font-medium">Alunos Pagantes</CardTitle>
-    </CardHeader>
-    <CardContent>
-      <div className="text-3xl font-bold">
-        {dados.alunosPagantes}/{dados.alunosTotais}
-      </div>
-      <p className="text-xs text-gray-600 mt-1">alunos ativos</p>
-    </CardContent>
-  </Card>
+    {/* Inadimplência — CLICÁVEL */}
+    <Link href="/inadimplentes" className="block">
+      <Card className="flex flex-col justify-center items-center text-center p-6 hover:shadow-lg transition-shadow hover:border-orange-400">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-medium">Inadimplência</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <div className="text-2xl sm:text-3xl font-bold text-orange-600">
+            R$ {dados.inadimplencia.toLocaleString("pt-BR")}
+          </div>
+          <p className="text-xs text-gray-600">Clique para ver detalhes →</p>
+        </CardContent>
+      </Card>
+    </Link>
 
-  <Card>
-    <CardHeader className="pb-2">
-      <CardTitle className="text-sm font-medium">Status Geral</CardTitle>
-    </CardHeader>
-    <CardContent>
-      <Badge className={porcentagemMeta >= 100 ? "bg-green-600" : "bg-orange-600"}>
-        {porcentagemMeta >= 100 ? "Meta Atingida!" : "Em Andamento"}
-      </Badge>
-    </CardContent>
-  </Card>
+    {/* Alunos Pagantes */}
+    <Card className="flex flex-col justify-center items-center text-center p-6">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm font-medium">Alunos Pagantes</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        <div className="text-2xl sm:text-3xl font-bold">
+          {dados.alunosPagantes}/{dados.alunosTotais}
+        </div>
+        <p className="text-xs text-gray-600">alunos ativos</p>
+      </CardContent>
+    </Card>
+
+    {/* Status Geral */}
+    <Card className="flex flex-col justify-center items-center text-center p-6">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm font-medium">Status Geral</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Badge className={`text-lg px-4 py-2 ${porcentagemMeta >= 100 ? "bg-green-600" : "bg-orange-600"}`}>
+          {porcentagemMeta >= 100 ? "Meta Atingida!" : "Em Andamento"}
+        </Badge>
+      </CardContent>
+    </Card>
+  </div>
+
+  {/* Gráficos — RESPONSIVOS */}
+  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    {/* Evolução da Receita */}
+    <Card>
+      <CardHeader>
+        <CardTitle>Evolução da Receita 2025</CardTitle>
+        <CardDescription>Comparação mês a mês</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="h-64 sm:h-80">
+          <Line data={lineChartData} options={lineChartOptions} />
+        </div>
+      </CardContent>
+    </Card>
+
+    {/* Status das Mensalidades */}
+    <Card>
+      <CardHeader>
+        <CardTitle>Status das Mensalidades</CardTitle>
+        <CardDescription>{mesLabel}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="h-64 sm:h-80">
+          <Doughnut data={doughnutData} options={doughnutOptions} />
+        </div>
+      </CardContent>
+    </Card>
+  </div>
 </div>
-
-      {/* Gráficos */}
-      <div className="grid gap-8 md:grid-cols-1 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Evolução da Receita 2025</CardTitle>
-            <CardDescription>Comparação mês a mês</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-80">
-              <Line data={lineChartData} options={lineChartOptions} />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Status das Mensalidades</CardTitle>
-            <CardDescription>{mesLabel}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-80">
-              <Doughnut data={doughnutData} options={doughnutOptions} />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
      );
 }
  

@@ -1,9 +1,10 @@
 // src/app/(dashboard)/layout.tsx
 
-import { Navbar } from "@/src/components/Layout/Navbar";
+
+import Header from "@/src/components/Layout/Header";
 import { Sidebar } from "@/src/components/Layout/Sidebar";
 
-import { Toaster } from "@/src/components/ui/sonner";
+
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const userType = "ADMIN" as const;
@@ -11,10 +12,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     name: "João Silva",
     email: "admin@escolinha.com",
   };
+
+// Só passa o count se for ADMIN
+  const inadimplentesCount = userType === "ADMIN" ? 12 : 0;
   return (
    <div className="min-h-screen bg-gray-50">
-      {/* NAVBAR COM MOBILE SIDEBAR */}
-      <Navbar userType={userType} user={user} />
+      {/* Header COM MOBILE SIDEBAR */}
+      <Header userType={userType} user={user} inadimplentesCount={inadimplentesCount} />
 
       <div className="flex">
         {/* SIDEBAR DESKTOP — SÓ NO LG+ */}

@@ -70,23 +70,23 @@ const { id } = useParams();
           </Link>
         </Button>
         <div>
-          <h1 className="text-3xl font-bold">Detalhes do Aluno</h1>
-          <p className="text-gray-600">Informações completas de {aluno.name}</p>
+          <h1 className="text-2xl font-bold">Detalhes do Aluno</h1>
+          <p className="text-gray-600">Informações  de {aluno.name}</p>
         </div>
       </div>
 
       {/* Perfil Principal */}
       <Card className="overflow-hidden">
-        <div className="bg-gradient-to-r from-blue-600 to-purple-600 h-32" />
+        <div className="bg-linear-to-r from-blue-600 to-purple-600 h-32" />
         <CardContent className="relative pt-0">
           <div className="flex flex-col sm:flex-row items-center sm:items-end gap-6 -mt-16">
             <Avatar className="h-32 w-32 ring-8 ring-white shadow-2xl">
-              <AvatarFallback className="bg-gradient-to-br from-blue-600 to-purple-600 text-white text-4xl font-bold">
+              <AvatarFallback className="bg-linear-to-br from-blue-600 to-purple-600 text-white text-4xl font-bold">
                 {aluno.name.split(" ").map(n => n[0]).join("")}
               </AvatarFallback>
             </Avatar>
             <div className="text-center sm:text-left">
-              <h2 className="text-3xl font-bold">{aluno.name}</h2>
+              <h2 className="text-2xl font-bold">{aluno.name}</h2>
               <div className="flex flex-wrap items-center gap-3 mt-2 justify-center sm:justify-start">
                 <Badge variant={aluno.status === "ATIVO" ? "default" : "secondary"}>
                   {aluno.status}
