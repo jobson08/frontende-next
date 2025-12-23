@@ -1,10 +1,19 @@
 "use client";
+
 import { useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
-import { UserPlus, ChevronLeft, Loader2, Trash2, Camera, CalendarIcon } from "lucide-react";
+import { 
+  UserPlus, 
+  ChevronLeft, 
+  Loader2, 
+  Trash2, 
+  Camera, 
+  CalendarIcon 
+} from "lucide-react";
+import { toast, Toaster } from "sonner"; // ← IMPORT CORRETO
 
 import { Button } from "@/src/components/ui/button";
 import { Input } from "@/src/components/ui/input";
@@ -18,42 +27,55 @@ import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/src/components/ui/avatar";
 
-// Mock de responsáveis (em produção vem do banco)
+// Mock de responsáveis
 const responsaveisMock = [
   { id: "1", name: "Maria Oliveira Santos" },
   { id: "2", name: "João Pedro Costa" },
   { id: "3", name: "Ana Clara Lima" },
 ];
 
-// Schema Zod v3 compatível
+// Gerar senha aleatória
+function gerarSenhaAleatoria(tamanho = 10) {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$";
+  let senha = "";
+  for (let i = 0; i < tamanho; i++) {
+    senha += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return senha;
+}
+
+// Schema Zod
 const formSchema = z.object({
   name: z.string().min(3, { message: "Nome completo é obrigatório" }),
   birthDate: z.date({ message: "Data de nascimento é obrigatória e deve ser válida" }),
   phone: z.string().min(10, { message: "Telefone inválido" }),
   cpf: z.string().optional(),
   categoria: z.string().min(1, { message: "Categoria é obrigatória" }),
-  responsavelId: z.string().optional(), // ID do responsável selecionado
+  responsavelId: z.string().optional(),
+ emailResponsavel: z.string().email({ message: "E-mail inválido" }).min(1, { message: "E-mail do responsável é obrigatório" }),
   status: z.enum(["ATIVO", "INATIVO", "TRANCADO"]),
   observations: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
 
-const NovoAlunoPage = () => {   //Inicio da função
-
- const [date, setDate] = useState<Date | undefined>(undefined);
+const NovoAlunoPage = () => {
+  const [date, setDate] = useState<Date | undefined>(undefined);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    watch,
-    formState: { errors, isSubmitting },
-  } = useForm<FormData>({
-    resolver: zodResolver(formSchema),
-  });
+const {
+  register,
+  handleSubmit,
+  setValue,
+  watch,
+  formState: { errors, isSubmitting },
+} = useForm<FormData>({
+  resolver: zodResolver(formSchema),
+  defaultValues: {
+    status: "ATIVO", // ← GARANTE QUE "ATIVO" VEM PRÉ-SELECIONADO
+  },
+});
 
   const watchedName = watch("name");
 
@@ -73,37 +95,75 @@ const NovoAlunoPage = () => {   //Inicio da função
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const onSubmit = async (data: FormData) => {
-    console.log("Dados do aluno:", data, "Foto:", photoPreview);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    alert("Aluno cadastrado com sucesso!");
-  };
+ const onSubmit = async (data: FormData) => {
+  await new Promise(resolve => setTimeout(resolve, 1500)); // simulação
 
-    return ( 
+  const alunoIdSimulado = Math.floor(Math.random() * 10000) + 1000;
+  const username = data.name.toLowerCase().replace(/\s+/g, ".") + "." + alunoIdSimulado;
+  const senhaTemporaria = gerarSenhaAleatoria(10);
+
+  // LOG COMPLETO QUE VAI APARECER NO CONSOLE
+  console.clear(); // limpa pra ficar fácil de ver
+  console.log("=== ALUNO CADASTRADO COM SUCESSO (MOCK) ===");
+  console.log("Nome do aluno:", data.name);
+  console.log("E-mail do responsável:", data.emailResponsavel);
+  console.log("Telefone:", data.phone);
+  console.log("Categoria:", data.categoria);
+  console.log("\n--- ACESSO DO ALUNO GERADO AUTOMATICAMENTE ---");
+  console.log("Username:", username);
+  console.log("Senha temporária:", senhaTemporaria);
+  console.log("Role: ALUNO");
+  console.log("ID simulado:", alunoIdSimulado);
+  console.log("\n--- E-MAIL QUE SERIA ENVIADO ---");
+  console.log(`Para: ${data.emailResponsavel}`);
+  console.log(`Assunto: Bem-vindo ao FutElite, ${data.name.split(" ")[0]}!`);
+  console.log(`Corpo: 
+Olá!
+
+O aluno ${data.name} foi cadastrado com sucesso.
+
+Acesso:
+Link: https://app.futelite.com/login
+Usuário: ${username}
+Senha: ${senhaTemporaria}
+
+Troque a senha no primeiro acesso.
+
+Abraços,
+Equipe FutElite ⚽`);
+
+  toast.success("Aluno criado com sucesso!", {
+    description: "Login gerado automaticamente — veja os detalhes no console (F12)",
+  });
+};
+
+  return (
+    <>
       <div className="p-4 lg:p-8 max-w-4xl mx-auto space-y-8">
-      {/* Cabeçalho */}
-      <div className="flex items-center gap-4 mb-8">
-        <Button variant="ghost" size="icon" asChild>
-          <Link href="/aluno">
-            <ChevronLeft className="h-5 w-5" />
-          </Link>
-        </Button>
-        <div>
-          <h1 className="text-3xl font-bold">Novo Aluno</h1>
-          <p className="text-gray-600">Preencha os dados do novo aluno</p>
+        {/* Cabeçalho */}
+        <div className="flex items-center gap-4 mb-8">
+          <Button variant="ghost" size="icon" asChild>
+            <Link href="/aluno">
+              <ChevronLeft className="h-5 w-5" />
+            </Link>
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold">Novo Aluno</h1>
+            <p className="text-gray-600">Preencha os dados do novo aluno</p>
+          </div>
         </div>
-      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-3 text-2xl">
-            <UserPlus className="h-7 w-7 text-blue-600" />
-            Dados do Aluno
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-            {/* Foto do Aluno */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-3 text-2xl">
+              <UserPlus className="h-7 w-7 text-blue-600" />
+              Dados do Aluno
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+              {/* ... todo o seu formulário (foto, campos, etc) igual ao anterior ... */}
+             {/* Foto do Aluno */}
             <div className="flex flex-col items-center gap-4 py-6 border-b">
               <Avatar className="h-32 w-32 ring-4 ring-blue-100">
                 <AvatarImage src={photoPreview || undefined} />
@@ -146,7 +206,7 @@ const NovoAlunoPage = () => {   //Inicio da função
                   {errors.name && <p className="text-sm text-red-600">{errors.name.message}</p>}
                 </div>
 
-                {/* Data de Nascimento — SEU CÓDIGO ORIGINAL QUE FUNCIONAVA PERFEITO */}
+                {/* Data de Nascimento */}
                 <div className="space-y-2">
                   <Label>Data de nascimento *</Label>
                   <Popover>
@@ -155,7 +215,7 @@ const NovoAlunoPage = () => {   //Inicio da função
                         variant="outline"
                         className={cn("w-full justify-start text-left font-normal", !date && "text-muted-foreground")}
                       >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        <CalendarIcon className="mr-4 h-4 w-4" />
                         {date ? format(date, "dd/MM/yyyy") : "Selecione a data"}
                       </Button>
                     </PopoverTrigger>
@@ -207,23 +267,39 @@ const NovoAlunoPage = () => {   //Inicio da função
               </div>
             </div>
 
-            {/* Responsável — SEU CÓDIGO ORIGINAL QUE FUNCIONAVA PERFEITO */}
+            {/* Responsável */}
             <div className="space-y-6">
               <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">Responsável</h3>
-              <div className="space-y-2">
-                <Label htmlFor="responsavel">Responsável</Label>
-                <Select onValueChange={(value) => setValue("responsavelId", value || undefined)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione um responsável (opcional)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {responsaveisMock.map((r) => (
-                      <SelectItem key={r.id} value={r.id}>
-                        {r.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Select de responsável existente */}
+                <div className="space-y-2">
+                  <Label>Responsável existente</Label>
+                  <Select onValueChange={(value) => setValue("responsavelId", value || undefined)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um responsável (opcional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {responsaveisMock.map((r) => (
+                        <SelectItem key={r.id} value={r.id}>
+                          {r.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* E-mail do responsável — NOVO CAMPO OBRIGATÓRIO */}
+                <div className="space-y-2">
+                  <Label htmlFor="emailResponsavel">E-mail do responsável *</Label>
+                  <Input 
+                    id="emailResponsavel" 
+                    type="email" 
+                    placeholder="responsavel@email.com" 
+                    {...register("emailResponsavel")} 
+                  />
+                  {errors.emailResponsavel && <p className="text-sm text-red-600">{errors.emailResponsavel.message}</p>}
+                  <p className="text-xs text-gray-500">O login do aluno será enviado automaticamente para este e-mail</p>
+                </div>
               </div>
             </div>
 
@@ -256,29 +332,38 @@ const NovoAlunoPage = () => {   //Inicio da função
                 />
               </div>
             </div>
+            
 
-            {/* Botões */}
-            <div className="flex flex-col sm:flex-row gap-4 pt-8 border-t">
-              <Button type="submit" disabled={isSubmitting} className="flex-1 bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Criando aluno...
-                  </>
-                ) : (
-                  "Criar Aluno"
-                )}
-              </Button>
-              <Button type="button" variant="outline" asChild className="flex-1">
-                <Link href="/aluno">Cancelar</Link>
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+              {/* Botões */}
+              <div className="flex flex-col sm:flex-row gap-4 pt-8 border-t">
+                <Button 
+                  type="submit" 
+                  disabled={isSubmitting} 
+                  className="flex-1 bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Criando aluno...
+                    </>
+                  ) : (
+                    "Criar Aluno"
+                  )}
+                </Button>
 
-    );
-}
- 
+                <Button type="button" variant="outline" asChild className="flex-1">
+                  <Link href="/aluno">Cancelar</Link>
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* TOASTER OBRIGATÓRIO PARA O SONNER FUNCIONAR */}
+      <Toaster position="top-right" richColors closeButton />
+    </>
+  );
+};
+
 export default NovoAlunoPage;
