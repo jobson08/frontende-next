@@ -10,26 +10,34 @@ import { Mail, Phone, Search, UserPlus, Users } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
+// Função pra formatar telefone (opcional, deixa bonito)
+const formatarTelefone = (phone: string) => {
+  const cleaned = phone.replace(/\D/g, "");
+  if (cleaned.length === 11) {
+    return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2, 7)}-${cleaned.slice(7)}`;
+  }
+  return phone;
+};
 
 interface Responsavel {
   id: string;
   name: string;
+  email: string;
   phone: string;
-  email: string | null;
-  alunos: number;
-  temLogin: boolean;
+  cpf?: string;
+  observations?: string;
 }
 
 const responsaveisMock: Responsavel[] = [
-  { id: "1", name: "Ana Clara Santos", phone: "11988887777", email: "ana@gmail.com", alunos: 2, temLogin: true },
-  { id: "2", name: "Carlos Oliveira", phone: "11977778888", email: null, alunos: 1, temLogin: false },
-  { id: "3", name: "Juliana Costa", phone: "11966667777", email: "ju@gmail.com", alunos: 3, temLogin: true },
-  { id: "4", name: "Márcia Lima", phone: "11955556666", email: "marcia@gmail.com", alunos: 1, temLogin: true },
+ { id: "1", name: "Maria Oliveira Santos", email: "maria@email.com", phone: "11988887777" },
+  { id: "2", name: "João Pedro Costa", email: "joao@email.com", phone: "11977778888" },
+  { id: "3", name: "Ana Clara Lima", email: "ana@email.com", phone: "11966667777" },
+  { id: "4", name: "Juliana Souza", email: "juliana@email.com", phone: "11955556666" },
+  { id: "5", name: "Márcia Lima", email: "marcia@email.com", phone: "11944445555" },
 ];
 
 const ResponsavelPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [openModalId, setOpenModalId] = useState<string | null>(null);
 
   const filtered = responsaveisMock.filter(r =>
     r.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -37,7 +45,7 @@ const ResponsavelPage = () => {
     r.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const responsavelSelecionado = filtered.find(r => r.id === openModalId);
+
     return ( 
       <div className="space-y-6 p-4 lg:p-8">
         {/* Cabeçalho */}
@@ -68,6 +76,14 @@ const ResponsavelPage = () => {
         {filtered.map((r) => (
           <Card key={r.id} className="hover:shadow-lg transition-shadow">
             <CardHeader>
+              
+               {/* Badge fixo: todos têm login agora */}
+             {/*  <div className="pt-2">
+                 
+                <Badge className="text-xs bg-green-600 text-white">
+                  Tem login
+                </Badge>
+                </div>*/}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <Avatar className="h-12 w-12">
@@ -77,19 +93,13 @@ const ResponsavelPage = () => {
                   </Avatar>
                   <CardTitle className="text-lg">{r.name}</CardTitle>
                 </div>
-                {r.temLogin ? (
-                  <Badge className="bg-green-600">Tem login</Badge>
-                ) : (
-                  <Badge variant="outline" className="text-orange-600 border-orange-600">
-                    Sem login
-                  </Badge>
-                )}
               </div>
             </CardHeader>
+
             <CardContent className="space-y-4">
               <div className="flex items-center gap-2 text-sm">
                 <Phone className="h-4 w-4 text-gray-500" />
-                {r.phone}
+                {formatarTelefone(r.phone)}
               </div>
               {r.email && (
                 <div className="flex items-center gap-2 text-sm">
@@ -109,40 +119,11 @@ const ResponsavelPage = () => {
                     Ver detalhes
                   </Link>
                 </Button>
-                              {/* BOTÃO MOAL CRIA EDITAR LOGIN */}
-                {!r.temLogin ? (
-                  <Button
-                    size="sm"
-                    className="bg-green-600 hover:bg-green-700"
-                    onClick={() => setOpenModalId(r.id)}
-                  >
-                    Criar login
-                  </Button>
-                ) : (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setOpenModalId(r.id)}
-                  >
-                    Editar login
-                  </Button>
-                )}
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
-
-    {/* MODAL NO CENTRO DA TELA — FORA DE TUDO! */}
-      {responsavelSelecionado && (
-        <CreateLoginPopup
-          type="RESPONSAVEL"
-          name={responsavelSelecionado.name}
-          currentEmail={responsavelSelecionado.email}
-          open={!!openModalId}
-          onOpenChange={(open) => !open && setOpenModalId(null)}
-        />
-      )}
     </div>
      );
 }

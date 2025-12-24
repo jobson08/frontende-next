@@ -12,6 +12,14 @@ import { Badge } from "@/src/components/ui/badge";
 import Link from "next/link";
 import CreateLoginPopup from "@/src/components/common/CreateLoginPopup";
 
+// Função pra formatar telefone (opcional, deixa bonito)
+const formatarTelefone = (phone: string) => {
+  const cleaned = phone.replace(/\D/g, "");
+  if (cleaned.length === 11) {
+    return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2, 7)}-${cleaned.slice(7)}`;
+  }
+  return phone;
+};
 
 // Função pra calcular idade (NUNCA DÁ ERRO)
 const calcularIdade = (birthDate: string): number => {
@@ -55,17 +63,15 @@ const alunosMock: Aluno[] = [
   return idade;
 };*/
 
-const AlunoPage = () => {
+const AlunoPage = () => {   // inicio da função
+
   const [searchTerm, setSearchTerm] = useState("");
-  const [openModalId, setOpenModalId] = useState<string | null>(null);
+  //const [openModalId, setOpenModalId] = useState<string | null>(null);
 
   const filteredAlunos = alunosMock.filter(aluno =>
     aluno.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     aluno.phone.includes(searchTerm) ||
     aluno.responsavel?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const alunoSelecionado = filteredAlunos.find(a => a.id === openModalId
 
   );
   return (
@@ -96,7 +102,7 @@ const AlunoPage = () => {
       </div>
       {/* Grid de Cards */}
       {/* Calcular idade*/}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
         {filteredAlunos.map((aluno) => {
           const idade = calcularIdade(aluno.birthDate);
           const isMaior = idade >= 18;
@@ -104,6 +110,13 @@ const AlunoPage = () => {
           return (
             <Card key={aluno.id} className="hover:shadow-lg transition-shadow">
               <CardHeader>
+                
+               {/* Badge fixo: todos têm login agora */}
+             {/*  <div className="pt-2">
+                <Badge className="text-xs bg-green-600 text-white">
+                  Tem login
+                </Badge>
+                </div>*/}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <Avatar className="h-12 w-12">
@@ -120,21 +133,15 @@ const AlunoPage = () => {
                       </p>
                     </div>
                   </div>
-                  {aluno.temLogin ? (
-                    <Badge className="text-xs bg-green-600">Tem login</Badge>
-                  ) : (
-                    <Badge variant="outline" className="text-xs text-orange-600 border-orange-600">
-                      Sem login
-                    </Badge>
-                  )}
-                </div>
+              </div>
               </CardHeader>
 
               <CardContent className="space-y-4">
                 <div className="flex items-center gap-2 text-sm">
                   <Phone className="h-4 w-4 text-gray-500" />
-                  {aluno.phone}
+                  {formatarTelefone(aluno.phone)}
                 </div>
+
                 {aluno.responsavel && (
                   <div className="flex items-center gap-2 text-sm">
                     <UserCheck className="h-4 w-4 text-gray-500" />
@@ -142,49 +149,30 @@ const AlunoPage = () => {
                   </div>
                 )}
 
+                {/* Status do aluno */}
+                <div className="pt-2">
+                  <Badge 
+                    variant={aluno.status === "ATIVO" ? "default" : aluno.status === "INATIVO" ? "secondary" : "destructive"}
+                    className="text-xs"
+                  >
+                    {aluno.status}
+                  </Badge>
+                </div>
+                
+              {/* BOTÃO VER DETALHE */}
                 <div className="pt-4 flex gap-2">
-                 {/* BOTÃO VER DETALHE */}
+                 
                   <Button size="sm" variant="outline" asChild>
                     <Link href={`/aluno/${aluno.id}`}>
                       Ver detalhes
                     </Link>
                   </Button>
-
-                  {/* BOTÃO QUE ABRE O MODAL — EXATAMENTE IGUAL AO RESPONSÁVEL */}
-                  {!aluno.temLogin ? (
-                    <Button
-                      size="sm"
-                      className="bg-green-600 hover:bg-green-700"
-                      onClick={() => setOpenModalId(aluno.id)}
-                    >
-                      Criar login
-                    </Button>
-                  ) : (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setOpenModalId(aluno.id)}
-                    >
-                      Editar login
-                    </Button>
-                  )}
                 </div>
               </CardContent>
             </Card>
           );
         })}
       </div>
-
-      {/* MODAL NO CENTRO DA TELA — FORA DE TUDO! */}
-      {alunoSelecionado && (
-        <CreateLoginPopup
-          type="ALUNO"
-          name={alunoSelecionado.name}
-          currentEmail={alunoSelecionado.email}
-          open={!!openModalId}
-          onOpenChange={(open) => !open && setOpenModalId(null)}
-        />
-      )}
     </div>
   );
 }

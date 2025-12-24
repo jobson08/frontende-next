@@ -1,42 +1,38 @@
 // src/app/(dashboard)/alunos/[id]/editar/page.tsx
 "use client";
-import {  useEffect, useRef, useState } from "react";
+
+import { useState, useRef, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
-import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { ChevronLeft, Loader2, Trash2, Camera, UserPlus, CalendarIcon } from "lucide-react";
+import { toast, Toaster } from "sonner";
+
 import { Button } from "@/src/components/ui/button";
-import { CalendarIcon, Camera, ChevronLeft, Loader2, Save, Trash2 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/card";
-import { Label} from "@/src/components/ui/label";
 import { Input } from "@/src/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/src/components/ui/popover";
+import { Label } from "@/src/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/src/components/ui/select";
 import { Textarea } from "@/src/components/ui/textarea";
+import { Popover, PopoverContent, PopoverTrigger } from "@/src/components/ui/popover";
 import { Calendar } from "@/src/components/ui/calendar";
+import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/src/components/ui/avatar";
 
-// Schema de validação
-const editAlunoSchema = z.object({
-  name: z.string().min(3, { message: "Nome completo é obrigatório" }),
-  birthDate: z.date({ message: "Data de nascimento é obrigatória e deve ser válida" }),
-  phone: z.string().min(10, { message: "Telefone inválido" }),
-  cpf: z.string().optional(), // ← ADICIONADO
-  categoria: z.string().min(1, { message: "Categoria é obrigatória" }), // ← ADICIONADO
-  responsavelId: z.string().optional(),
-  status: z.enum(["ATIVO", "INATIVO", "TRANCADO"]),
-  observations: z.string().optional(),
-});
+// Mock de responsáveis
+const responsaveisMock = [
+  { id: "1", name: "Maria Oliveira Santos" },
+  { id: "2", name: "João Pedro Costa" },
+  { id: "3", name: "Ana Clara Lima" },
+];
 
-type EditAlunoFormData = z.infer<typeof editAlunoSchema>;
-
-// Mock de dados (depois substitua por fetch do backend)
+// Mock de alunos (em produção vem do banco)
 const alunosMock = [
   {
-   id: "1",
+    id: "1",
     name: "Enzo Gabriel Silva",
     birthDate: "2014-05-15",
     phone: "(11) 98888-7777",
@@ -46,6 +42,7 @@ const alunosMock = [
     status: "ATIVO",
     observations: "Alergia a amendoim. Usa óculos.",
     photo: null,
+    username: "enzo.gabriel.1",
   },
   {
     id: "2",
@@ -58,6 +55,7 @@ const alunosMock = [
     status: "ATIVO" as const,
     observations: "Adora natação!",
     photo: null,
+    username: "maria.luiza.2",
   },
   {
     id: "3",
@@ -70,63 +68,83 @@ const alunosMock = [
     status: "ATIVO" as const,
     observations: "Maior de idade. Paga sozinho.",
     photo: null,
+    username: "lucas.andrade.3",
   },
 ];
-const responsaveisMock = [
-  { id: "1", name: "Ana Clara Santos" },
-  { id: "2", name: "Carlos Oliveira" },
-  { id: "3", name: "Juliana Costa" },
-];
 
-const EditarAlunoPage = () => {     //inicio da função
-  
-const { id } = useParams();
+// Função para gerar senha aleatória
+function gerarSenhaAleatoria(tamanho = 10) {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$";
+  let senha = "";
+  for (let i = 0; i < tamanho; i++) {
+    senha += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return senha;
+}
+
+// Schema Zod
+const formSchema = z.object({
+  name: z.string().min(3, { message: "Nome completo é obrigatório" }),
+  birthDate: z.date({ message: "Data de nascimento é obrigatória e deve ser válida" }),
+  phone: z.string().min(10, { message: "Telefone inválido" }),
+  cpf: z.string().optional(),
+  categoria: z.string().min(1, { message: "Categoria é obrigatória" }),
+  responsavelId: z.string().optional(),
+  status: z.enum(["ATIVO", "INATIVO", "TRANCADO"]),
+  observations: z.string().optional(),
+});
+
+type FormData = z.infer<typeof formSchema>;
+
+const EditarAlunoPage = () => {
+  const { id } = useParams();
   const [date, setDate] = useState<Date | undefined>(undefined);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const {
     register,
     handleSubmit,
     setValue,
     watch,
-    formState: { errors, isSubmitting },
-  } = useForm<EditAlunoFormData>({
-    resolver: zodResolver(editAlunoSchema),
+    formState: { errors },
+  } = useForm<FormData>({
+    resolver: zodResolver(formSchema),
   });
 
   const watchedName = watch("name");
 
-  // BUSCA O ALUNO
+  // Busca o aluno
   const aluno = alunosMock.find(a => a.id === id);
 
-  // PREENCHE OS DADOS (só uma vez)
+  // Pré-preenche os dados
   useEffect(() => {
     if (aluno) {
       const birthDate = new Date(aluno.birthDate);
       setDate(birthDate);
       setPhotoPreview(aluno.photo);
 
-    setValue("name", aluno.name);
-    setValue("birthDate", birthDate);
-    setValue("phone", aluno.phone);
-    setValue("cpf", aluno.cpf || ""); // ← AGORA ACEITA
-    setValue("categoria", aluno.categoria); // ← AGORA ACEITA
-    setValue("responsavelId", aluno.responsavelId || "");
-    setValue("status", aluno.status as "ATIVO" | "INATIVO" | "TRANCADO");
-    setValue("observations", aluno.observations);
+      setValue("name", aluno.name);
+      setValue("birthDate", birthDate);
+      setValue("phone", aluno.phone);
+      setValue("cpf", aluno.cpf || "");
+      setValue("categoria", aluno.categoria);
+      setValue("responsavelId", aluno.responsavelId || "");
+      setValue("status", aluno.status);
+      setValue("observations", aluno.observations);
     }
   }, [aluno, setValue]);
 
-  // SE NÃO ENCONTRAR
   if (!aluno) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center">
-        <h1 className="text-2xl font-bold mb-4">Aluno não encontrado</h1>
-        <Button asChild>
-          <Link href="/aluno">Voltar para lista</Link>
-        </Button>
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Aluno não encontrado</h1>
+          <Button asChild>
+            <Link href="/aluno">Voltar para lista</Link>
+          </Button>
+        </div>
       </div>
     );
   }
@@ -147,17 +165,33 @@ const { id } = useParams();
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const onSubmit = async (data: EditAlunoFormData) => {
+  const onSubmit = async (data: FormData) => {
+    setIsSubmitting(true);
     try {
-      console.log("Aluno atualizado:", data, "Foto:", photoPreview);
-      await new Promise(r => setTimeout(r, 1200));
-      alert("Aluno atualizado com sucesso!");
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      console.log("Aluno atualizado:", data);
+      toast.success("Aluno atualizado com sucesso!");
     } catch {
-      alert("Erro ao salvar");
+      toast.error("Erro ao salvar");
+    } finally {
+      setIsSubmitting(false);
     }
   };
-    return ( 
-      <div className="p-4 lg:p-8 max-w-4xl mx-auto space-y-8">
+
+  const redefinirSenha = async () => {
+    const novaSenha = gerarSenhaAleatoria(10);
+    console.log("NOVA SENHA GERADA PARA O ALUNO:");
+    console.log(`Username: ${aluno.username}`);
+    console.log(`Nova senha temporária: ${novaSenha}`);
+    console.log(`E-mail enviado para o responsável`);
+
+    toast.success("Nova senha gerada e 'enviada' por e-mail!", {
+      description: "Veja os detalhes no console",
+    });
+  };
+
+  return (
+    <div className="p-4 lg:p-8 max-w-4xl mx-auto space-y-8">
       {/* Cabeçalho */}
       <div className="flex items-center gap-4 mb-8">
         <Button variant="ghost" size="icon" asChild>
@@ -174,7 +208,7 @@ const { id } = useParams();
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-3 text-2xl">
-            <Save className="h-7 w-7 text-blue-600" />
+            <UserPlus className="h-7 w-7 text-blue-600" />
             Editar Dados do Aluno
           </CardTitle>
         </CardHeader>
@@ -184,7 +218,7 @@ const { id } = useParams();
             <div className="flex flex-col items-center gap-4 py-6 border-b">
               <Avatar className="h-32 w-32 ring-4 ring-blue-100">
                 <AvatarImage src={photoPreview || undefined} />
-                <AvatarFallback className="bg-linear-to-br from-blue-500 to-purple-600 text-white text-3xl font-bold">
+                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-3xl font-bold">
                   {watchedName ? watchedName.split(" ").map(n => n[0]).join("").toUpperCase() : "?"}
                 </AvatarFallback>
               </Avatar>
@@ -333,9 +367,32 @@ const { id } = useParams();
               </div>
             </div>
 
+            {/* Acesso do Aluno + Redefinir Senha */}
+            <div className="space-y-6 pt-6 border-t">
+              <h3 className="text-lg font-semibold text-gray-800">Acesso do Aluno</h3>
+              <div className="flex items-center gap-4">
+                <div className="flex-1">
+                  <Label>Usuário</Label>
+                  <Input value={aluno.username || "Não criado"} disabled />
+                </div>
+                <div className="self-end">
+                  <Button type="button" variant="outline" onClick={redefinirSenha}>
+                    Redefinir Senha
+                  </Button>
+                </div>
+              </div>
+              <p className="text-xs text-gray-500">
+                Ao redefinir, uma nova senha temporária será gerada e "enviada" por e-mail ao responsável
+              </p>
+            </div>
+
             {/* Botões */}
-            <div className="flex flex-col sm:flex-row gap-4 pt-8 border-t">
-              <Button type="submit" disabled={isSubmitting} className="flex-1 bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+            <div className="flex flex-col sm:flex-row gap-4 pt-8">
+              <Button 
+                type="submit" 
+                disabled={isSubmitting} 
+                className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+              >
                 {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -352,9 +409,10 @@ const { id } = useParams();
           </form>
         </CardContent>
       </Card>
+
+      <Toaster position="top-right" richColors closeButton />
     </div>
-       
-     );
-}
- 
+  );
+};
+
 export default EditarAlunoPage;
