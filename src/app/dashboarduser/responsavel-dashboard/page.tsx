@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Calendar, AlertCircle, Trophy, Key, Loader2 } from "lucide-react";
+import { Calendar, AlertCircle, Trophy, Key} from "lucide-react";
 import { toast } from "sonner";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/card";
@@ -124,7 +124,7 @@ const ResponsavelDashboardPage = () => {
             <CardHeader>
               <div className="flex items-center gap-4">
                 <Avatar className="h-20 w-20">
-                  <AvatarFallback className="bg-gradient-to-r from-purple-600 to-pink-600 text-white text-2xl">
+                  <AvatarFallback className="bg-linear-to-r from-purple-600 to-pink-600 text-white text-2xl">
                     {filho.name.split(" ").map(n => n[0]).join("")}
                   </AvatarFallback>
                 </Avatar>
@@ -140,6 +140,10 @@ const ResponsavelDashboardPage = () => {
                 <Badge className={filho.statusMensalidade === "Paga" ? "bg-green-600" : "bg-orange-600"}>
                   {filho.statusMensalidade}
                 </Badge>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <Calendar className="h-4 w-4 text-gray-500" />
+                <span>Próximo treino: Segunda - 18:00</span>
               </div>
               <div className="flex items-center gap-2 text-sm">
                 <Calendar className="h-4 w-4 text-gray-500" />

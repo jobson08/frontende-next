@@ -57,7 +57,7 @@ const menuItems = {
   RESPONSAVEL: [
     { icon: Home, label: "Meu Dashboard", href: "/dashboarduser/responsavel-dashboard" },
     { icon: Users, label: "Meus Filhos", href: "/dashboarduser/responsavel-dashboard/filhos" },
-    { icon: Calendar, label: "Aulas dos Filhos", href: "/dashboarduser/responsavel-dashboard/aulas" },
+    //{ icon: Calendar, label: "Aulas dos Filhos", href: "/dashboarduser/responsavel-dashboard/aulas" },
     { icon: DollarSign, label: "Pagamentos", href: "/dashboarduser/responsavel-dashboard/pagamentos" },
     { icon: MessageSquare, label: "Comunicados", href: "/dashboarduser/responsavel-dashboard/comunicados" },
   ],

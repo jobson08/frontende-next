@@ -61,7 +61,7 @@ const { id } = useParams();
   const isMaior = idade >= 18;
 
     return ( 
-      <div className="p-4 lg:p-8 max-w-5xl mx-auto space-y-8">
+    <div className="p-4 lg:p-8 max-w-5xl mx-auto space-y-8">
       {/* Cabeçalho */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild>
