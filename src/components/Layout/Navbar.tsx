@@ -41,7 +41,7 @@ const menuItems = {
   ],
   ALUNO: [
     { icon: Home, label: "Meu Dashboard", href: "/dashboarduser/aluno-dashboard" },
-    { icon: Calendar, label: "Minhas Aulas", href: "/dashboarduser/aluno-dashboard/aulas" },
+    //{ icon: Calendar, label: "Minhas Aulas", href: "/dashboarduser/aluno-dashboard/aulas" },
     { icon: Trophy, label: "Meu Progresso", href: "/dashboarduser/aluno-dashboard/progresso" },
     { icon: BookOpen, label: "Treinos", href: "/dashboarduser/aluno-dashboard/treinos" },
     { icon: MessageSquare, label: "Mensagens", href: "/dashboarduser/aluno-dashboard/mensagens" },
@@ -49,7 +49,7 @@ const menuItems = {
   RESPONSAVEL: [
     { icon: Home, label: "Meu Dashboard", href: "/dashboarduser/responsavel-dashboard" },
     { icon: Users, label: "Meus Filhos", href: "/dashboarduser/responsavel-dashboard/filhos" },
-    { icon: Calendar, label: "Aulas dos Filhos", href: "/dashboarduser/responsavel-dashboard/aulas" },
+    //{ icon: Calendar, label: "Aulas dos Filhos", href: "/dashboarduser/responsavel-dashboard/aulas" },
     { icon: DollarSign, label: "Pagamentos", href: "/dashboarduser/responsavel-dashboard/pagamentos" },
     { icon: MessageSquare, label: "Comunicados", href: "/dashboarduser/responsavel-dashboard/comunicados" },
   ],

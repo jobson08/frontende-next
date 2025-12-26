@@ -3,7 +3,7 @@
 
 import { Sheet, SheetContent, SheetTrigger } from "@/src/components/ui/sheet";
 import { Menu as MenuIcon, Shield } from "lucide-react";
-import { Menu } from "./Menu";
+
 
 export function MobileMenu() {
   return (
@@ -22,7 +22,7 @@ export function MobileMenu() {
         </div>
 
         <div className="py-6 px-3">
-          <Menu role="SUPERADMIN" />
+
         </div>
       </SheetContent>
     </Sheet>

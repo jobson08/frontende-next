@@ -57,7 +57,7 @@ const DetalhesFilhoPage = () => {
               </div>
             <div className="flex items-center gap-2">
 
-                <Avatar className="h-25 w-25 ring-4 ring-purple-600">
+                <Avatar className="h-24 w-24 ring-4 ring-purple-600">
                     <AvatarFallback className="bg-linear-to-br from-purple-600 to-pink-600 text-white text-4xl font-bold">
                         {filho.name.split(" ").map(n => n[0]).join("")}
                     </AvatarFallback>

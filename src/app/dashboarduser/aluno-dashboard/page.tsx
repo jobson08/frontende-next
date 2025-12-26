@@ -5,7 +5,6 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { format } from "date-fns";
 import { 
   Calendar, 
   Trophy, 
@@ -83,16 +82,18 @@ const AlunoDashboardPage = () => { //Inicio da função
     <div className="p-4 lg:p-8 space-y-8">
     {/* Cabeçalho com botão de troca de senha */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
-        <div className="flex items-center gap-6">
-          <Avatar className="h-24 w-24 ring-4 ring-green-600">
-            <AvatarFallback className="bg-gradient-to-br from-green-600 to-emerald-600 text-white text-3xl font-bold">
+      
+        <div className="flex items-center gap-2">
+          
+          <Avatar className="h-24 w-24 ring-4 ring-green-400">
+            <AvatarFallback className="bg-linear-to-br from-green-400 to-emerald-600 text-white text-3xl font-bold">
               {aluno.name.split(" ").map(n => n[0]).join("")}
             </AvatarFallback>
           </Avatar>
           <div>
-            <h1 className="text-4xl font-bold">Olá, {aluno.name}!</h1>
+            <h1 className="text-1xl font-bold">Olá, {aluno.name}!</h1>
             <div className="flex items-center gap-4 mt-2">
-              <Badge className="bg-gradient-to-br from-green-600 to-emerald-600 text-lg px-4 py-1">
+              <Badge className="bg-linear-to-br from-green-400 to-emerald-600 text-xs px-4 py-1">
                 {aluno.categoria}
               </Badge>
               <Badge variant="secondary" className="text-lg px-4 py-1">
@@ -155,44 +156,44 @@ const AlunoDashboardPage = () => { //Inicio da função
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Treinos esta semana</CardTitle>
+            <CardTitle className="text-center text-3x1 font-medium">Treinos esta semana</CardTitle>
             <Trophy className="h-4 w-4 text-gray-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{aluno.treinosFeitosSemana}/{aluno.metaSemanal}</div>
+            <div className="text-2xl text-center py-2 font-bold">{aluno.treinosFeitosSemana}/{aluno.metaSemanal}</div>
             <p className="text-xs text-gray-500 mt-1">Meta semanal</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Próximos treinos</CardTitle>
+            <CardTitle className="text-center text-3x1 font-medium">Próximos treinos</CardTitle>
             <Calendar className="h-4 w-4 text-gray-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{aluno.proximosTreinos}</div>
+            <div className="text-2xl text-center py-2 font-bold">{aluno.proximosTreinos}</div>
             <p className="text-xs text-gray-500 mt-1">Esta semana</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Frequência mensal</CardTitle>
+            <CardTitle className="text-center text-3x1 font-medium">Frequência mensal</CardTitle>
             <Target className="h-4 w-4 text-gray-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{aluno.frequenciaMes}</div>
+            <div className="text-2xl text-center py-2 font-bold">{aluno.frequenciaMes}</div>
             <p className="text-xs text-gray-500 mt-1">treinos realizados</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Avaliação</CardTitle>
+            <CardTitle className="text-center text-3x1 font-medium">Avaliação</CardTitle>
             <Star className="h-4 w-4 text-yellow-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-yellow-500">4.8</div>
+            <div className="text-2xl text-center py-2 font-bold text-yellow-500">4.8</div>
             <p className="text-xs text-gray-500 mt-1">nota média dos treinadores</p>
           </CardContent>
         </Card>
@@ -210,7 +211,7 @@ const AlunoDashboardPage = () => { //Inicio da função
                 <div>
                   <p className="font-medium">{treino.treino}</p>
                   <p className="text-sm text-gray-600">{treino.dia} - {treino.hora} • {treino.treinador}</p>
-                </div>
+                </div >
                 <Badge variant="secondary">Confirmado</Badge>
               </div>
             ))}
