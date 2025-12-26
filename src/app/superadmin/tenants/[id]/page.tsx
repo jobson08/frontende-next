@@ -88,18 +88,18 @@ const { id } = useParams();
 
       {/* Perfil Principal */}
      <Card className="overflow-hidden">
-        <div className="bg-gradient-to-r from-green-600 to-emerald-600 h-32" />
+        <div className="bg-linear-to-r from-green-600 to-emerald-600 h-32" />
         <CardContent className="relative pt-0">
           <div className="flex flex-col sm:flex-row items-center sm:items-end gap-6 -mt-16">
             <Avatar className="h-32 w-32 ring-8 ring-white shadow-2xl">
-              <AvatarFallback className="bg-gradient-to-br from-green-600 to-emerald-600 text-white text-4xl font-bold">
+              <AvatarFallback className="bg-linear-to-r from-green-600 to-emerald-600 text-white text-4xl font-bold">
                 {tenant.name.split(" ").map(n => n[0]).join("")}
               </AvatarFallback>
             </Avatar>
             <div className="text-center sm:text-left flex-1">
               <h2 className="text-3xl font-bold">{tenant.name}</h2>
               <div className="flex flex-wrap items-center gap-3 mt-2 justify-center sm:justify-start">
-                <Badge className="bg-gradient-to-r from-blue-600 to-cyan-600 text-white">
+                <Badge className="bg-linear-to-r from-blue-600 to-cyan-600 text-white">
                   Plano {tenant.plano}
                 </Badge>
                 <Badge className={tenant.status === "ATIVA" ? "bg-green-600" : "bg-red-600"}>
@@ -108,7 +108,7 @@ const { id } = useParams();
               </div>
             </div>
             <div className="ml-auto">
-              <Button size="lg" asChild className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700">
+              <Button size="lg" asChild className="bg-linear-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700">
                 <Link href={`/superadmin/tenants/${tenant.id}/editar`}>
                   <Edit className="mr-2 h-5 w-5" />
                   Editar Escolinha
@@ -146,7 +146,7 @@ const { id } = useParams();
           <div className="mt-4">
             <Button
               onClick={() => setOpenLoginModal(true)}
-              className={tenant.temLoginAdmin ? "bg-orange-600 hover:bg-orange-700" : "bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"}
+              className={tenant.temLoginAdmin ? "bg-orange-600 hover:bg-orange-700" : "bg-linear-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"}
             >
               {tenant.temLoginAdmin ? "Editar Login do Admin" : "Criar Login do Admin"}
             </Button>

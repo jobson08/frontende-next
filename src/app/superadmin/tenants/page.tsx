@@ -1,12 +1,12 @@
 // src/app/superadmin/tenants/page.tsx
 "use client";
 
-import { Avatar, AvatarFallback } from "@/src/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/src/components/ui/avatar";
 import { Badge } from "@/src/components/ui/badge";
 import { Button } from "@/src/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/card";
 import { Input } from "@/src/components/ui/input";
-import { Search, Plus, Building2, DollarSign, Users, Calendar, AlertCircle } from "lucide-react";
+import { Search, Plus, DollarSign, Users, Calendar, AlertCircle, Edit } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -21,6 +21,7 @@ interface Tenant {
   status: "ATIVA" | "INATIVA" | "PENDENTE" | "SUSPENSA";
   dataCriacao: string;
   ultimoPagamento: string;
+  logoUrl?: string; // ← LOGO OPCIONAL
 }
 
 const tenantsMock: Tenant[] = [
@@ -35,6 +36,7 @@ const tenantsMock: Tenant[] = [
     status: "ATIVA",
     dataCriacao: "2024-03-15",
     ultimoPagamento: "2025-12-10",
+    logoUrl: "https://example.com/logo-goldeplaca.png", // tem logo
   },
   {
     id: "2",
@@ -47,6 +49,7 @@ const tenantsMock: Tenant[] = [
     status: "ATIVA",
     dataCriacao: "2023-11-20",
     ultimoPagamento: "2025-12-05",
+    //logoUrl: null, // sem logo → mostra fallback
   },
   {
     id: "3",
@@ -59,6 +62,7 @@ const tenantsMock: Tenant[] = [
     status: "ATIVA",
     dataCriacao: "2025-01-10",
     ultimoPagamento: "2025-12-12",
+    logoUrl: "https://example.com/logo-pequenoscraques.png", // tem logo
   },
   {
     id: "4",
@@ -71,6 +75,7 @@ const tenantsMock: Tenant[] = [
     status: "PENDENTE",
     dataCriacao: "2025-06-05",
     ultimoPagamento: "2025-11-01",
+   // logoUrl: null,
   },
   {
     id: "5",
@@ -83,12 +88,12 @@ const tenantsMock: Tenant[] = [
     status: "SUSPENSA",
     dataCriacao: "2024-08-22",
     ultimoPagamento: "2025-10-15",
+    logoUrl: "https://example.com/logo-escoladogo.png",
   },
 ];
 
-const TenantsPage = () => {         //Inicio da função
-
-    const [searchTerm, setSearchTerm] = useState("");
+const TenantsPage = () => {
+  const [searchTerm, setSearchTerm] = useState("");
 
   const filtered = tenantsMock.filter(t =>
     t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -114,15 +119,16 @@ const TenantsPage = () => {         //Inicio da função
       default: return "bg-gray-600";
     }
   };
-    return ( 
-        <div className="space-y-8">
+
+  return (
+    <div className="space-y-8">
       {/* Cabeçalho */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">Escolinhas de Futebol</h1>
           <p className="text-gray-600">Gerencie todas as unidades da plataforma FutElite</p>
         </div>
-        <Button asChild className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700">
+        <Button asChild className="bg-linear-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700">
           <Link href="/superadmin/tenants/novo">
             <Plus className="mr-2 h-5 w-5" />
             Nova Escolinha
@@ -149,7 +155,8 @@ const TenantsPage = () => {         //Inicio da função
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <Avatar className="h-16 w-16 ring-4 ring-white">
-                    <AvatarFallback className="bg-gradient-to-br from-green-600 to-emerald-600 text-white text-2xl font-bold">
+                    <AvatarImage src={tenant.logoUrl ?? undefined} alt={`Logo da ${tenant.name}`} />
+                    <AvatarFallback className="bg-linear-to-br from-green-600 to-emerald-600 text-white text-2xl font-bold">
                       {tenant.name.split(" ").map(n => n[0]).join("")}
                     </AvatarFallback>
                   </Avatar>
@@ -178,7 +185,7 @@ const TenantsPage = () => {         //Inicio da função
                   <span>{tenant.alunos} alunos</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <DollarSign className="h-4 w-  text-green-600" />
+                  <DollarSign className="h-4 w-4 text-green-600" />
                   <span className="font-medium">{tenant.receitaMensal}/mês</span>
                 </div>
               </div>
@@ -200,8 +207,11 @@ const TenantsPage = () => {         //Inicio da função
                     Ver detalhes
                   </Link>
                 </Button>
-                <Button size="sm" variant="outline">
-                  Editar
+                <Button size="sm" asChild className="bg-linear-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700">
+                  <Link href={`/superadmin/tenants/${tenant.id}/editar`}>
+                    <Edit className="mr-2 h-4 w-4" />
+                    Editar
+                  </Link>
                 </Button>
                 {tenant.status === "SUSPENSA" && (
                   <Button size="sm" className="bg-red-600 hover:bg-red-700">
@@ -214,7 +224,7 @@ const TenantsPage = () => {         //Inicio da função
         ))}
       </div>
     </div>
-     );
-}
- 
+  );
+};
+
 export default TenantsPage;

@@ -56,7 +56,7 @@ const MeuProgressoPage = () => {
       </div>
 
       {/* Barra de Progresso para Próximo Nível */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+
       <Card>
         <CardHeader >
           <CardTitle className="text-center text-2x1 font-medium">
@@ -77,7 +77,6 @@ const MeuProgressoPage = () => {
           </div>
         </CardContent>
       </Card>
-    </div>
       {/* Cards de Estatísticas */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <Card>
