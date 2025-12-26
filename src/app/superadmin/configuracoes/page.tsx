@@ -2,12 +2,12 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { toast } from "sonner";
-import { Loader2, Camera, Trash2, Palette, Building2, DollarSign, Percent, CalendarDays, Send, Mail, Bell, AlertTriangle, Users, Shield } from "lucide-react";
+import { Loader2, Camera, Trash2, Palette, Building2, DollarSign, Percent, CalendarDays, Send, Mail, Bell, AlertTriangle, Users, Shield, UserX, Activity, UserPlus, Clock, Download, Database } from "lucide-react";
 import { Button } from "@/src/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/card";
 import { Input } from "@/src/components/ui/input";
@@ -17,6 +17,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/src/components/ui/ta
 import { Badge } from "@/src/components/ui/badge";
 import { Switch } from "@/src/components/ui/switch";
 import { Textarea } from "@/src/components/ui/textarea";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/src/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/src/components/ui/select";
 
 
 // Schema para Perfil do Superadmin ABA 1
@@ -26,12 +28,12 @@ const perfilSchema = z.object({
   telefone: z.string().optional(),
 });
 
-// Schema para Identidade Visual    ABA 1
+// Schema para Identidade Visual    ABA 2
 const identidadeSchema = z.object({
   nomePlataforma: z.string().min(3, "Nome da plataforma obrigatório"),
 });
 
-// Schema para Planos e Preços ABA 2
+// Schema para Planos e Preços ABA 3
 const planosSchema = z.object({
   basicoAtivo: z.boolean(),
   basicoPreco: z.string().min(1, "Preço obrigatório"),
@@ -49,14 +51,14 @@ const planosSchema = z.object({
   enterpriseTesteDias: z.string().optional(),
 });
 
-// Schema para Pagamentos e Financeiro ABA 3
+// Schema para Pagamentos e Financeiro ABA 4
 const financeiroSchema = z.object({
   chavePix: z.string().min(1, "Chave PIX obrigatória"),
   taxaAdministrativa: z.string().min(1, "Taxa obrigatória"),
   diasTolerancia: z.string().min(1, "Dias de tolerância obrigatórios"),
 });
 
-// Schema para Notificações e Templates ABA 4
+// Schema para Notificações e Templates ABA 5
 const notificacoesSchema = z.object({
   emailSuporte: z.string().email("E-mail de suporte inválido"),
   ativarNotificacoesAutomaticas: z.boolean(),
@@ -65,7 +67,7 @@ const notificacoesSchema = z.object({
   templateNovoAluno: z.string().optional(),
 });
 
-// Schema para Regras da Plataforma ABA 5 
+// Schema para Regras da Plataforma ABA 6
 const regrasSchema = z.object({
   idadeMinima: z.string().min(1, "Idade mínima obrigatória"),
   idadeMaxima: z.string().min(1, "Idade máxima obrigatória"),
@@ -74,12 +76,26 @@ const regrasSchema = z.object({
   ativarSuspensaoAutomatica: z.boolean(),
 });
 
+// Schema para Segurança ABA 7
+const segurancaSchema = z.object({
+  ativar2FAObrigatorio: z.boolean(),
+  novoSuperAdminEmail: z.string().email().optional(),
+});
+
+// Schema para Backup e Exportação ABA 8
+const backupSchema = z.object({
+  frequenciaBackup: z.enum(["diario", "semanal", "mensal"]),
+  ativarBackupAutomatico: z.boolean(),
+});
+
 type PerfilFormData = z.infer<typeof perfilSchema>; //ABA1
-type IdentidadeFormData = z.infer<typeof identidadeSchema>; //ABA 1
-type PlanosFormData = z.infer<typeof planosSchema>; //ABA 2
-type FinanceiroFormData = z.infer<typeof financeiroSchema>; //ABA 3
-type NotificacoesFormData = z.infer<typeof notificacoesSchema>;//ABA 4
-type RegrasFormData = z.infer<typeof regrasSchema>; //ABA 5
+type IdentidadeFormData = z.infer<typeof identidadeSchema>; //ABA 2
+type PlanosFormData = z.infer<typeof planosSchema>; //ABA 3
+type FinanceiroFormData = z.infer<typeof financeiroSchema>; //ABA 4
+type NotificacoesFormData = z.infer<typeof notificacoesSchema>;//ABA 5
+type RegrasFormData = z.infer<typeof regrasSchema>; //ABA 6
+type SegurancaFormData = z.infer<typeof segurancaSchema>; //ABA 7
+type BackupFormData = z.infer<typeof backupSchema>; //ABA 8
 
 const ConfiguracoesPage = () => {       //Inicio da função
     //(Etapa 1)
@@ -87,11 +103,9 @@ const ConfiguracoesPage = () => {       //Inicio da função
   const [fotoPreview, setFotoPreview] = useState<string | null>("https://example.com/superadmin-foto.jpg");
   const fotoInputRef = useRef<HTMLInputElement>(null);
 
-  // Identidade Visual
-  const [logoPreview, setLogoPreview] = useState<string | null>("https://example.com/futelite-logo.png");
-  const logoInputRef = useRef<HTMLInputElement>(null);
+  
 
-// Form Perfil
+// Form Perfil (1)
   const {
     register: registerPerfil,
     handleSubmit: handleSubmitPerfil,
@@ -103,8 +117,19 @@ const ConfiguracoesPage = () => {       //Inicio da função
       telefone: "(11) 99999-8888",
     },
   });
+    // Handlers Perfil
+  const handleFotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFotoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
-// Form Identidade
+// Form Identidade (2)
   const {
     register: registerIdentidade,
     handleSubmit: handleSubmitIdentidade,
@@ -114,10 +139,53 @@ const ConfiguracoesPage = () => {       //Inicio da função
       nomePlataforma: "FutElite",
     },
   });
+  // Identidade Visual
+  const [logoPreview, setLogoPreview] = useState<string | null>("https://example.com/futelite-logo.png");
+  const logoInputRef = useRef<HTMLInputElement>(null);
+ 
+  const removeFoto = () => {
+    setFotoPreview(null);
+    if (fotoInputRef.current) fotoInputRef.current.value = "";
+  };
 
+  const onSubmitPerfil = async (data: PerfilFormData) => {
+    try {
+      await new Promise(r => setTimeout(r, 1200));
+      console.log("Perfil atualizado:", data);
+      toast.success("Perfil atualizado com sucesso!");
+    } catch {
+      toast.error("Erro ao salvar perfil");
+    }
+  };
 
-//(Etapa 2)
-    // Form Planos
+  // Handlers Identidade
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setLogoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeLogo = () => {
+    setLogoPreview(null);
+    if (logoInputRef.current) logoInputRef.current.value = "";
+  };
+
+   const onSubmitIdentidade = async (data: IdentidadeFormData) => {
+    try {
+      await new Promise(r => setTimeout(r, 1200));
+      console.log("Identidade atualizada:", data);
+      toast.success("Identidade visual atualizada com sucesso!");
+    } catch {
+      toast.error("Erro ao salvar identidade");
+    }
+  };
+
+    // Form Planos (3)
   const {
     register: registerPlanos,
     handleSubmit: handleSubmitPlanos,
@@ -142,8 +210,18 @@ const ConfiguracoesPage = () => {       //Inicio da função
     },
   });
 
-  //(Etapa 3)
-// Form Financeiro (Etapa 3)
+  // Handler Planos
+  const onSubmitPlanos = async (data: PlanosFormData) => {
+    try {
+      await new Promise(r => setTimeout(r, 1200));
+      console.log("Planos atualizados:", data);
+      toast.success("Planos e preços atualizados com sucesso!");
+    } catch {
+      toast.error("Erro ao salvar planos");
+    }
+  };
+
+// Form Financeiro (4)
   const {
     register: registerFinanceiro,
     handleSubmit: handleSubmitFinanceiro,
@@ -157,71 +235,6 @@ const ConfiguracoesPage = () => {       //Inicio da função
     },
   });
 
-  // Handlers Perfil
-  const handleFotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFotoPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const removeFoto = () => {
-    setFotoPreview(null);
-    if (fotoInputRef.current) fotoInputRef.current.value = "";
-  };
-
-  const onSubmitPerfil = async (data: PerfilFormData) => {
-    try {
-      await new Promise(r => setTimeout(r, 1200));
-      console.log("Perfil atualizado:", data);
-      toast.success("Perfil atualizado com sucesso!");
-    } catch {
-      toast.error("Erro ao salvar perfil");
-    }
-  };
-//(Etapa 1)
-  // Handlers Identidade
-  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setLogoPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const removeLogo = () => {
-    setLogoPreview(null);
-    if (logoInputRef.current) logoInputRef.current.value = "";
-  };
-
-  const onSubmitIdentidade = async (data: IdentidadeFormData) => {
-    try {
-      await new Promise(r => setTimeout(r, 1200));
-      console.log("Identidade atualizada:", data);
-      toast.success("Identidade visual atualizada com sucesso!");
-    } catch {
-      toast.error("Erro ao salvar identidade");
-    }
-  };
-//(Etapa 2)
-  // Handler Planos
-  const onSubmitPlanos = async (data: PlanosFormData) => {
-    try {
-      await new Promise(r => setTimeout(r, 1200));
-      console.log("Planos atualizados:", data);
-      toast.success("Planos e preços atualizados com sucesso!");
-    } catch {
-      toast.error("Erro ao salvar planos");
-    }
-  };
-//(Etapa 3)
   // Handler Financeiro
   const onSubmitFinanceiro = async (data: FinanceiroFormData) => {
     try {
@@ -233,7 +246,7 @@ const ConfiguracoesPage = () => {       //Inicio da função
     }
   };
 
-  // Form Notificações (Etapa 4)
+ // Form Notificações (5)
   const {
     register: registerNotificacoes,
     handleSubmit: handleSubmitNotificacoes,
@@ -249,7 +262,17 @@ const ConfiguracoesPage = () => {       //Inicio da função
     },
   });
 
-  // Form Regras (Etapa 5)
+  const onSubmitNotificacoes = async (data: NotificacoesFormData) => {
+    try {
+      await new Promise(r => setTimeout(r, 1200));
+      console.log("Notificações e templates atualizados:", data);
+      toast.success("Notificações e templates atualizados com sucesso!");
+    } catch {
+      toast.error("Erro ao salvar notificações");
+    }
+  };
+
+    // Form Regras (6)
   const {
     register: registerRegras,
     handleSubmit: handleSubmitRegras,
@@ -265,18 +288,7 @@ const ConfiguracoesPage = () => {       //Inicio da função
     },
   });
 
-   // Form Regras (Etapa 4)
-  const onSubmitNotificacoes = async (data: NotificacoesFormData) => {
-    try {
-      await new Promise(r => setTimeout(r, 1200));
-      console.log("Notificações e templates atualizados:", data);
-      toast.success("Notificações e templates atualizados com sucesso!");
-    } catch {
-      toast.error("Erro ao salvar notificações");
-    }
-  };
-
-   // Form Regras (Etapa 5)
+   // Form Regras 
   const onSubmitRegras = async (data: RegrasFormData) => {
     try {
       await new Promise(r => setTimeout(r, 1200));
@@ -284,6 +296,105 @@ const ConfiguracoesPage = () => {       //Inicio da função
       toast.success("Regras da plataforma atualizadas com sucesso!");
     } catch {
       toast.error("Erro ao salvar regras");
+    }
+  };
+
+
+  // Form Segurança (7)
+  const {
+    register: registerSeguranca,
+    handleSubmit: handleSubmitSeguranca,
+    reset: resetNovoAdmin,
+    formState: { isSubmitting: isSubmittingSeguranca },
+  } = useForm<SegurancaFormData>({
+    resolver: zodResolver(segurancaSchema),
+    defaultValues: {
+      ativar2FAObrigatorio: true,
+    },
+  });
+
+  //segurança e log 
+// Mock de outros superadmins
+  const outrosSuperAdmins = [
+    { id: "1", nome: "João Silva", email: "joao@futelite.com", ultimoAcesso: "2025-12-25 14:30" },
+    { id: "2", nome: "Maria Oliveira", email: "maria@futelite.com", ultimoAcesso: "2025-12-24 09:15" },
+  ];
+
+  // Mock de log de atividades
+  const logAtividades = [
+    { data: "2025-12-25 18:45", usuario: "Super Admin", acao: "Criou nova escolinha: Gol de Placa Academy" },
+    { data: "2025-12-25 15:20", usuario: "João Silva", acao: "Alterou plano de Pequenos Craques para Pro" },
+    { data: "2025-12-24 11:10", usuario: "Super Admin", acao: "Atualizou configurações financeiras" },
+    { data: "2025-12-23 22:05", usuario: "Maria Oliveira", acao: "Removeu superadmin inativo" },
+  ];
+
+  const onSubmitSeguranca = async (data: SegurancaFormData) => {
+    try {
+      await new Promise(r => setTimeout(r, 1200));
+      console.log("Configurações de segurança atualizadas:", data);
+      toast.success("Configurações de segurança atualizadas com sucesso!");
+      resetNovoAdmin({ novoSuperAdminEmail: "" });
+    } catch {
+      toast.error("Erro ao salvar configurações de segurança");
+    }
+  };
+  //segurança e log
+  const adicionarSuperAdmin = () => {
+    toast.success("Convite enviado para novo superadmin!");
+    resetNovoAdmin({ novoSuperAdminEmail: "" });
+  };
+
+  const removerSuperAdmin = (email: string) => {
+    toast.success(`Superadmin ${email} removido com sucesso!`);
+  };
+
+// Form Backup (8)
+  const {
+    register: registerBackup,
+    handleSubmit: handleSubmitBackup,
+    control,
+    formState: { isSubmitting: isSubmittingBackup },
+  } = useForm<BackupFormData>({
+    resolver: zodResolver(backupSchema),
+    defaultValues: {
+      frequenciaBackup: "semanal",
+      ativarBackupAutomatico: true,
+    },
+  });
+
+  // Mock de histórico de backups 
+  const historicoBackups = [
+    { data: "2025-12-25 03:00", tipo: "Automático", tamanho: "2.4 GB", status: "Concluído" },
+    { data: "2025-12-18 03:00", tipo: "Automático", tamanho: "2.3 GB", status: "Concluído" },
+    { data: "2025-12-11 03:00", tipo: "Automático", tamanho: "2.2 GB", status: "Concluído" },
+    { data: "2025-12-01 14:30", tipo: "Manual", tamanho: "2.1 GB", status: "Concluído" },
+  ];
+
+  const onSubmitBackup = async (data: BackupFormData) => {
+    try {
+      await new Promise(r => setTimeout(r, 1200));
+      console.log("Configurações de backup atualizadas:", data);
+      toast.success("Configurações de backup atualizadas com sucesso!");
+    } catch {
+      toast.error("Erro ao salvar configurações de backup");
+    }
+  };
+
+  const exportarDados = async (formato: "csv" | "excel") => {
+    try {
+      await new Promise(r => setTimeout(r, 2000));
+      toast.success(`Exportação em ${formato.toUpperCase()} iniciada! Download começará em breve.`);
+    } catch {
+      toast.error("Erro ao exportar dados");
+    }
+  };
+
+  const backupManual = async () => {
+    try {
+      await new Promise(r => setTimeout(r, 3000));
+      toast.success("Backup manual iniciado! Você será notificado quando concluir.");
+    } catch {
+      toast.error("Erro ao iniciar backup manual");
     }
   };
 
@@ -302,6 +413,8 @@ const ConfiguracoesPage = () => {       //Inicio da função
             <TabsTrigger value="financeiro">Pagamentos e Financeiro</TabsTrigger>
             <TabsTrigger value="notificacoes">Notificações</TabsTrigger>
             <TabsTrigger value="regras">Regras</TabsTrigger>
+            <TabsTrigger value="seguranca">Segurança e Logs</TabsTrigger>
+            <TabsTrigger value="backup">Backup</TabsTrigger>
         </TabsList>
 
         {/* ABA 1: Perfil do Superadmin */}
@@ -765,6 +878,259 @@ const ConfiguracoesPage = () => {       //Inicio da função
               </form>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* ABA 7: Segurança e Logs (NOVA ETAPA 6) */}
+        <TabsContent value="seguranca">
+          <div className="space-y-8">
+            {/* Segurança */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Shield className="h-6 w-6 text-red-600" />
+                  Configurações de Segurança
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSubmitSeguranca(onSubmitSeguranca)} className="space-y-6">
+                  <div className="flex items-center justify-between p-4 border rounded-lg bg-red-50">
+                    <div>
+                      <Label className="text-lg font-semibold flex items-center gap-2">
+                        <Shield className="h-5 w-5" />
+                        Autenticação em 2 Fatores (2FA) Obrigatória
+                      </Label>
+                      <p className="text-sm text-gray-600 mt-1">Todos os superadmins devem usar 2FA para acessar a plataforma</p>
+                    </div>
+                    <Switch {...registerSeguranca("ativar2FAObrigatorio")} />
+                  </div>
+
+                  {/* Adicionar novo superadmin */}
+                  <div className="space-y-4 p-6 border rounded-lg bg-blue-50">
+                    <h3 className="text-lg font-semibold flex items-center gap-2">
+                      <UserPlus className="h-5 w-5" />
+                      Adicionar Novo Superadmin
+                    </h3>
+                    <div className="flex gap-3">
+                      <Input
+                        type="email"
+                        placeholder="email@novo-superadmin.com"
+                        {...registerSeguranca("novoSuperAdminEmail")}
+                      />
+                      <Button type="button" onClick={adicionarSuperAdmin} className="bg-blue-600 hover:bg-blue-700">
+                        Enviar Convite
+                      </Button>
+                    </div>
+                  </div>
+
+                  <Button type="submit" disabled={isSubmittingSeguranca} className="bg-linear-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700">
+                    {isSubmittingSeguranca ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Salvando segurança...
+                      </>
+                    ) : (
+                      "Salvar Configurações de Segurança"
+                    )}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+
+            {/* Lista de Superadmins */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-6 w-6 text-gray-600" />
+                  Superadmins Ativos
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nome</TableHead>
+                      <TableHead>E-mail</TableHead>
+                      <TableHead>Último Acesso</TableHead>
+                      <TableHead className="text-right">Ação</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {outrosSuperAdmins.map((admin) => (
+                      <TableRow key={admin.id}>
+                        <TableCell className="font-medium">{admin.nome}</TableCell>
+                        <TableCell>{admin.email}</TableCell>
+                        <TableCell>{admin.ultimoAcesso}</TableCell>
+                        <TableCell className="text-right">
+                          <Button size="sm" variant="destructive" onClick={() => removerSuperAdmin(admin.email)}>
+                            <UserX className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+
+            {/* Log de Atividades */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Activity className="h-6 w-6 text-purple-600" />
+                  Log de Atividades Recentes
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Data/Hora</TableHead>
+                      <TableHead>Usuário</TableHead>
+                      <TableHead>Ação</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {logAtividades.map((log, i) => (
+                      <TableRow key={i}>
+                        <TableCell>{log.data}</TableCell>
+                        <TableCell className="font-medium">{log.usuario}</TableCell>
+                        <TableCell>{log.acao}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="backup">
+          <div className="space-y-8">
+            {/* Configurações de Backup Automático */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Database className="h-6 w-6 text-teal-600" />
+                  Backup Automático
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSubmitBackup(onSubmitBackup)} className="space-y-6">
+                  <div className="flex items-center justify-between p-4 border rounded-lg bg-teal-50">
+                    <div>
+                      <Label className="text-lg font-semibold flex items-center gap-2">
+                        <Clock className="h-5 w-5" />
+                        Ativar Backup Automático
+                      </Label>
+                      <p className="text-sm text-gray-600 mt-1">Backups regulares dos dados da plataforma</p>
+                    </div>
+                    <Switch {...registerBackup("ativarBackupAutomatico")} />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Frequência do Backup</Label>
+                    <Controller
+                      name="frequenciaBackup"
+                      control={control}
+                      render={({ field }) => (
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione a frequência" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="diario">Diário (todas as noites às 03:00)</SelectItem>
+                            <SelectItem value="semanal">Semanal (toda segunda às 03:00)</SelectItem>
+                            <SelectItem value="mensal">Mensal (dia 1 às 03:00)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                  </div>
+
+                  <div className="flex gap-4">
+                    <Button type="submit" disabled={isSubmittingBackup} className="bg-linear-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700">
+                      {isSubmittingBackup ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Salvando...
+                        </>
+                      ) : (
+                        "Salvar Configurações de Backup"
+                      )}
+                    </Button>
+
+                    <Button type="button" onClick={backupManual} variant="outline" className="border-teal-600 text-teal-600 hover:bg-teal-50">
+                      <Database className="mr-2 h-4 w-4" />
+                      Iniciar Backup Manual Agora
+                    </Button>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+
+            {/* Exportação de Dados */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Download className="h-6 w-6 text-blue-600" />
+                  Exportação de Dados
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <p className="text-gray-600">Exporte todos os dados da plataforma para análise ou migração</p>
+                  <div className="flex gap-4">
+                    <Button onClick={() => exportarDados("csv")} className="bg-blue-600 hover:bg-blue-700">
+                      <Download className="mr-2 h-4 w-4" />
+                      Exportar como CSV
+                    </Button>
+                    <Button onClick={() => exportarDados("excel")} className="bg-green-600 hover:bg-green-700">
+                      <Download className="mr-2 h-4 w-4" />
+                      Exportar como Excel
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Histórico de Backups */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Clock className="h-6 w-6 text-gray-600" />
+                  Histórico de Backups
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Data/Hora</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Tamanho</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {historicoBackups.map((backup, i) => (
+                      <TableRow key={i}>
+                        <TableCell>{backup.data}</TableCell>
+                        <TableCell>
+                          <Badge variant={backup.tipo === "Automático" ? "secondary" : "outline"}>
+                            {backup.tipo}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{backup.tamanho}</TableCell>
+                        <TableCell>
+                          <Badge className="bg-green-600">{backup.status}</Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
