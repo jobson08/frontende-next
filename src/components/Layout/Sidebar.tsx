@@ -1,7 +1,7 @@
 // src/components/layout/Sidebar.tsx
 "use client";
 
-import { BarChart3, Building2, Clock, CreditCard, LifeBuoy, UserPlus } from "lucide-react";
+import { BarChart3, Building2, Clock, CreditCard, LifeBuoy, UserPlus, Trophy, Activity } from "lucide-react";
 import {
   Home,
   Users,
@@ -10,46 +10,47 @@ import {
   DollarSign,
   Settings,
   LogOut,
-  Trophy,
   BookOpen,
   MessageSquare,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "../ui/button";
-import { Avatar } from "@radix-ui/react-avatar";
-import { AvatarFallback } from "../ui/avatar";
+import { Avatar, AvatarFallback } from "../ui/avatar";
 
 type UserType = "ADMIN" | "ALUNO" | "RESPONSAVEL" | "FUNCIONARIO" | "SUPERADMIN";
 
 interface SidebarProps {
   userType: UserType;
   userName: string;
+  // Novos props para controlar os módulos extras
+  aulasExtrasAtivas?: boolean;
+  crossfitAtivo?: boolean;
 }
 
 const menuItems = {
   SUPERADMIN: [
-  { icon: Home, label: "Dashboard Global", href: "/superadmin" },
-  { icon: Building2, label: "Escolinhas", href: "/superadmin/tenants" },
-  { icon: UserPlus, label: "Criar Nova Escolinha", href: "/superadmin/tenants/novo" },
-  { icon: DollarSign, label: "Pagamentos SaaS", href: "/superadmin/pagamentos" },
-  { icon: BarChart3, label: "Relatórios Globais", href: "/superadmin/relatorios" },
-  { icon: CreditCard, label: "Assinaturas", href: "/superadmin/assinaturas" },
-  { icon: Settings, label: "Configurações SaaS", href: "/superadmin/configuracoes" },
-  { icon: LifeBuoy, label: "Suporte", href: "/superadmin/suporte" },
-],
+    { icon: Home, label: "Dashboard Global", href: "/superadmin" },
+    { icon: Building2, label: "Escolinhas", href: "/superadmin/tenants" },
+    { icon: UserPlus, label: "Criar Nova Escolinha", href: "/superadmin/tenants/novo" },
+    { icon: DollarSign, label: "Pagamentos SaaS", href: "/superadmin/pagamentos" },
+    { icon: BarChart3, label: "Relatórios Globais", href: "/superadmin/relatorios" },
+    { icon: CreditCard, label: "Assinaturas", href: "/superadmin/assinaturas" },
+    { icon: Settings, label: "Configurações SaaS", href: "/superadmin/configuracoes" },
+    { icon: LifeBuoy, label: "Suporte", href: "/superadmin/suporte" },
+  ],
   ADMIN: [
-    { icon: Home, label: "Admin", href: "/admin" },
-    { icon: Users, label: "Alunos", href: "/aluno" },
+    { icon: Home, label: "Dashboard", href: "/admin" },
+    { icon: Users, label: "Alunos", href: "/alunos" },
     { icon: User, label: "Responsáveis", href: "/responsavel" },
-    { icon: Users, label: "Funcionarios", href: "/funcionario" },
+    { icon: Users, label: "Funcionários", href: "/funcionario" },
     { icon: Calendar, label: "Treinos", href: "/treinos" },
     { icon: DollarSign, label: "Financeiro", href: "/financeiro" },
+    { icon: DollarSign, label: "Inadimplentes", href: "/iadimplentes" },
     { icon: Settings, label: "Configurações", href: "/configuracoes" },
   ],
   ALUNO: [
     { icon: Home, label: "Meu Dashboard", href: "/dashboarduser/aluno-dashboard" },
-   // { icon: Calendar, label: "Minhas Aulas", href: "/dashboarduser/aluno-dashboard/aulas" },
     { icon: Trophy, label: "Meu Progresso", href: "/dashboarduser/aluno-dashboard/progresso" },
     { icon: BookOpen, label: "Treinos", href: "/dashboarduser/aluno-dashboard/treinos" },
     { icon: MessageSquare, label: "Mensagens", href: "/dashboarduser/aluno-dashboard/mensagens" },
@@ -57,7 +58,6 @@ const menuItems = {
   RESPONSAVEL: [
     { icon: Home, label: "Meu Dashboard", href: "/dashboarduser/responsavel-dashboard" },
     { icon: Users, label: "Meus Filhos", href: "/dashboarduser/responsavel-dashboard/filhos" },
-    //{ icon: Calendar, label: "Aulas dos Filhos", href: "/dashboarduser/responsavel-dashboard/aulas" },
     { icon: DollarSign, label: "Pagamentos", href: "/dashboarduser/responsavel-dashboard/pagamentos" },
     { icon: MessageSquare, label: "Comunicados", href: "/dashboarduser/responsavel-dashboard/comunicados" },
   ],
@@ -70,13 +70,38 @@ const menuItems = {
   ],
 };
 
-export function Sidebar({ userType, userName }: SidebarProps) {
-const pathname = usePathname();
+export function Sidebar({ userType, userName, aulasExtrasAtivas = false, crossfitAtivo = false }: SidebarProps) {
+  const pathname = usePathname();
 
-  const items = menuItems[userType];
+  let items = menuItems[userType];
+
+  // Se for ADMIN, adiciona os itens extras condicionalmente
+  if (userType === "ADMIN") {
+    const itensExtras = [];
+
+    if (aulasExtrasAtivas) {
+      itensExtras.push({ icon: Trophy, label: "Aulas Extras", href: "/aulas-extras" });
+    }
+
+    if (crossfitAtivo) {
+      itensExtras.push({ icon: Activity, label: "CrossFit Adultos", href: "/crossfit" });
+    }
+
+    // Insere os itens extras antes das Configurações
+    const configuracoesIndex = items.findIndex(item => item.label === "Configurações");
+    if (configuracoesIndex !== -1) {
+      items = [
+        ...items.slice(0, configuracoesIndex),
+        ...itensExtras,
+        ...items.slice(configuracoesIndex),
+      ];
+    } else {
+      items = [...items, ...itensExtras];
+    }
+  }
 
   return (
- <div className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 bg-slate-900 text-white lg:border-r lg:border-gray-200">
+    <div className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 bg-slate-900 text-white lg:border-r lg:border-gray-200">
       <div className="flex flex-col h-full">
         {/* Logo */}
         <div className="flex items-center justify-center h-16 border-b border-gray-200">
@@ -85,14 +110,14 @@ const pathname = usePathname();
           </h1>
         </div>
 
-        {/* Menu com scroll nativo — SEM ScrollArea! */}
+        {/* Menu com scroll nativo */}
         <div className="flex-1 overflow-y-auto px-4 py-6">
           <nav className="space-y-2">
             {items.map((item) => (
               <Button
                 key={item.href}
                 asChild
-                variant={pathname === item.href ? "secondary" : "ghost"}
+                variant={pathname.startsWith(item.href) ? "secondary" : "ghost"} // melhor pra sub-rotas
                 className="w-full justify-start text-left font-medium"
               >
                 <Link href={item.href}>
