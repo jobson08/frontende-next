@@ -1,12 +1,14 @@
-// src/app/dashboard/responsavel/page.tsx
+// src/app/dashboard/responsavel/page.tsx (atualizado)
 "use client";
 
+import { useEscolinhaConfig } from "@/src/context/EscolinhaConfigContext";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Calendar, AlertCircle, Trophy, Key} from "lucide-react";
+import { Calendar, AlertCircle, Trophy, Key, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
+import Link from "next/link";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/card";
 import { Button } from "@/src/components/ui/button";
@@ -28,7 +30,10 @@ const senhaSchema = z.object({
 
 type SenhaFormData = z.infer<typeof senhaSchema>;
 
-const ResponsavelDashboardPage = () => {
+const ResponsavelDashboardPage = () => {    //Inicio da função
+
+  // CONFIGURAÇÃO DA ESCOLINHA (em produção vem do Supabase ou contexto) esconder card renda extra
+  const { aulasExtrasAtivas } = useEscolinhaConfig();
   const [openModalSenha, setOpenModalSenha] = useState(false);
 
   const {
@@ -42,7 +47,7 @@ const ResponsavelDashboardPage = () => {
 
   const onSubmitSenha = async (data: SenhaFormData) => {
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500)); // simulação
+      await new Promise(resolve => setTimeout(resolve, 1500));
       console.log("Senha do responsável alterada:", data.novaSenha);
       toast.success("Senha alterada com sucesso!");
       reset();
@@ -59,6 +64,9 @@ const ResponsavelDashboardPage = () => {
       { name: "Maria Luiza", idade: 8, categoria: "Sub-9", statusMensalidade: "Pendente" },
     ],
   };
+
+  // CONFIGURAÇÃO DA ESCOLINHA (em produção vem do Supabase ou contexto)
+
 
   return (
     <div className="p-4 lg:p-8 space-y-8">
@@ -117,6 +125,48 @@ const ResponsavelDashboardPage = () => {
         </Dialog>
       </div>
 
+      {/* CARD DESTAQUE: SOLICITAR AULA EXTRA — SÓ APARECE SE ATIVADO */}
+      {aulasExtrasAtivas && (
+        <Card className="border-2 border-yellow-400 bg-linear-to-r from-yellow-50 to-orange-50 hover:shadow-2xl transition-all cursor-pointer">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-4 text-yellow-800">
+              <Trophy className="h-10 w-10 text-yellow-600" />
+              Quer acelerar o desenvolvimento do seu filho?
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-lg text-gray-700">
+              Solicite <strong>aulas extras individuais</strong> com foco em finalização, condicionamento físico, drible, goleiro e muito mais!
+            </p>
+            <ul className="space-y-2 text-gray-600">
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5 text-green-600" />
+                Aulas personalizadas com os melhores treinadores
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5 text-green-600" />
+                Horários flexíveis
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5 text-green-600" />
+                A partir de <strong>R$ 70</strong> por aula
+              </li>
+            </ul>
+
+            <Button 
+              asChild 
+              size="lg" 
+              className="w-full mt-6 bg-linear-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 shadow-lg"
+            >
+              <Link href="/dashboarduser/responsavel-dashboard/aulas-extras">
+                <Trophy className="mr-2 h-5 w-5" />
+                Solicitar Aula Extra Agora
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Cards dos Filhos */}
       <div className="grid gap-6 md:grid-cols-2">
         {responsavel.filhos.map((filho) => (
@@ -124,7 +174,7 @@ const ResponsavelDashboardPage = () => {
             <CardHeader>
               <div className="flex items-center gap-4">
                 <Avatar className="h-20 w-20">
-                  <AvatarFallback className="bg-linear-to-r from-purple-600 to-pink-600 text-white text-2xl">
+                  <AvatarFallback className="bg-linear-to-br from-purple-600 to-pink-600 text-white text-2xl">
                     {filho.name.split(" ").map(n => n[0]).join("")}
                   </AvatarFallback>
                 </Avatar>

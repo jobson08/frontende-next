@@ -19,7 +19,7 @@ import { usePathname } from "next/navigation";
 import { 
   BarChart3, BookOpen, Building2, Calendar, Clock, CreditCard, DollarSign, Home, 
   LifeBuoy, LogOut, Menu, MessageSquare, Settings, Trophy, User, UserPlus, Users, 
-  Bell // ← ÍCONE DO SINO
+  Bell, Activity  // ← Adicionado Activity para CrossFit
 } from "lucide-react";
 
 interface NavbarProps {
@@ -28,64 +28,64 @@ interface NavbarProps {
     name: string;
     email: string;
   };
-  inadimplentesCount?: number; // ← Só usado no ADMIN
+  inadimplentesCount?: number;
+  // Novos props para módulos extras
+  aulasExtrasAtivas?: boolean;
+  crossfitAtivo?: boolean;
 }
 
-const menuItems = {
-  SUPERADMIN: [
-  { icon: Home, label: "Dashboard Global", href: "/superadmin" },
-  { icon: Building2, label: "Escolinhas", href: "/superadmin/tenants" },
-  { icon: UserPlus, label: "Criar Nova Escolinha", href: "/superadmin/tenants/novo" },
-  { icon: DollarSign, label: "Pagamentos SaaS", href: "/superadmin/pagamentos" },
-  { icon: BarChart3, label: "Relatórios Globais", href: "/superadmin/relatorios" },
-  { icon: CreditCard, label: "Assinaturas", href: "/superadmin/assinaturas" },
-  { icon: Settings, label: "Configurações SaaS", href: "/superadmin/configuracoes" },
-  { icon: LifeBuoy, label: "Suporte", href: "/superadmin/suporte" },
-],
-  ADMIN: [
+const Header = ({ 
+  userType, 
+  user, 
+  inadimplentesCount = 0,
+  aulasExtrasAtivas = false,
+  crossfitAtivo = false 
+}: NavbarProps) => {
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const pathname = usePathname();
+
+  // Menu base para ADMIN
+  let items = [
     { icon: Home, label: "Admin", href: "/admin" },
     { icon: Users, label: "Alunos", href: "/aluno" },
     { icon: User, label: "Responsáveis", href: "/responsavel" },
-    { icon: Users, label: "Funcionarios", href: "/funcionario" },
+    { icon: Users, label: "Funcionários", href: "/funcionario" },
     { icon: Calendar, label: "Treinos", href: "/treinos" },
     { icon: DollarSign, label: "Financeiro", href: "/financeiro" },
     { icon: Settings, label: "Configurações", href: "/configuracoes" },
-  ],
-  ALUNO: [
-    { icon: Home, label: "Meu Dashboard", href: "/dashboarduser/aluno-dashboard" },
-    { icon: Calendar, label: "Minhas Aulas", href: "/dashboarduser/aluno-dashboard/aulas" },
-    { icon: Trophy, label: "Meu Progresso", href: "/dashboarduser/aluno-dashboard/progresso" },
-    { icon: BookOpen, label: "Treinos", href: "/dashboarduser/aluno-dashboard/treinos" },
-    { icon: MessageSquare, label: "Mensagens", href: "/dashboarduser/aluno-dashboard/mensagens" },
-  ],
-  RESPONSAVEL: [
-    { icon: Home, label: "Meu Dashboard", href: "/dashboarduser/responsavel-dashboard" },
-    { icon: Users, label: "Meus Filhos", href: "/dashboarduser/responsavel-dashboard/filhos" },
-    { icon: Calendar, label: "Aulas dos Filhos", href: "/dashboarduser/responsavel-dashboard/aulas" },
-    { icon: DollarSign, label: "Pagamentos", href: "/dashboarduser/responsavel-dashboard/pagamentos" },
-    { icon: MessageSquare, label: "Comunicados", href: "/dashboarduser/responsavel-dashboard/comunicados" },
-  ],
-  FUNCIONARIO: [
-    { icon: Home, label: "Meu Dashboard", href: "/dashboarduser/funcionario-dashboard" },
-    { icon: Calendar, label: "Minhas Aulas", href: "/dashboarduser/funcionario-dashboard/aulas" },
-    { icon: Users, label: "Meus Alunos", href: "/dashboarduser/funcionario-dashboard/alunos" },
-    { icon: Clock, label: "Horário", href: "/dashboarduser/funcionario-dashboard/horario" },
-    { icon: MessageSquare, label: "Mensagens", href: "/dashboarduser/funcionario-dashboard/mensagens" },
-  ],
-};
+  ];
 
-const Header = ({ userType, user, inadimplentesCount = 0 }: NavbarProps) => {      //Inicio da função
+  // Adiciona itens condicionais para ADMIN
+  if (userType === "ADMIN") {
+    const itensExtras = [];
 
-    const [mobileOpen, setMobileOpen] = useState(false);
-  const pathname = usePathname();
+    if (aulasExtrasAtivas) {
+      itensExtras.push({ icon: Trophy, label: "Aulas Extras", href: "/aulas-extras" });
+    }
 
-  const items = menuItems[userType] || [];
+    if (crossfitAtivo) {
+      itensExtras.push({ icon: Activity, label: "CrossFit Adultos", href: "/crossfit" });
+    }
+
+    // Insere antes das Configurações
+    const configIndex = items.findIndex(item => item.label === "Configurações");
+    if (configIndex !== -1) {
+      items = [
+        ...items.slice(0, configIndex),
+        ...itensExtras,
+        ...items.slice(configIndex),
+      ];
+    } else {
+      items = [...items, ...itensExtras];
+    }
+  }
 
   const isAdmin = userType === "ADMIN";
-    return ( 
-       <header className="fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-200 shadow-sm">
+
+  return ( 
+    <header className="fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-200 shadow-sm">
       <div className="flex items-center justify-between h-16 px-4 lg:px-8">
-        {/* MOBILE MENU INICIO*/}
+        {/* MOBILE MENU */}
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
           <SheetTrigger asChild>
             <Button variant="ghost" size="icon-lg" className="lg:hidden">
@@ -94,22 +94,22 @@ const Header = ({ userType, user, inadimplentesCount = 0 }: NavbarProps) => {   
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="p-0 w-72 bg-white">
-
-              {/* LOGO CENTRAL */}
             <div className="flex flex-col h-full">
+              {/* LOGO */}
               <div className="flex items-center justify-center h-16 border-b border-gray-200">
-                  <h1 className="text-2xl font-bold bg-linear-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                    EDUPAY
-                  </h1>
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  EDUPAY
+                </h1>
               </div>
 
+              {/* MENU MOBILE — COM ITENS DINÂMICOS */}
               <nav className="flex-1 overflow-y-auto py-4">
                 <div className="px-3 space-y-1">
                   {items.map((item) => (
                     <Button
                       key={item.href}
                       asChild
-                      variant={pathname === item.href ? "secondary" : "ghost"}
+                      variant={pathname === item.href || pathname.startsWith(item.href) ? "secondary" : "ghost"}
                       className="w-full justify-start h-11"
                       onClick={() => setMobileOpen(false)}
                     >
@@ -122,10 +122,11 @@ const Header = ({ userType, user, inadimplentesCount = 0 }: NavbarProps) => {   
                 </div>
               </nav>
 
+              {/* PERFIL NO FINAL */}
               <div className="border-t border-gray-200 p-4">
                 <div className="flex items-center gap-3">
                   <Avatar className="h-10 w-10">
-                    <AvatarFallback className="bg-linear-to-br from-blue-600 to-purple-600 text-white">
+                    <AvatarFallback className="bg-gradient-to-br from-blue-600 to-purple-600 text-white">
                       {user.name.split(" ").map((n) => n[0]).join("")}
                     </AvatarFallback>
                   </Avatar>
@@ -138,18 +139,17 @@ const Header = ({ userType, user, inadimplentesCount = 0 }: NavbarProps) => {   
             </div>
           </SheetContent>
         </Sheet>
-        {/* MOBILE MENU FIM*/}
 
         {/* LOGO CENTRAL */}
         <div className="flex items-center">
-          <h1 className="text-2xl font-bold bg-linear-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
             EDUPAY
           </h1>
         </div>
 
-        {/* DIREITA: NOTIFICAÇÕES (SÓ PARA ADMIN) + AVATAR */}
+        {/* DIREITA: NOTIFICAÇÕES + AVATAR */}
         <div className="flex items-center gap-4">
-          {/* SINO COM BADGE — SÓ MOSTRA SE FOR ADMIN E TIVER INADIMPLENTES */}
+          {/* SINO COM BADGE — SÓ PARA ADMIN */}
           {isAdmin && (
             <Button variant="ghost" size="icon" className="relative" asChild>
               <Link href="/inadimplentes">
@@ -168,7 +168,7 @@ const Header = ({ userType, user, inadimplentesCount = 0 }: NavbarProps) => {   
           <DropdownMenu>
             <DropdownMenuTrigger className="flex items-center gap-3 rounded-full focus:outline-none">
               <Avatar className="h-9 w-9 ring-2 ring-offset-2 ring-purple-400">
-                <AvatarFallback className="bg-linear-to-br from-blue-600 to-purple-600 text-white text-sm font-medium">
+                <AvatarFallback className="bg-gradient-to-br from-blue-600 to-purple-600 text-white text-sm font-medium">
                   {user.name.split(" ").map((n) => n[0]).join("").toUpperCase()}
                 </AvatarFallback>
               </Avatar>
@@ -199,7 +199,7 @@ const Header = ({ userType, user, inadimplentesCount = 0 }: NavbarProps) => {   
         </div>
       </div>
     </header> 
-     );
+  );
 }
- 
+
 export default Header;

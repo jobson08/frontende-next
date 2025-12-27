@@ -1,7 +1,6 @@
 // src/components/layout/SidebarMobile.tsx
 "use client";
 
-import { Shield } from "lucide-react";
 import { Menu } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "../ui/sheet";
 import { Button } from "../ui/button";
@@ -9,14 +8,23 @@ import { Sidebar } from "./Sidebar";
 import { useState } from "react";
 
 interface MobileSidebarProps {
-  userType: "ADMIN" | "SUPERADMIN" | "ALUNO" | "RESPONSAVEL" | "FUNCIONARIO";
+  userType: "ADMIN" | "SUPERADMIN" | "ALUNO" | "RESPONSAVEL" | "FUNCIONARIO" | "CROSSFIT";
   userName: string;
+  // Novos props para os módulos extras
+  aulasExtrasAtivas?: boolean;
+  crossfitAtivo?: boolean;
 }
-export function SidebarMobile({ userType, userName }: MobileSidebarProps) {   //Inicio da função
 
+export function SidebarMobile({ 
+  userType, 
+  userName, 
+  aulasExtrasAtivas = false, 
+  crossfitAtivo = false 
+}: MobileSidebarProps) {
   const [open, setOpen] = useState(false);
+
   return (
-   <Sheet open={open} onOpenChange={setOpen}>
+    <Sheet open={open} onOpenChange={setOpen}>
       {/* BOTÃO HAMBURGER — VISÍVEL NO MOBILE */}
       <SheetTrigger asChild>
         <Button
@@ -29,13 +37,18 @@ export function SidebarMobile({ userType, userName }: MobileSidebarProps) {   //
         </Button>
       </SheetTrigger>
 
-      {/* DRAWER — COM ESTILOS EXPLÍCITOS PARA GARANTIR VISIBILIDADE */}
+      {/* DRAWER MOBILE — PASSANDO OS PROPS PARA A SIDEBAR */}
       <SheetContent 
         side="left" 
         className="p-0 w-64 bg-white border-r border-gray-200 overflow-hidden"
       >
         <div className="h-full flex flex-col">
-          <Sidebar userType={userType} userName={userName} />
+          <Sidebar 
+            userType={userType} 
+            userName={userName}
+            aulasExtrasAtivas={aulasExtrasAtivas}
+            crossfitAtivo={crossfitAtivo}
+          />
         </div>
       </SheetContent>
     </Sheet>

@@ -186,18 +186,17 @@ const ClientesCrossFitPage = () => {
         <CardHeader>
           <div className="flex items-center justify-between">
             <Button asChild className="bg-linear-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700">
-            <Link href="/crossfit/novo">
-                <UserPlus className="mr-2 h-4 w-4" />
-                Novo Aluno
-            </Link>
+              <Link href="/crossfit/presenca">
+                  <Calendar className="mr-2 h-4 w-4" />
+                  Marca Presença
+              </Link>
             </Button>
-          </div>
-            <div className="flex items-center justify-between">
-            <Button asChild className="bg-linear-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700">
-            <Link href="/crossfit/presenca">
-                <UserPlus className="mr-2 h-4 w-4" />
-                Marca Presença
-            </Link>
+            {/* Botão novo aluno*/}
+             <Button asChild className="bg-linear-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700">
+              <Link href="/crossfit/novo">
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  Novo Aluno
+              </Link>
             </Button>
           </div>
         </CardHeader>
@@ -225,8 +224,9 @@ const ClientesCrossFitPage = () => {
                     </Avatar>
                     {cliente.nome}
                   </TableCell>
-                  <TableCell>
-                    <div className="space-y-1">
+
+                    <TableCell>  
+                  <div className="space-y-1">
                       <div className="flex items-center gap-1 text-sm">
                         <Mail className="h-3 w-3 text-gray-500" />
                         {cliente.email}
@@ -237,6 +237,7 @@ const ClientesCrossFitPage = () => {
                       </div>
                     </div>
                   </TableCell>
+
                   <TableCell>{format(cliente.dataInscricao, "dd/MM/yyyy")}</TableCell>
                   <TableCell>
                     <Badge variant="outline">{cliente.frequenciaSemanal} aulas/semana</Badge>

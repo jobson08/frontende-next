@@ -18,7 +18,7 @@ import { usePathname } from "next/navigation";
 import { Button } from "../ui/button";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 
-type UserType = "ADMIN" | "ALUNO" | "RESPONSAVEL" | "FUNCIONARIO" | "SUPERADMIN";
+type UserType = "ADMIN" | "ALUNO" | "RESPONSAVEL" | "FUNCIONARIO" |  "SUPERADMIN" | "CROSSFIT";
 
 interface SidebarProps {
   userType: UserType;
@@ -67,6 +67,10 @@ const menuItems = {
     { icon: Users, label: "Meus Alunos", href: "/dashboarduser/funcionario-dashboard/alunos" },
     { icon: Clock, label: "Horário", href: "/dashboarduser/funcionario-dashboard/horario" },
     { icon: MessageSquare, label: "Mensagens", href: "/dashboarduser/funcionario-dashboard/mensagens" },
+  ],
+  CROSSFIT:[
+    { icon: Home, label: "Meu Dashboard", href: "/dashboarduser/crossfit-dashboard" },
+    { icon: DollarSign, label: "Pagamentos", href: "/dashboarduser/crossfit-dashboard/pagamentos" },
   ],
 };
 
