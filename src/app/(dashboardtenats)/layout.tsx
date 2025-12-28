@@ -4,18 +4,22 @@ import { Sidebar } from "@/src/components/Layout/Sidebar";
 import { EscolinhaConfigProvider } from "@/src/context/EscolinhaConfigContext";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const userType = "ADMIN" as const;
+  const userType = "FUNCIONARIO" as const;
+
+  // STRING NORMAL — O TYPESCRIPT NÃO RECLAMA MAIS
+  const role: string = "treinador"; // mude pra "admin" pra testar
+
   const user = {
-    name: "João Silva",
-    email: "admin@escolinha.com",
+    name: role === "treinador" ? "Rafael Lima" : "João Silva",
+    email: role === "treinador" ? "rafael@escolinha.com" : "admin@escolinha.com",
   };
 
-  const inadimplentesCount = 12;
+  // COMPARAÇÃO NORMAL — FUNCIONA PERFEITO
+  const inadimplentesCount = role === "admin" ? 12 : 0;
 
-  // CONFIGURAÇÃO DA ESCOLINHA
   const configEscolinha = {
-    aulasExtrasAtivas: false,
-    crossfitAtivo: false, // ← MUDE AQUI PARA TESTAR
+    aulasExtrasAtivas: true,
+    crossfitAtivo: false,
   };
 
   return (
@@ -27,6 +31,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           inadimplentesCount={inadimplentesCount}
           aulasExtrasAtivas={configEscolinha.aulasExtrasAtivas}
           crossfitAtivo={configEscolinha.crossfitAtivo}
+          role={role}
         />
 
         <div className="flex">
@@ -36,6 +41,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               userName={user.name}
               aulasExtrasAtivas={configEscolinha.aulasExtrasAtivas}
               crossfitAtivo={configEscolinha.crossfitAtivo}
+              role={role}
             />
           </div>
 

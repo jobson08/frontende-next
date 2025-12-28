@@ -1,4 +1,4 @@
-// src/components/layout/Navbar.tsx (atualizado)
+// src/components/layout/Navbar.tsx (final - com treinador)
 "use client";
 
 import { useState } from "react";
@@ -17,9 +17,8 @@ import { Badge } from "@/src/components/ui/badge";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { 
-  BarChart3, BookOpen, Building2, Calendar, Clock, CreditCard, DollarSign, Home, 
-  LifeBuoy, LogOut, Menu, MessageSquare, Settings, Trophy, User, UserPlus, Users, 
-  Bell, Activity  // ← Adicionado Activity para CrossFit
+  Calendar, DollarSign, Home, LogOut, Menu, Settings, Trophy, User, Users, 
+  Bell, Activity, Star, BookOpen, MessageSquare 
 } from "lucide-react";
 
 interface NavbarProps {
@@ -29,9 +28,9 @@ interface NavbarProps {
     email: string;
   };
   inadimplentesCount?: number;
-  // Novos props para módulos extras
   aulasExtrasAtivas?: boolean;
   crossfitAtivo?: boolean;
+  role?: string; // "treinador", "admin", "administrativo"
 }
 
 const Header = ({ 
@@ -39,50 +38,88 @@ const Header = ({
   user, 
   inadimplentesCount = 0,
   aulasExtrasAtivas = false,
-  crossfitAtivo = false 
+  crossfitAtivo = false,
+  role = "treinador" // padrão pra teste
 }: NavbarProps) => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
+  
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let items: Array<{ icon: any; label: string; href: string }> = [];
 
-  // Menu base para ADMIN
-  let items = [
-    { icon: Home, label: "Admin", href: "/admin" },
-    { icon: Users, label: "Alunos", href: "/aluno" },
-    { icon: User, label: "Responsáveis", href: "/responsavel" },
-    { icon: Users, label: "Funcionários", href: "/funcionario" },
-    { icon: Calendar, label: "Treinos", href: "/treinos" },
-    { icon: DollarSign, label: "Financeiro", href: "/financeiro" },
-    { icon: Settings, label: "Configurações", href: "/configuracoes" },
-  ];
+  // ADMIN (DONO DA ESCOLINHA)
+  if (userType === "ADMIN" || role === "admin") {
+    items = [
+      { icon: Home, label: "Dashboard", href: "/dashboard" },
+      { icon: Users, label: "Alunos", href: "/alunos" },
+      { icon: User, label: "Responsáveis", href: "/responsavel" },
+      { icon: Users, label: "Funcionários", href: "/funcionario" },
+      { icon: Calendar, label: "Treinos", href: "/treinos" },
+      { icon: DollarSign, label: "Financeiro", href: "/financeiro" },
+      { icon: DollarSign, label: "Inadimplentes", href: "/iadimplentes" },
+      { icon: Settings, label: "Configurações", href: "/configuracoes" },
+    ];
 
-  // Adiciona itens condicionais para ADMIN
-  if (userType === "ADMIN") {
+    // Itens extras
     const itensExtras = [];
-
     if (aulasExtrasAtivas) {
       itensExtras.push({ icon: Trophy, label: "Aulas Extras", href: "/aulas-extras" });
     }
-
     if (crossfitAtivo) {
       itensExtras.push({ icon: Activity, label: "CrossFit Adultos", href: "/crossfit" });
     }
 
-    // Insere antes das Configurações
     const configIndex = items.findIndex(item => item.label === "Configurações");
-    if (configIndex !== -1) {
+    if (configIndex !== -1 && itensExtras.length > 0) {
       items = [
         ...items.slice(0, configIndex),
         ...itensExtras,
         ...items.slice(configIndex),
       ];
-    } else {
-      items = [...items, ...itensExtras];
     }
   }
 
-  const isAdmin = userType === "ADMIN";
+  // TREINADOR
+  else if (userType === "FUNCIONARIO" && role === "treinador") {
+    items = [
+      { icon: Home, label: "Meu Dashboard", href: "/treinador" },
+      { icon: Calendar, label: "Planos de Treinos", href: "/treinador/plano-treino" },
+      { icon: Users, label: "Marcar Presença", href: "/treinador/marcar-presenca" },
+      { icon: BookOpen, label: "Plano de Treino", href: "/treinador/plano-treino" },
+      //{ icon: Star, label: "Avaliar Alunos", href: "/treinador/avaliar-aluno" },
+      { icon: Users, label: "Meus Alunos", href: "/treinador/meus-alunos" },
+      { icon: MessageSquare, label: "Mensagens", href: "/treinador/mensagens" },
+    ];
 
-  return ( 
+    if (aulasExtrasAtivas) {
+      items.splice(3, 0, { icon: Trophy, label: "Aulas Extras", href: "/treinador/aulas-extras" });
+    }
+  }
+
+  // ALUNO
+  else if (userType === "ALUNO") {
+    items = [
+      { icon: Home, label: "Meu Dashboard", href: "/dashboarduser/aluno-dashboard" },
+      { icon: Trophy, label: "Meu Progresso", href: "/dashboarduser/aluno-dashboard/progresso" },
+      { icon: BookOpen, label: "Treinos", href: "/dashboarduser/aluno-dashboard/treinos" },
+      { icon: MessageSquare, label: "Mensagens", href: "/dashboarduser/aluno-dashboard/mensagens" },
+    ];
+  }
+
+  // RESPONSÁVEL
+  else if (userType === "RESPONSAVEL") {
+    items = [
+      { icon: Home, label: "Meu Dashboard", href: "/dashboarduser/responsavel-dashboard" },
+      { icon: Users, label: "Meus Filhos", href: "/dashboarduser/responsavel-dashboard/filhos" },
+      { icon: DollarSign, label: "Pagamentos", href: "/dashboarduser/responsavel-dashboard/pagamentos" },
+      { icon: MessageSquare, label: "Comunicados", href: "/dashboarduser/responsavel-dashboard/comunicados" },
+    ];
+  }
+
+  // SINO DE INADIMPLENTES — SÓ PARA ADMIN
+  const isAdmin = userType === "ADMIN" || role === "admin";
+
+  return (
     <header className="fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-200 shadow-sm">
       <div className="flex items-center justify-between h-16 px-4 lg:px-8">
         {/* MOBILE MENU */}
@@ -102,14 +139,14 @@ const Header = ({
                 </h1>
               </div>
 
-              {/* MENU MOBILE — COM ITENS DINÂMICOS */}
+              {/* MENU MOBILE */}
               <nav className="flex-1 overflow-y-auto py-4">
                 <div className="px-3 space-y-1">
                   {items.map((item) => (
                     <Button
                       key={item.href}
                       asChild
-                      variant={pathname === item.href || pathname.startsWith(item.href) ? "secondary" : "ghost"}
+                      variant={pathname.startsWith(item.href) ? "secondary" : "ghost"}
                       className="w-full justify-start h-11"
                       onClick={() => setMobileOpen(false)}
                     >
@@ -122,7 +159,7 @@ const Header = ({
                 </div>
               </nav>
 
-              {/* PERFIL NO FINAL */}
+              {/* PERFIL */}
               <div className="border-t border-gray-200 p-4">
                 <div className="flex items-center gap-3">
                   <Avatar className="h-10 w-10">
@@ -132,7 +169,9 @@ const Header = ({
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900 truncate">{user.name}</p>
-                    <p className="text-xs text-gray-500">{userType}</p>
+                    <p className="text-xs text-gray-500">
+                      {role ? role.charAt(0).toUpperCase() + role.slice(1) : userType}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -147,24 +186,21 @@ const Header = ({
           </h1>
         </div>
 
-        {/* DIREITA: NOTIFICAÇÕES + AVATAR */}
+        {/* DIREITA: SINO + AVATAR */}
         <div className="flex items-center gap-4">
-          {/* SINO COM BADGE — SÓ PARA ADMIN */}
           {isAdmin && (
             <Button variant="ghost" size="icon" className="relative" asChild>
-              <Link href="/inadimplentes">
+              <Link href="/iadimplentes">
                 <Bell className="h-5 w-5 text-gray-700" />
                 {inadimplentesCount > 0 && (
                   <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs bg-red-600 text-white">
                     {inadimplentesCount > 99 ? "99+" : inadimplentesCount}
                   </Badge>
                 )}
-                <span className="sr-only">Inadimplentes pendentes</span>
               </Link>
             </Button>
           )}
 
-          {/* AVATAR DROPDOWN */}
           <DropdownMenu>
             <DropdownMenuTrigger className="flex items-center gap-3 rounded-full focus:outline-none">
               <Avatar className="h-9 w-9 ring-2 ring-offset-2 ring-purple-400">
@@ -198,8 +234,8 @@ const Header = ({
           </DropdownMenu>
         </div>
       </div>
-    </header> 
+    </header>
   );
-}
+};
 
 export default Header;
