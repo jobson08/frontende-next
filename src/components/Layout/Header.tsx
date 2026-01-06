@@ -18,7 +18,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { 
   Calendar, DollarSign, Home, LogOut, Menu, Settings, Trophy, User, Users, 
-  Bell, Activity, Star, BookOpen, MessageSquare 
+  Bell, Activity, BookOpen, MessageSquare 
 } from "lucide-react";
 
 interface NavbarProps {
@@ -85,7 +85,6 @@ const Header = ({
       { icon: Home, label: "Meu Dashboard", href: "/treinador" },
       { icon: Calendar, label: "Planos de Treinos", href: "/treinador/plano-treino" },
       { icon: Users, label: "Marcar Presença", href: "/treinador/marcar-presenca" },
-      { icon: BookOpen, label: "Plano de Treino", href: "/treinador/plano-treino" },
       //{ icon: Star, label: "Avaliar Alunos", href: "/treinador/avaliar-aluno" },
       { icon: Users, label: "Meus Alunos", href: "/treinador/meus-alunos" },
       { icon: MessageSquare, label: "Mensagens", href: "/treinador/mensagens" },
@@ -134,7 +133,7 @@ const Header = ({
             <div className="flex flex-col h-full">
               {/* LOGO */}
               <div className="flex items-center justify-center h-16 border-b border-gray-200">
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                <h1 className="text-2xl font-bold bg-lineart-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                   EDUPAY
                 </h1>
               </div>
@@ -163,7 +162,7 @@ const Header = ({
               <div className="border-t border-gray-200 p-4">
                 <div className="flex items-center gap-3">
                   <Avatar className="h-10 w-10">
-                    <AvatarFallback className="bg-gradient-to-br from-blue-600 to-purple-600 text-white">
+                    <AvatarFallback className="bg-linear-to-br from-blue-600 to-purple-600 text-white">
                       {user.name.split(" ").map((n) => n[0]).join("")}
                     </AvatarFallback>
                   </Avatar>
@@ -181,7 +180,7 @@ const Header = ({
 
         {/* LOGO CENTRAL */}
         <div className="flex items-center">
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <h1 className="text-2xl font-bold bg-linear-to-br from-blue-600 to-purple-600 bg-clip-text text-transparent">
             EDUPAY
           </h1>
         </div>
@@ -204,7 +203,7 @@ const Header = ({
           <DropdownMenu>
             <DropdownMenuTrigger className="flex items-center gap-3 rounded-full focus:outline-none">
               <Avatar className="h-9 w-9 ring-2 ring-offset-2 ring-purple-400">
-                <AvatarFallback className="bg-gradient-to-br from-blue-600 to-purple-600 text-white text-sm font-medium">
+                <AvatarFallback className="bg-linear-to-br from-blue-600 to-purple-600 text-white text-sm font-medium">
                   {user.name.split(" ").map((n) => n[0]).join("").toUpperCase()}
                 </AvatarFallback>
               </Avatar>

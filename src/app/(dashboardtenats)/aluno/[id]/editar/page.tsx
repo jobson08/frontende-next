@@ -131,7 +131,7 @@ const EditarAlunoPage = () => {
       setValue("cpf", aluno.cpf || "");
       setValue("categoria", aluno.categoria);
       setValue("responsavelId", aluno.responsavelId || "");
-      setValue("status", aluno.status);
+     // setValue("status", aluno.status);
       setValue("observations", aluno.observations);
     }
   }, [aluno, setValue]);
@@ -382,7 +382,7 @@ const EditarAlunoPage = () => {
                 </div>
               </div>
               <p className="text-xs text-gray-500">
-                Ao redefinir, uma nova senha temporária será gerada e "enviada" por e-mail ao responsável
+                Ao redefinir, uma nova senha temporária será gerada enviad por e-mail ao responsável
               </p>
             </div>
 

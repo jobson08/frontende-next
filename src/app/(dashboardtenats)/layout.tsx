@@ -7,7 +7,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const userType = "FUNCIONARIO" as const;
 
   // STRING NORMAL — O TYPESCRIPT NÃO RECLAMA MAIS
-  const role: string = "treinador"; // mude pra "admin" pra testar
+  const role: string = "admin"; // mude pra "admin" ou "treinador" pra testar
 
   const user = {
     name: role === "treinador" ? "Rafael Lima" : "João Silva",

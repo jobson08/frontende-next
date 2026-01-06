@@ -80,7 +80,6 @@ export function Sidebar({
       { icon: Home, label: "Meu Dashboard", href: "/treinador" },
       { icon: Calendar, label: "Planos de Treinos", href: "/treinador/plano-treino" },
       { icon: Users, label: "Marcar Presença", href: "/treinador/marcar-presenca" },
-      { icon: BookOpen, label: "Plano de Treino", href: "/treinador/plano-treino" },
       //{ icon: Star, label: "Avaliar Alunos", href: "/treinador/avaliar-aluno" },
       { icon: Users, label: "Meus Alunos", href: "/treinador/meus-alunos" },
       { icon: MessageSquare, label: "Mensagens", href: "/treinador/mensagens" },
