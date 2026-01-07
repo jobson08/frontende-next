@@ -174,6 +174,7 @@ const ConfiguracoesAdminPage = () => {
       <Tabs defaultValue="geral" className="space-y-6">
         <TabsList className="grid w-full grid-cols-2 md:grid-cols-5">
           <TabsTrigger value="geral">Geral</TabsTrigger>
+          <TabsTrigger value="valores">Valores e Cobrança</TabsTrigger>
           <TabsTrigger value="aulasextras">Aulas Extras</TabsTrigger>
           <TabsTrigger value="crossfit">CrossFit</TabsTrigger>
           <TabsTrigger value="pagamentos">Pagamentos</TabsTrigger>
@@ -195,7 +196,7 @@ const ConfiguracoesAdminPage = () => {
                 <div className="flex flex-col items-center gap-4 py-6 border-b">
                   <Avatar className="h-40 w-40 ring-4 ring-blue-100">
                     <AvatarImage src={logoPreview || undefined} />
-                    <AvatarFallback className="bg-gradient-to-br from-blue-600 to-cyan-600 text-white text-4xl font-bold">
+                    <AvatarFallback className="bg-linear-to-br from-blue-600 to-cyan-600 text-white text-4xl font-bold">
                       GP
                     </AvatarFallback>
                   </Avatar>
@@ -230,7 +231,7 @@ const ConfiguracoesAdminPage = () => {
                   />
                 </div>
 
-                <Button type="submit" disabled={geralForm.formState.isSubmitting} className="bg-gradient-to-r from-blue-600 to-cyan-600">
+                <Button type="submit" disabled={geralForm.formState.isSubmitting} className="bg-linear-to-r from-blue-600 to-cyan-600">
                   {geralForm.formState.isSubmitting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -241,6 +242,69 @@ const ConfiguracoesAdminPage = () => {
                   )}
                 </Button>
               </form>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ABA VALORES AULAS */}
+        <TabsContent value="valores">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-2xl flex items-center gap-3">
+                <DollarSign className="h-8 w-8 text-green-600" />
+                Valores dos Serviços
+              </CardTitle>
+              <CardDescription>
+                Defina quanto você cobra dos alunos. Esses valores são usados automaticamente nas mensalidades.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-4">
+                  <Label className="text-lg font-semibold">Mensalidade Futebol</Label>
+                  <div className="flex items-center gap-4">
+                    <span className="text-lg font-bold">R$</span>
+                    <Input 
+                      type="number" 
+                      step="0.01" 
+                      defaultValue="150.00" 
+                      className="text-1xl font-bold h-10"
+                    />
+                    <span className="text-sm text-gray-600">/mês por aluno</span>
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    Valor cobrado de cada aluno de futebol mensalmente
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <Label className="text-sm font-semibold">Dia de Vencimento</Label>
+                  <div className="flex items-center gap-4">
+                    <span className="text-sm">Todo dia</span>
+                    <Input 
+                      type="number" 
+                      min="1" 
+                      max="31" 
+                      defaultValue="10" 
+                      className="w-20 text-sm h-10 text-center"
+                    />
+                    <span className="text-sm text-gray-600">do mês</span>
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    Mensalidades vencem nesse dia todo mês
+                  </p>
+                </div>
+              </div> 
+
+              <div className="flex justify-end pt-8">
+                <Button 
+                  size="lg" 
+                  className="px-10 py-6 text-lg bg-linear-to-r from-green-600 to-emerald-600"
+                >
+                  <CheckCircle className="mr-4 h-8 w-8" />
+                  Salvar Valores dos Serviços
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -277,7 +341,7 @@ const ConfiguracoesAdminPage = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  <Button className="bg-gradient-to-r from-yellow-600 to-orange-600">
+                  <Button className="bg-linear-to-r from-yellow-600 to-orange-600">
                     Adicionar Aula Extra
                   </Button>
 
@@ -335,7 +399,7 @@ const ConfiguracoesAdminPage = () => {
                   <div className="flex flex-col items-center gap-4 py-6 border-b">
                     <Avatar className="h-40 w-40 ring-4 ring-red-100">
                       <AvatarImage src={crossfitBanner || undefined} />
-                      <AvatarFallback className="bg-gradient-to-br from-red-600 to-orange-600 text-white text-4xl font-bold">
+                      <AvatarFallback className="bg-linear-to-br from-red-600 to-orange-600 text-white text-4xl font-bold">
                         CF
                       </AvatarFallback>
                     </Avatar>
@@ -391,7 +455,7 @@ const ConfiguracoesAdminPage = () => {
                     />
                   </div>
 
-                  <Button className="w-full bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700">
+                  <Button className="w-full bg-linear-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700">
                     Salvar Configurações CrossFit
                   </Button>
                 </div>
@@ -416,7 +480,7 @@ const ConfiguracoesAdminPage = () => {
             <CardContent>
               {/* Status Atual */}
               {configPagamento && (
-                <Card className="mb-8 border-2 border-green-300 bg-gradient-to-r from-green-50 to-emerald-50">
+                <Card className="mb-8 border-2 border-green-300 bg-linear-to-r from-green-50 to-emerald-50">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-3">
                       {getGatewayIcon(configPagamento.gateway)}
@@ -546,7 +610,7 @@ const ConfiguracoesAdminPage = () => {
                     type="submit" 
                     size="lg" 
                     disabled={isLoadingPagamento}
-                    className="px-10 py-6 text-lg bg-gradient-to-r from-green-600 to-emerald-600"
+                    className="px-10 py-6 text-lg bg-linear-to-r from-green-600 to-emerald-600"
                   >
                     {isLoadingPagamento ? (
                       <>

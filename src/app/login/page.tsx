@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/src/components/ui/card";
 import { Button } from "@/src/components/ui/button";
@@ -13,6 +14,7 @@ import { Label } from "@/src/components/ui/label";
 import { toast } from "sonner";
 import { Mail, Lock, Loader2 } from "lucide-react";
 
+// Schema de login
 const loginSchema = z.object({
   email: z.string().email("E-mail inválido"),
   password: z.string().min(6, "Senha deve ter no mínimo 6 caracteres"),
@@ -20,9 +22,29 @@ const loginSchema = z.object({
 
 type LoginFormData = z.infer<typeof loginSchema>;
 
-const LiginPage = () => {       //Inicio da função
+// Tipo da resposta do backend
+interface LoginResponse {
+  success: boolean;
+  message: string;
+  token: string;
+  user: {
+    id: string;
+    name: string | null;
+    email: string;
+    role: string;
+    tenantId: string | null;
+    img: string | null;
+    escolinha: {
+      id: string;
+      nome: string;
+      logoUrl: string | null;
+    } | null;
+  };
+}
 
-    const [isSubmitting, setIsSubmitting] = useState(false);
+const LoginPage = () => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const router = useRouter();
 
   const {
     register,
@@ -35,22 +57,70 @@ const LiginPage = () => {       //Inicio da função
   const onSubmit = async (data: LoginFormData) => {
     setIsSubmitting(true);
     try {
-      await new Promise(r => setTimeout(r, 1500));
-      // Aqui você faria a chamada real para o backend
-      console.log("Login:", data);
-      toast.success("Login realizado com sucesso!", {
-        description: "Bem-vindo de volta!",
+      const res = await fetch("http://localhost:4000/api/v1/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
       });
-      // Redireciona baseado no tipo de usuário
-      // window.location.href = "/dashboard/aluno" ou "/dashboard/responsavel" etc
-    } catch {
-      toast.error("E-mail ou senha inválidos");
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Erro ao fazer login");
+      }
+
+      const result: LoginResponse = await res.json();
+
+      // Salva token e usuário
+      localStorage.setItem("token", result.token);
+      localStorage.setItem("user", JSON.stringify(result.user));
+
+      toast.success("Login realizado com sucesso!", {
+        description: `Bem-vindo, ${result.user.name || result.user.email}!`,
+      });
+
+      // Redireciona por role
+      switch (result.user.role) {
+        case "SUPERADMIN":
+          router.push("/superadmin");
+          break;
+        case "ADMIN":
+          router.push("/dashboard");
+          break;
+        case "TREINADOR":
+          router.push("/dashboard/treinador");
+          break;
+        case "RESPONSAVEL":
+          router.push("/dashboarduser/responsavel-dashboard");
+          break;
+        case "ALUNO_FUTEBOL":
+          router.push("/dashboarduser/aluno-dashboard");
+          break;
+        case "ALUNO_CROSSFIT":
+          router.push("/dashboarduser/crossfit-dashboard");
+          break;
+        default:
+          router.push("/dashboard");
+      }
+    } catch (error: unknown) {
+      let message = "Erro ao fazer login";
+      if (error instanceof Error) {
+        message = error.message;
+      } else if (error instanceof z.ZodError) {
+        message = error.issues.map(issue => issue.message).join(", ");
+      }
+
+      toast.error("E-mail ou senha inválidos", {
+        description: message,
+      });
     } finally {
       setIsSubmitting(false);
     }
   };
-    return ( 
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-900 via-purple-900 to-pink-900 p-4">
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-900 via-purple-900 to-pink-900 p-4">
       <Card className="w-full max-w-md shadow-2xl">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-purple-600">
@@ -58,7 +128,7 @@ const LiginPage = () => {       //Inicio da função
           </div>
           <CardTitle className="text-3xl font-bold">Bem-vindo de volta</CardTitle>
           <CardDescription className="text-lg">
-            Acesse sua conta
+            Acesse sua conta FutElite
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -109,13 +179,13 @@ const LiginPage = () => {       //Inicio da função
             </Button>
 
             <p className="text-center text-sm text-gray-600">
-              Não tem acesso? Peça ao administrador 
+              Não tem acesso? Peça ao administrador da sua escolinha
             </p>
           </form>
         </CardContent>
       </Card>
     </div>
-     );
-}
- 
-export default LiginPage;
+  );
+};
+
+export default LoginPage;

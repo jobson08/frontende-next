@@ -1,16 +1,17 @@
+// src/components/layout/Navbar.tsx
 "use client";
+
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 import { BarChart3, BookOpen, Building2, Calendar, Clock, CreditCard, DollarSign, Home, LifeBuoy, LogOut, Menu, MessageSquare, Settings, Trophy, User, UserPlus, Users } from "lucide-react";
 import { Button } from "../ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "../ui/sheet";
-import { DropdownMenu, DropdownMenuContent } from "../ui/dropdown-menu";
-import { DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@radix-ui/react-dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "../ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-
-
 
 interface NavbarProps {
   userType: "ADMIN" | "SUPERADMIN" | "ALUNO" | "RESPONSAVEL" | "FUNCIONARIO" | "CROSSFIT";
@@ -19,29 +20,29 @@ interface NavbarProps {
     email: string;
   };
 }
+
 const menuItems = {
-   SUPERADMIN: [
-  { icon: Home, label: "Dashboard Global", href: "/superadmin" },
-  { icon: Building2, label: "Escolinhas", href: "/superadmin/tenants" },
-  { icon: UserPlus, label: "Criar Nova Escolinha", href: "/superadmin/tenants/novo" },
-  { icon: DollarSign, label: "Pagamentos SaaS", href: "/superadmin/pagamentos" },
-  { icon: BarChart3, label: "Relatórios Globais", href: "/superadmin/relatorios" },
-  { icon: CreditCard, label: "Assinaturas", href: "/superadmin/assinaturas" },
-  { icon: Settings, label: "Configurações SaaS", href: "/superadmin/configuracoes" },
-  { icon: LifeBuoy, label: "Suporte", href: "/superadmin/suporte" },
-],
+  SUPERADMIN: [
+    { icon: Home, label: "Dashboard Global", href: "/superadmin" },
+    { icon: Building2, label: "Escolinhas", href: "/superadmin/tenants" },
+    { icon: UserPlus, label: "Criar Nova Escolinha", href: "/superadmin/tenants/novo" },
+    { icon: DollarSign, label: "Pagamentos SaaS", href: "/superadmin/pagamentos" },
+    { icon: BarChart3, label: "Relatórios Globais", href: "/superadmin/relatorios" },
+    { icon: CreditCard, label: "Assinaturas", href: "/superadmin/assinaturas" },
+    { icon: Settings, label: "Configurações SaaS", href: "/superadmin/configuracoes" },
+    { icon: LifeBuoy, label: "Suporte", href: "/superadmin/suporte" },
+  ],
   ADMIN: [
-    { icon: Home, label: "Admin", href: "/admin" },
-    { icon: Users, label: "Alunos", href: "/aluno" },
+    { icon: Home, label: "Dashboard", href: "/dashboard" },
+    { icon: Users, label: "Alunos", href: "/alunos" },
     { icon: User, label: "Responsáveis", href: "/responsavel" },
-    { icon: Users, label: "Funcionarios", href: "/funcionario" },
+    { icon: Users, label: "Funcionários", href: "/funcionario" },
     { icon: Calendar, label: "Treinos", href: "/treinos" },
     { icon: DollarSign, label: "Financeiro", href: "/financeiro" },
     { icon: Settings, label: "Configurações", href: "/configuracoes" },
   ],
   ALUNO: [
     { icon: Home, label: "Meu Dashboard", href: "/dashboarduser/aluno-dashboard" },
-    //{ icon: Calendar, label: "Minhas Aulas", href: "/dashboarduser/aluno-dashboard/aulas" },
     { icon: Trophy, label: "Meu Progresso", href: "/dashboarduser/aluno-dashboard/progresso" },
     { icon: BookOpen, label: "Treinos", href: "/dashboarduser/aluno-dashboard/treinos" },
     { icon: MessageSquare, label: "Mensagens", href: "/dashboarduser/aluno-dashboard/mensagens" },
@@ -49,7 +50,6 @@ const menuItems = {
   RESPONSAVEL: [
     { icon: Home, label: "Meu Dashboard", href: "/dashboarduser/responsavel-dashboard" },
     { icon: Users, label: "Meus Filhos", href: "/dashboarduser/responsavel-dashboard/filhos" },
-    //{ icon: Calendar, label: "Aulas dos Filhos", href: "/dashboarduser/responsavel-dashboard/aulas" },
     { icon: DollarSign, label: "Pagamentos", href: "/dashboarduser/responsavel-dashboard/pagamentos" },
     { icon: MessageSquare, label: "Comunicados", href: "/dashboarduser/responsavel-dashboard/comunicados" },
   ],
@@ -60,46 +60,57 @@ const menuItems = {
     { icon: Clock, label: "Horário", href: "/dashboarduser/funcionario-dashboard/horario" },
     { icon: MessageSquare, label: "Mensagens", href: "/dashboarduser/funcionario-dashboard/mensagens" },
   ],
-   CROSSFIT:[
+  CROSSFIT: [
     { icon: Home, label: "Meu Dashboard", href: "/dashboarduser/crossfit-dashboard" },
     { icon: DollarSign, label: "Pagamentos", href: "/dashboarduser/crossfit-dashboard/pagamentos" },
   ],
 };
+
 export function Navbar({ userType, user }: NavbarProps) {
-  // Simulação — depois vem do useAuth
-const [mobileOpen, setMobileOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
 
   const items = menuItems[userType] || [];
 
+  // FUNÇÃO DE LOGOUT (USADA NO DROPDOWN E NO MOBILE)
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    toast.success("Logout realizado com sucesso!", {
+      description: "Você saiu da sua conta.",
+    });
+    router.push("/login");
+  };
+
   return (
-<header className="fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-200 shadow-sm">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm">
       <div className="flex items-center justify-between h-16 px-4 lg:px-8">
-        {/* MOBILE MENU INICIO*/}
+        {/* MOBILE MENU */}
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
           <SheetTrigger asChild>
-            <Button variant="ghost" size="icon-lg" className="lg:hidden">
+            <Button variant="ghost" size="icon" className="lg:hidden">
               <Menu className="h-6 w-6 text-gray-800" />
               <span className="sr-only">Abrir menu</span>
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="p-0 w-72 bg-white">
-
-              {/* LOGO CENTRAL */}
             <div className="flex flex-col h-full">
+              {/* Logo no mobile */}
               <div className="flex items-center justify-center h-16 border-b border-gray-200">
-                  <h1 className="text-2xl font-bold bg-linear-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                    EDUPAY
-                  </h1>
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  EDUPAY
+                </h1>
               </div>
 
+              {/* Menu mobile */}
               <nav className="flex-1 overflow-y-auto py-4">
                 <div className="px-3 space-y-1">
                   {items.map((item) => (
                     <Button
                       key={item.href}
                       asChild
-                      variant={pathname === item.href ? "secondary" : "ghost"}
+                      variant={pathname.startsWith(item.href) ? "secondary" : "ghost"}
                       className="w-full justify-start h-11"
                       onClick={() => setMobileOpen(false)}
                     >
@@ -112,63 +123,78 @@ const [mobileOpen, setMobileOpen] = useState(false);
                 </div>
               </nav>
 
+              {/* Perfil + Logout no mobile */}
               <div className="border-t border-gray-200 p-4">
                 <div className="flex items-center gap-3">
                   <Avatar className="h-10 w-10">
-                    <AvatarFallback className="bg-linear-to-br from-blue-600 to-purple-600 text-white">
-                      {user.name.split(" ").map((n) => n[0]).join("")}
+                    <AvatarFallback className="bg-gradient-to-br from-blue-600 to-purple-600 text-white">
+                      {user.name.split(" ").map((n) => n[0]).join("").toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900 truncate">{user.name}</p>
                     <p className="text-xs text-gray-500">{userType}</p>
                   </div>
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    onClick={handleLogout}
+                    className="text-gray-600 hover:text-red-600 hover:bg-red-50"
+                  >
+                    <LogOut className="h-5 w-5" />
+                  </Button>
                 </div>
               </div>
             </div>
           </SheetContent>
         </Sheet>
-        {/* MOBILE MENU FIM*/}        
-        
-        {/* LOGO */}
-       <div className="flex items-center justify-center h-16 border-b border-gray-200">
-          <h1 className="text-2xl font-bold bg-linear-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+
+        {/* LOGO CENTRAL (desktop e mobile) */}
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
             EDUPAY
           </h1>
-       </div>
+        </div>
 
-        {/* AVATAR DROPDOWN */}
-        <DropdownMenu>
-          <DropdownMenuTrigger className="flex items-center gap-3 rounded-full focus:outline-none">
-            <Avatar className="h-9 w-9 ring-2 ring-offset-2 ring-purple-400">
-              <AvatarFallback className="bg-linear-to-br from-blue-600 to-purple-600 text-white text-sm font-medium">
-                {user.name.split(" ").map((n) => n[0]).join("").toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div className="hidden text-left sm:block">
-              <p className="text-sm font-medium leading-none">{user.name}</p>
-              <p className="text-xs text-gray-500">{user.email}</p>
-            </div>
-          </DropdownMenuTrigger>
+        {/* AVATAR DROPDOWN (desktop) */}
+        <div className="hidden lg:block">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="flex items-center gap-3 rounded-full hover:bg-gray-100">
+                <Avatar className="h-9 w-9 ring-2 ring-offset-2 ring-purple-400">
+                  <AvatarFallback className="bg-gradient-to-br from-blue-600 to-purple-600 text-white text-sm font-medium">
+                    {user.name.split(" ").map((n) => n[0]).join("").toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="text-left">
+                  <p className="text-sm font-medium leading-none">{user.name}</p>
+                  <p className="text-xs text-gray-500">{user.email}</p>
+                </div>
+              </Button>
+            </DropdownMenuTrigger>
 
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <User className="mr-2 h-4 w-4" />
-              Perfil
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <Settings className="mr-2 h-4 w-4" />
-              Configurações
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-red-600">
-              <LogOut className="mr-2 h-4 w-4" />
-              Sair
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>
+                <User className="mr-2 h-4 w-4" />
+                Perfil
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Settings className="mr-2 h-4 w-4" />
+                Configurações
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem 
+                className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                onClick={handleLogout}
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                Sair
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
     </header>
   );
