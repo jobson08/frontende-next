@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback } from "../ui/avatar";
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAuth } from "@/src/hooks/useAuth";
 
 interface NavbarProps {
   userType: "ADMIN" | "SUPERADMIN" | "ALUNO" | "RESPONSAVEL" | "FUNCIONARIO" | "CROSSFIT";
@@ -69,19 +70,9 @@ const menuItems = {
 export function Navbar({ userType, user }: NavbarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
-  const router = useRouter();
+  const { logout } = useAuth(); // ← USA O LOGOUT DO HOOK (limpa tudo!)
 
   const items = menuItems[userType] || [];
-
-  // FUNÇÃO DE LOGOUT (USADA NO DROPDOWN E NO MOBILE)
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    toast.success("Logout realizado com sucesso!", {
-      description: "Você saiu da sua conta.",
-    });
-    router.push("/login");
-  };
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm">
@@ -138,7 +129,7 @@ export function Navbar({ userType, user }: NavbarProps) {
                   <Button 
                     variant="ghost" 
                     size="icon"
-                    onClick={handleLogout}
+                    onClick={logout} // ← CHAMA O LOGOUT DO HOOK (LIMPA TUDO!)
                     className="text-gray-600 hover:text-red-600 hover:bg-red-50"
                   >
                     <LogOut className="h-5 w-5" />
@@ -149,7 +140,7 @@ export function Navbar({ userType, user }: NavbarProps) {
           </SheetContent>
         </Sheet>
 
-        {/* LOGO CENTRAL (desktop e mobile) */}
+        {/* LOGO CENTRAL */}
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
           <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
             EDUPAY
@@ -187,7 +178,7 @@ export function Navbar({ userType, user }: NavbarProps) {
               <DropdownMenuSeparator />
               <DropdownMenuItem 
                 className="text-red-600 focus:text-red-600 focus:bg-red-50"
-                onClick={handleLogout}
+                onClick={logout} // ← CHAMA O LOGOUT DO HOOK (LIMPA TUDO!)
               >
                 <LogOut className="mr-2 h-4 w-4" />
                 Sair

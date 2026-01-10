@@ -1,6 +1,7 @@
 // src/components/layout/Navbar.tsx (final - com treinador)
 "use client";
 
+import { useRouter } from "next/navigation"; //alterado
 import { useState } from "react";
 import { Button } from "../ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "../ui/sheet";
@@ -44,6 +45,9 @@ const Header = ({
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
   
+    // Usa o logout do hook (limpa cookie + localStorage + cache + redireciona)
+  const { logout } = useAuth();  //Alterado
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let items: Array<{ icon: any; label: string; href: string }> = [];
 
@@ -115,8 +119,23 @@ const Header = ({
     ];
   }
 
+  // === SUPERADMIN ===
+  else if (userType === "SUPERADMIN") {
+    items = [
+      { icon: Building2, label: "Escolinhas", href: "/superadmin/tenants" },
+      { icon: UserPlus, label: "Criar Nova Escolinha", href: "/superadmin/tenants/novo" },
+      { icon: DollarSign, label: "Pagamentos SaaS", href: "/superadmin/pagamentos" },
+      { icon: BarChart3, label: "Relatórios Globais", href: "/superadmin/relatorios" },
+      { icon: CreditCard, label: "Assinaturas", href: "/superadmin/assinaturas" },
+      { icon: Settings, label: "Configurações SaaS", href: "/superadmin/configuracoes" },
+      { icon: LifeBuoy, label: "Suporte", href: "/superadmin/suporte" },
+    ];
+  }
+
   // SINO DE INADIMPLENTES — SÓ PARA ADMIN
   const isAdmin = userType === "ADMIN" || role === "admin";
+
+  
 
   return (
     <header className="fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-200 shadow-sm">
@@ -172,6 +191,14 @@ const Header = ({
                       {role ? role.charAt(0).toUpperCase() + role.slice(1) : userType}
                     </p>
                   </div>
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      onClick={logout}  // ← CHAMA O LOGOUT DO HOOK (LIMPA TUDO!) alterado
+                      className="text-gray-400 hover:text-white hover:bg-slate-800"
+                    >
+                      <LogOut className="h-5 w-5" />
+                    </Button>
                 </div>
               </div>
             </div>

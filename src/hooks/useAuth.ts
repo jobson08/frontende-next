@@ -1,11 +1,12 @@
 // src/hooks/useAuth.ts
 "use client";
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import api from "../lib/api";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
-
-export type UserRole = "SUPER_ADMIN" | "ADMIN" | "FUNCIONARIO" | "ALUNO" | "RESPONSAVEL";
+export type UserRole = "SUPERADMIN" | "ADMIN" | "FUNCIONARIO" | "ALUNO" | "RESPONSAVEL" | "ALUNO_CROSSFIT" | "ALUNO_FUTEBOL";
 
 export type AuthUser = {
   id: string;
@@ -17,28 +18,42 @@ export type AuthUser = {
 };
 
 export function useAuth() {
-  const queryClient = useQueryClient();
+  const router = useRouter();
 
-  const { data: user, isLoading, error, refetch } = useQuery<AuthUser>({
-    queryKey: ["auth", "me"],
-    queryFn: async () => {
+const { data: user, isLoading, error, refetch } = useQuery<AuthUser>({
+  queryKey: ["auth", "me"],
+  queryFn: async () => {
+    console.log("[useAuth] Iniciando fetch /auth/me");
+    try {
       const { data } = await api.get("/auth/me");
-      // Salva no localStorage pra usar no interceptors
+      console.log("[useAuth] Fetch sucesso:", data);
       localStorage.setItem("user", JSON.stringify(data));
       if (data.tenantId) {
         localStorage.setItem("tenantId", data.tenantId);
       }
       return data;
-    },
-    staleTime: 1000 * 60 * 5, // 5 minutos
-    retry: 1,
-  });
+    } catch (fetchError) {
+      console.error("[useAuth] Erro completo no fetch /auth/me:", fetchError);
+      throw fetchError;
+    }
+  },
+  staleTime: 1000 * 60 * 5,
+  retry: 1,
+  enabled: typeof window !== "undefined" && !!localStorage.getItem("token"),
+});
+
+if (error) {
+  console.error("[useAuth] Erro final no useQuery:", error);
+}
 
   const logout = () => {
+    document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Strict";
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     localStorage.removeItem("tenantId");
-    queryClient.clear();
+    toast.success("Logout realizado com sucesso!", {
+      description: "Você saiu da sua conta.",
+    });
     window.location.href = "/login";
   };
 

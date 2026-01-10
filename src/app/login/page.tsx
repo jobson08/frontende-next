@@ -1,11 +1,11 @@
-// src/app/login/page.tsx
 "use client";
+// src/app/login/page.tsx
 
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/src/components/ui/card";
 import { Button } from "@/src/components/ui/button";
@@ -45,6 +45,7 @@ interface LoginResponse {
 const LoginPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const {
     register,
@@ -54,69 +55,77 @@ const LoginPage = () => {
     resolver: zodResolver(loginSchema),
   });
 
-  const onSubmit = async (data: LoginFormData) => {
-    setIsSubmitting(true);
-    try {
-      const res = await fetch("http://localhost:4000/api/v1/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-      });
+const onSubmit = async (data: LoginFormData) => {
+  setIsSubmitting(true);
+  try {
+    const res = await fetch("http://localhost:4000/api/v1/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
 
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || "Erro ao fazer login");
-      }
+    if (!res.ok) {
+      const errorData = await res.json();
+      throw new Error(errorData.error || "Erro ao fazer login");
+    }
 
-      const result: LoginResponse = await res.json();
+    const result = await res.json();
 
-      // Salva token e usuário
-      localStorage.setItem("token", result.token);
-      localStorage.setItem("user", JSON.stringify(result.user));
+    // Salva token no COOKIE - versão mais simples e compatível com localhost
+    document.cookie = `token=${result.token}; path=/; max-age=${7*24*60*60}; SameSite=Lax`;
 
-      toast.success("Login realizado com sucesso!", {
-        description: `Bem-vindo, ${result.user.name || result.user.email}!`,
-      });
+    // Debug máximo
+    console.log("Token do backend:", result.token);
+    console.log("Cookie após set:", document.cookie);
 
-      // Redireciona por role
+    setTimeout(() => {
+      console.log("Cookie após 1s:", document.cookie);
+    }, 1000);
+
+    localStorage.setItem("user", JSON.stringify(result.user));
+
+    toast.success("Login realizado!", { description: `Bem-vindo, ${result.user.name || result.user.email}!` });
+
+    // Redireciona por role
+    const from = searchParams.get("from");
+    let redirectTo = from ? decodeURIComponent(from) : "/superadmin/tenants";
+
       switch (result.user.role) {
         case "SUPERADMIN":
-          router.push("/superadmin");
+          redirectTo = from?.includes("/superadmin") ? from : "/superadmin/tenants";
           break;
         case "ADMIN":
-          router.push("/dashboard");
+          redirectTo = from?.includes("/dashboardtenats") ? from : "/dashboardtenats";
+          break;
+        case "FUNCIONARIO":
+          redirectTo = from?.includes("/dashboarduser/funcionario-dashboard") ? from : "/dashboarduser/funcionario-dashboard";
           break;
         case "TREINADOR":
-          router.push("/dashboard/treinador");
+          redirectTo = from?.includes("/treinador") ? from : "/treinador";
           break;
         case "RESPONSAVEL":
-          router.push("/dashboarduser/responsavel-dashboard");
+          redirectTo = from?.includes("/dashboarduser/responsavel-dashboard") ? from : "/dashboarduser/responsavel-dashboard";
           break;
         case "ALUNO_FUTEBOL":
-          router.push("/dashboarduser/aluno-dashboard");
+          redirectTo = from?.includes("/dashboarduser/aluno-dashboard") ? from : "/dashboarduser/aluno-dashboard";
           break;
         case "ALUNO_CROSSFIT":
-          router.push("/dashboarduser/crossfit-dashboard");
+          redirectTo = from?.includes("/dashboarduser/crossfit-dashboard") ? from : "/dashboarduser/crossfit-dashboard";
           break;
         default:
-          router.push("/dashboard");
-      }
-    } catch (error: unknown) {
-      let message = "Erro ao fazer login";
-      if (error instanceof Error) {
-        message = error.message;
-      } else if (error instanceof z.ZodError) {
-        message = error.issues.map(issue => issue.message).join(", ");
+          redirectTo = "/dashboard";
       }
 
-      toast.error("E-mail ou senha inválidos", {
-        description: message,
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
+// Força reload completo (resolve delay do cookie)
+    setTimeout(() => {
+      window.location.href = redirectTo;
+    }, 1500); // delay de 1.5s para cookie ser processado
+  } catch (error) {
+    toast.error("Erro no login", { description: (error as Error).message });
+  } finally {
+    setIsSubmitting(false);
+  }
+
   };
 
   return (

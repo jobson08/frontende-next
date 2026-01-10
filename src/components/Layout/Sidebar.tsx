@@ -21,6 +21,7 @@ import { usePathname } from "next/navigation";
 import { Button } from "../ui/button";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { LucideIcon } from "lucide-react";
+import { useAuth } from "@/src/hooks/useAuth"; // ← IMPORTA O HOOK
 
 type UserType = "ADMIN" | "ALUNO" | "RESPONSAVEL" | "FUNCIONARIO" | "SUPERADMIN" | "CROSSFIT";
 
@@ -35,7 +36,7 @@ interface SidebarProps {
   userName: string;
   aulasExtrasAtivas?: boolean;
   crossfitAtivo?: boolean;
-  role?: string; // "treinador", "admin", etc
+  role?: string;
 }
 
 export function Sidebar({ 
@@ -47,6 +48,9 @@ export function Sidebar({
 }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
+
+  // Usa o logout do hook (limpa cookie + localStorage + cache + redireciona)
+  const { logout } = useAuth();
 
   let items: MenuItem[] = [];
 
@@ -128,16 +132,6 @@ export function Sidebar({
     ];
   }
 
-  // FUNÇÃO DE LOGOUT
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    toast.success("Logout realizado com sucesso!", {
-      description: "Você saiu da sua conta.",
-    });
-    router.push("/login");
-  };
-
   return (
     <div className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 bg-slate-900 text-white lg:border-r lg:border-gray-200">
       <div className="flex flex-col h-full">
@@ -184,7 +178,7 @@ export function Sidebar({
             <Button 
               variant="ghost" 
               size="icon"
-              onClick={handleLogout}
+              onClick={logout}  // ← CHAMA O LOGOUT DO HOOK (LIMPA TUDO!)
               className="text-gray-400 hover:text-white hover:bg-slate-800"
             >
               <LogOut className="h-5 w-5" />
