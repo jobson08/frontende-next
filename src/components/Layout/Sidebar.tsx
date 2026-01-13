@@ -57,13 +57,13 @@ export function Sidebar({
   // === ADMIN ===
   if (userType === "ADMIN" || (userType === "FUNCIONARIO" && role === "admin")) {
     items = [
-      { icon: Home, label: "Dashboard", href: "/dashboard" },
-      { icon: Users, label: "Alunos", href: "/alunos" },
+      { icon: Home, label: "Dashboard", href: "/admin" },
+      { icon: Users, label: "Alunos", href: "/aluno" },
       { icon: User, label: "Responsáveis", href: "/responsavel" },
       { icon: Users, label: "Funcionários", href: "/funcionario" },
       { icon: Calendar, label: "Treinos", href: "/treinos" },
       { icon: DollarSign, label: "Financeiro", href: "/financeiro" },
-      { icon: DollarSign, label: "Inadimplentes", href: "/iadimplentes" },
+      { icon: DollarSign, label: "Inadimplentes", href: "/inadimplentes" },
       { icon: Settings, label: "Configurações", href: "/configuracoes" },
     ];
 

@@ -72,16 +72,21 @@ const onSubmit = async (data: LoginFormData) => {
     const result = await res.json();
 
     // Salva token no COOKIE - versão mais simples e compatível com localhost
-    document.cookie = `token=${result.token}; path=/; max-age=${7*24*60*60}; SameSite=Lax`;
+   document.cookie = `token=${result.token}; path=/; max-age=${7*24*60*60}; SameSite=Lax`;
+
+   // Salva token NO LOCALSTORAGE (para useAuth enviar no header)
+    localStorage.setItem("token", result.token);
 
     // Debug máximo
     console.log("Token do backend:", result.token);
     console.log("Cookie após set:", document.cookie);
+    console.log("Token salvo no localStorage:", localStorage.getItem("token"));
 
     setTimeout(() => {
       console.log("Cookie após 1s:", document.cookie);
     }, 1000);
 
+    // Salva user
     localStorage.setItem("user", JSON.stringify(result.user));
 
     toast.success("Login realizado!", { description: `Bem-vindo, ${result.user.name || result.user.email}!` });
@@ -95,7 +100,7 @@ const onSubmit = async (data: LoginFormData) => {
           redirectTo = from?.includes("/superadmin") ? from : "/superadmin/tenants";
           break;
         case "ADMIN":
-          redirectTo = from?.includes("/dashboardtenats") ? from : "/dashboardtenats";
+          redirectTo = from?.includes("/dashboardtenats") ? from : "/admin";
           break;
         case "FUNCIONARIO":
           redirectTo = from?.includes("/dashboarduser/funcionario-dashboard") ? from : "/dashboarduser/funcionario-dashboard";
@@ -119,7 +124,8 @@ const onSubmit = async (data: LoginFormData) => {
 // Força reload completo (resolve delay do cookie)
     setTimeout(() => {
       window.location.href = redirectTo;
-    }, 1500); // delay de 1.5s para cookie ser processado
+    }, 1500); // delay de 2 segundos para cookie ser processado
+    
   } catch (error) {
     toast.error("Erro no login", { description: (error as Error).message });
   } finally {

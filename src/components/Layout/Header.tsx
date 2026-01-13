@@ -18,9 +18,16 @@ import { Badge } from "@/src/components/ui/badge";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { 
-  Calendar, DollarSign, Home, LogOut, Menu, Settings, Trophy, User, Users, 
-  Bell, Activity, BookOpen, MessageSquare 
+  Calendar, DollarSign, Home, LogOut, Menu, Trophy, User, Users, 
+  Bell, Activity, BookOpen, MessageSquare, 
+  Building2,
+  BarChart3,
+  Settings,
+  UserPlus,
+  CreditCard,
+  LifeBuoy
 } from "lucide-react";
+import { useAuth } from "@/src/hooks/useAuth";
 
 interface NavbarProps {
   userType: "ADMIN" | "SUPERADMIN" | "ALUNO" | "RESPONSAVEL" | "FUNCIONARIO";
@@ -54,13 +61,13 @@ const Header = ({
   // ADMIN (DONO DA ESCOLINHA)
   if (userType === "ADMIN" || role === "admin") {
     items = [
-      { icon: Home, label: "Dashboard", href: "/dashboard" },
-      { icon: Users, label: "Alunos", href: "/alunos" },
+      { icon: Home, label: "Dashboard", href: "/admin" },
+      { icon: Users, label: "Alunos", href: "/aluno" },
       { icon: User, label: "Responsáveis", href: "/responsavel" },
       { icon: Users, label: "Funcionários", href: "/funcionario" },
       { icon: Calendar, label: "Treinos", href: "/treinos" },
       { icon: DollarSign, label: "Financeiro", href: "/financeiro" },
-      { icon: DollarSign, label: "Inadimplentes", href: "/iadimplentes" },
+      { icon: DollarSign, label: "Inadimplentes", href: "/inadimplentes" },
       { icon: Settings, label: "Configurações", href: "/configuracoes" },
     ];
 

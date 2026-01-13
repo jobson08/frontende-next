@@ -1,52 +1,47 @@
-// src/app/superadmin/tenants/[id]/page.tsx
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
+import api from "@/src/lib/api";
+import { useParams, useRouter } from "next/navigation";
+import { useState } from "react";
 import CreateLoginModal from "@/src/components/common/CreateLoginModal";
 import { Avatar, AvatarFallback } from "@/src/components/ui/avatar";
 import { Badge } from "@/src/components/ui/badge";
 import { Button } from "@/src/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/card";
-import { Calendar, ChevronLeft, DollarSign, Edit, Mail, MapPin, Phone, Shield, Users } from "lucide-react";
+import { Calendar, ChevronLeft, DollarSign, Edit, Mail, MapPin, Phone, Shield, Users, AlertCircle } from "lucide-react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { useState } from "react";
+import { Loader2 } from "lucide-react";
 
-const tenantsMock = [
-  {
-    id: "1",
-    name: "Escolinha Gol de Placa",
-    cidade: "São Paulo",
-    estado: "SP",
-    endereco: "Rua das Flores, 123 - Jardim Paulista",
-    telefone: "(11) 99999-8888",
-    emailAdmin: "admin@goldeplaca.com",
-    nomeAdmin: "João Silva",
-    plano: "Pro",
-    alunos: 145,
-    receitaMensal: "R$ 8.420",
-    status: "ATIVA",
-    dataCriacao: "2024-03-15",
-    ultimoPagamento: "2025-12-10",
-    observacoes: "Escolinha com foco em categorias sub-11 e sub-13. Campo próprio e parceria com clube local.",
-    temLoginAdmin: true,
-    categorias: ["Sub-9", "Sub-11", "Sub-13", "Sub-15"],
-    treinadores: 8,
-    responsaveis: 132,
-  },
-  // outros tenants...
-];
-
-const TenantDetalhePage = () => {       //inicio da função
-const { id } = useParams();
-
-  const tenant = tenantsMock.find(t => t.id === id);
+const TenantDetalhePage = () => {
+  const { id } = useParams() as { id: string };
+  const router = useRouter();
   const [openLoginModal, setOpenLoginModal] = useState(false);
 
-  if (!tenant) {
+  const { data: tenant, isLoading, error } = useQuery({
+    queryKey: ["tenant", id],
+    queryFn: async () => {
+      const { data } = await api.get(`/superadmin/tenants/${id}`);
+      return data;
+    },
+    enabled: !!id,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
+        <p className="ml-4 text-lg font-medium">Carregando detalhes da escolinha...</p>
+      </div>
+    );
+  }
+
+  if (error || !tenant) {
     return (
       <div className="p-8 text-center">
-        <h1 className="text-2xl font-bold">Escolinha não encontrada</h1>
-        <Button asChild className="mt-4">
+        <AlertCircle className="h-16 w-16 mx-auto mb-6 text-red-500" />
+        <h1 className="text-2xl font-bold text-red-600 mb-4">Escolinha não encontrada</h1>
+        <Button asChild>
           <Link href="/superadmin/tenants">Voltar para lista</Link>
         </Button>
       </div>
@@ -72,7 +67,7 @@ const { id } = useParams();
   };
 
     return ( 
-        <div className="p-4 lg:p-8 max-w-6xl mx-auto space-y-8">
+<div className="p-4 lg:p-8 max-w-6xl mx-auto space-y-8">
       {/* Cabeçalho */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild>
@@ -82,33 +77,33 @@ const { id } = useParams();
         </Button>
         <div>
           <h1 className="text-3xl font-bold">Detalhes da Escolinha</h1>
-          <p className="text-gray-600">Informações completas de {tenant.name}</p>
+          <p className="text-gray-600">Informações completas de {tenant.nome}</p>
         </div>
       </div>
 
       {/* Perfil Principal */}
-     <Card className="overflow-hidden">
-        <div className="bg-linear-to-r from-green-600 to-emerald-600 h-32" />
+      <Card className="overflow-hidden">
+        <div className="bg-gradient-to-r from-green-600 to-emerald-600 h-32" />
         <CardContent className="relative pt-0">
           <div className="flex flex-col sm:flex-row items-center sm:items-end gap-6 -mt-16">
             <Avatar className="h-32 w-32 ring-8 ring-white shadow-2xl">
-              <AvatarFallback className="bg-linear-to-r from-green-600 to-emerald-600 text-white text-4xl font-bold">
-                {tenant.name.split(" ").map(n => n[0]).join("")}
+              <AvatarFallback className="bg-gradient-to-r from-green-600 to-emerald-600 text-white text-4xl font-bold">
+                {tenant.nome.split(" ").map((n: string) => n[0]).join("")}
               </AvatarFallback>
             </Avatar>
             <div className="text-center sm:text-left flex-1">
-              <h2 className="text-3xl font-bold">{tenant.name}</h2>
+              <h2 className="text-3xl font-bold">{tenant.nome}</h2>
               <div className="flex flex-wrap items-center gap-3 mt-2 justify-center sm:justify-start">
-                <Badge className="bg-linear-to-r from-blue-600 to-cyan-600 text-white">
-                  Plano {tenant.plano}
+                <Badge className={getPlanoColor(tenant.planoSaaS)}>
+                  Plano {tenant.planoSaaS}
                 </Badge>
-                <Badge className={tenant.status === "ATIVA" ? "bg-green-600" : "bg-red-600"}>
-                  {tenant.status}
+                <Badge className={getStatusColor(tenant.statusPagamentoSaaS)}>
+                  {tenant.statusPagamentoSaaS}
                 </Badge>
               </div>
             </div>
             <div className="ml-auto">
-              <Button size="lg" asChild className="bg-linear-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700">
+              <Button size="lg" asChild className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700">
                 <Link href={`/superadmin/tenants/${tenant.id}/editar`}>
                   <Edit className="mr-2 h-5 w-5" />
                   Editar Escolinha
@@ -130,32 +125,28 @@ const { id } = useParams();
         <CardContent>
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium text-lg">{tenant.nomeAdmin}</p>
-              <p className="text-gray-600">{tenant.emailAdmin}</p>
+              <p className="font-medium text-lg">{tenant.nomeAdmin || "Não informado"}</p>
+              <p className="text-gray-600">{tenant.emailContato || "Não informado"}</p>
             </div>
             <div className="text-right">
-              {tenant.temLoginAdmin ? (
-                <Badge className="bg-green-600 text-lg px-6 py-2">ACESSO LIBERADO</Badge>
-              ) : (
-                <Badge variant="outline" className="text-red-600 border-red-600 text-lg px-6 py-2">
-                  SEM ACESSO
-                </Badge>
-              )}
+              <Badge className="bg-green-600 text-lg px-6 py-2">
+                ACESSO LIBERADO
+              </Badge>
             </div>
           </div>
           <div className="mt-4">
             <Button
               onClick={() => setOpenLoginModal(true)}
-              className={tenant.temLoginAdmin ? "bg-orange-600 hover:bg-orange-700" : "bg-linear-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"}
+              className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
             >
-              {tenant.temLoginAdmin ? "Editar Login do Admin" : "Criar Login do Admin"}
+              Editar Login do Admin
             </Button>
           </div>
         </CardContent>
       </Card>
 
       {/* Informações Gerais */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -166,15 +157,15 @@ const { id } = useParams();
           <CardContent className="space-y-4">
             <div className="flex justify-between">
               <span className="text-gray-600">Alunos matriculados</span>
-              <span className="font-bold text-2xl">{tenant.alunos}</span>
+              <span className="font-bold text-2xl">{tenant.totalAlunos}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Responsáveis</span>
-              <span className="font-medium">{tenant.responsaveis}</span>
+              <span className="font-medium">{tenant.responsaveis || 0}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Treinadores</span>
-              <span className="font-medium">{tenant.treinadores}</span>
+              <span className="font-medium">{tenant.treinadores || 0}</span>
             </div>
           </CardContent>
         </Card>
@@ -276,11 +267,11 @@ const { id } = useParams();
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">
-              {tenant.categorias.map((cat) => (
-                <Badge key={cat} variant="secondary" className="text-sm">
-                  {cat}
-                </Badge>
-              ))}
+             {tenant.categorias.map((cat: string) => (
+           <Badge key={cat} variant="secondary" className="text-sm">
+               {cat}
+          </Badge>
+))}
             </div>
           </CardContent>
         </Card>
@@ -298,8 +289,8 @@ const { id } = useParams();
       </div>
 {/* MODAL DE LOGIN DO ADMIN */}
       <CreateLoginModal
-        name={tenant.nomeAdmin}
-        currentEmail={tenant.emailAdmin}
+       name={tenant.nomeAdmin || "Administrador"}
+        currentEmail={tenant.emailContato || ""}
         open={openLoginModal}
         onOpenChange={setOpenLoginModal}
       />

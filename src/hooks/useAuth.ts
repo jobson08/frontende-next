@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import api from "../lib/api";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+//import axios from "axios";
 
 export type UserRole = "SUPERADMIN" | "ADMIN" | "FUNCIONARIO" | "ALUNO" | "RESPONSAVEL" | "ALUNO_CROSSFIT" | "ALUNO_FUTEBOL";
 
@@ -22,21 +23,32 @@ export function useAuth() {
 
 const { data: user, isLoading, error, refetch } = useQuery<AuthUser>({
   queryKey: ["auth", "me"],
-  queryFn: async () => {
-    console.log("[useAuth] Iniciando fetch /auth/me");
-    try {
-      const { data } = await api.get("/auth/me");
-      console.log("[useAuth] Fetch sucesso:", data);
-      localStorage.setItem("user", JSON.stringify(data));
-      if (data.tenantId) {
-        localStorage.setItem("tenantId", data.tenantId);
-      }
-      return data;
-    } catch (fetchError) {
-      console.error("[useAuth] Erro completo no fetch /auth/me:", fetchError);
-      throw fetchError;
+queryFn: async () => {
+  console.log("[useAuth] Iniciando fetch /auth/me");
+  console.log("[useAuth] Token usado do localStorage:", localStorage.getItem("token"));
+  try {
+    const { data } = await api.get("/auth/me");
+    console.log("[useAuth] Fetch sucesso:", data);
+    localStorage.setItem("user", JSON.stringify(data));
+    if (data.tenantId) {
+      localStorage.setItem("tenantId", data.tenantId);
     }
-  },
+    return data;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (fetchError: any) {
+    console.error("[useAuth] ERRO TOTAL NO FETCH /auth/me:", fetchError);
+    if (fetchError.response) {
+      console.error("[useAuth] Status do erro:", fetchError.response.status);
+      console.error("[useAuth] Dados do erro:", fetchError.response.data);
+      console.error("[useAuth] Headers do request:", fetchError.config.headers);
+    } else if (fetchError.request) {
+      console.error("[useAuth] Sem resposta do servidor:", fetchError.request);
+    } else {
+      console.error("[useAuth] Erro ao configurar request:", fetchError.message);
+    }
+    throw fetchError;
+  }
+},
   staleTime: 1000 * 60 * 5,
   retry: 1,
   enabled: typeof window !== "undefined" && !!localStorage.getItem("token"),

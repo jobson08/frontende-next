@@ -223,7 +223,6 @@ const TenantsPage = () => {
                     Próxima cobrança: {formatDate(tenant.dataInicioPlano || tenant.createdAt)}
                   </div>
                 </div>
-
                 <div className="pt-4 flex gap-2">
                   <Button size="sm" variant="outline" asChild>
                     <Link href={`/superadmin/tenants/${tenant.id}`}>

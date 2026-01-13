@@ -9,6 +9,7 @@ import { useAuth } from "@/src/hooks/useAuth";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const FuncionarioDashboardLayout = ({ children }: { children: React.ReactNode }) => {
   return (
@@ -34,14 +35,31 @@ function InnerFuncionarioDashboardLayout({ children }: { children: React.ReactNo
     }
   }, [user, isLoading, router]);
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
-      </div>
-    );
-  }
-
+ if (isLoading) {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
+          <Loader2 className="h-16 w-16 animate-spin text-blue-600 mb-6" />
+          <p className="text-xl font-medium text-gray-700">Carregando sua conta...</p>
+          <p className="text-sm text-gray-500 mt-2">Aguarde um instante...</p>
+        </div>
+      );
+    }
+  
+    // Após carregar: se user OK → renderiza dashboard
+      if (!user || user.role.toUpperCase() !== "FUNCIONARIO") {
+        return (
+          <div className="min-h-screen flex items-center justify-center bg-gray-50">
+            <div className="text-red-600 text-center p-8">
+              <p className="text-2xl font-bold mb-4">Acesso negado</p>
+              <p className="text-lg">Usuário autenticado, mas sem permissão para esta área</p>
+              <p className="mt-4 text-sm">Role recebido: {user?.role || 'Nenhum'}</p>
+              <Button className="mt-6" onClick={() => router.push("/login")}>
+                Voltar ao login
+              </Button>
+            </div>
+          </div>
+        );
+      }
   if (!user) return null;
 
   const safeUser = {
