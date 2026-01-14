@@ -1,9 +1,11 @@
-// src/app/superadmin/assinaturas/page.tsx
 "use client";
 
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import api from "@/src/lib/api";
 import { useState } from "react";
 import { format } from "date-fns";
-import { DollarSign, Calendar, Search, Filter, MoreVertical, Edit, XCircle, CheckCircle, AlertCircle } from "lucide-react";
+import { ptBR } from "date-fns/locale";
+import { DollarSign, Calendar, Search, MoreVertical, Edit, XCircle, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/card";
 import { Badge } from "@/src/components/ui/badge";
 import { Input } from "@/src/components/ui/input";
@@ -15,95 +17,53 @@ import { toast } from "sonner";
 
 interface Assinatura {
   id: string;
-  escolinha: string;
-  plano: "Básico" | "Pro" | "Enterprise";
-  valorMensal: number;
-  dataInicio: Date;
-  proximoVencimento: Date;
-  status: "Ativa" | "Atrasada" | "Cancelada" | "Suspensa";
-  ultimoPagamento: Date | null;
+  nome: string;
+  planoSaaS: string;
+  valorPlanoMensal: number;
+  dataInicioPlano: string | null;
+  dataProximoCobranca: string | null;
+  statusPagamentoSaaS: string;
+  ultimoPagamento?: string | null; // opcional, se quiser puxar do Pagamento
 }
 
-const assinaturasMock: Assinatura[] = [
-  {
-    id: "1",
-    escolinha: "Gol de Placa Academy",
-    plano: "Pro",
-    valorMensal: 599,
-    dataInicio: new Date(2024, 2, 15),
-    proximoVencimento: new Date(2025, 11, 15),
-    status: "Ativa",
-    ultimoPagamento: new Date(2025, 11, 10),
-  },
-  {
-    id: "2",
-    escolinha: "Futebol Raiz Academy",
-    plano: "Enterprise",
-    valorMensal: 999,
-    dataInicio: new Date(2023, 10, 20),
-    proximoVencimento: new Date(2025, 11, 5),
-    status: "Ativa",
-    ultimoPagamento: new Date(2025, 11, 5),
-  },
-  {
-    id: "3",
-    escolinha: "Pequenos Craques",
-    plano: "Básico",
-    valorMensal: 299,
-    dataInicio: new Date(2025, 0, 10),
-    proximoVencimento: new Date(2025, 11, 12),
-    status: "Atrasada",
-    ultimoPagamento: new Date(2025, 10, 12),
-  },
-  {
-    id: "4",
-    escolinha: "Futuros Campeões",
-    plano: "Pro",
-    valorMensal: 599,
-    dataInicio: new Date(2025, 5, 5),
-    proximoVencimento: new Date(2025, 11, 1),
-    status: "Suspensa",
-    ultimoPagamento: new Date(2025, 9, 1),
-  },
-  {
-    id: "5",
-    escolinha: "Escola do Gol",
-    plano: "Básico",
-    valorMensal: 299,
-    dataInicio: new Date(2024, 7, 22),
-    proximoVencimento: new Date(2025, 11, 15),
-    status: "Cancelada",
-    ultimoPagamento: new Date(2025, 10, 15),
-  },
-];
-
 const AssinaturasPage = () => {
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [filtroStatus, setFiltroStatus] = useState("todos");
   const [filtroPlano, setFiltroPlano] = useState("todos");
 
-  const filtered = assinaturasMock.filter((a) => {
-    const matchSearch = a.escolinha.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchStatus = filtroStatus === "todos" || a.status === filtroStatus;
-    const matchPlano = filtroPlano === "todos" || a.plano === filtroPlano;
+  // Puxa todas as escolinhas (assinaturas SaaS)
+  const { data: assinaturas = [], isLoading, error } = useQuery<Assinatura[]>({
+    queryKey: ["assinaturas"],
+    queryFn: async () => {
+      const { data } = await api.get("/api/v1/superadmin/escolinhas");
+      console.log("[Assinaturas] Dados recebidos:", data);
+      return data.data; // ajuste conforme seu response { success: true, data: [...] }
+    },
+  });
+
+  const filtered = assinaturas.filter((a) => {
+    const matchSearch = a.nome.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchStatus = filtroStatus === "todos" || a.statusPagamentoSaaS.toLowerCase() === filtroStatus.toLowerCase();
+    const matchPlano = filtroPlano === "todos" || a.planoSaaS.toLowerCase() === filtroPlano.toLowerCase();
     return matchSearch && matchStatus && matchPlano;
   });
 
-  const totalAtivas = filtered.filter(a => a.status === "Ativa").length;
-  const totalAtrasadas = filtered.filter(a => a.status === "Atrasada").length;
+  const totalAtivas = filtered.filter(a => a.statusPagamentoSaaS.toLowerCase() === "ativo").length;
+  const totalAtrasadas = filtered.filter(a => a.statusPagamentoSaaS.toLowerCase() === "atrasado").length;
   const receitaMensalPrevista = filtered
-    .filter(a => a.status === "Ativa" || a.status === "Atrasada")
-    .reduce((acc, a) => acc + a.valorMensal, 0);
+    .filter(a => a.statusPagamentoSaaS.toLowerCase() === "ativo" || a.statusPagamentoSaaS.toLowerCase() === "atrasado")
+    .reduce((acc, a) => acc + (a.valorPlanoMensal || 0), 0);
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "Ativa":
+    switch (status.toLowerCase()) {
+      case "ativo":
         return <Badge className="bg-green-600"><CheckCircle className="mr-1 h-3 w-3" /> Ativa</Badge>;
-      case "Atrasada":
+      case "atrasado":
         return <Badge className="bg-red-600"><AlertCircle className="mr-1 h-3 w-3" /> Atrasada</Badge>;
-      case "Suspensa":
-        return <Badge className="bg-orange-600">Suspensa</Badge>;
-      case "Cancelada":
+      case "suspenso":
+        return <Badge className="bg-orange-600"><XCircle className="mr-1 h-3 w-3" /> Suspensa</Badge>;
+      case "cancelado":
         return <Badge variant="secondary"><XCircle className="mr-1 h-3 w-3" /> Cancelada</Badge>;
       default:
         return <Badge>{status}</Badge>;
@@ -111,25 +71,63 @@ const AssinaturasPage = () => {
   };
 
   const getPlanoColor = (plano: string) => {
-    switch (plano) {
-      case "Enterprise": return "bg-gradient-to-r from-purple-600 to-pink-600 text-white";
-      case "Pro": return "bg-gradient-to-r from-blue-600 to-cyan-600 text-white";
-      case "Básico": return "bg-gradient-to-r from-green-600 to-emerald-600 text-white";
+    switch (plano.toLowerCase()) {
+      case "enterprise": return "bg-gradient-to-r from-purple-600 to-pink-600 text-white";
+      case "pro": return "bg-gradient-to-r from-blue-600 to-cyan-600 text-white";
+      case "basico": return "bg-gradient-to-r from-green-600 to-emerald-600 text-white";
       default: return "bg-gray-600 text-white";
     }
   };
 
-  const handleAlterarPlano = (id: string) => {
-    toast.success(`Plano alterado para assinatura ${id}`);
+  // Ações (exemplo - você pode criar endpoints reais no backend para cada uma)
+  const handleAlterarPlano = async (id: string, novoPlano: string) => {
+    try {
+      await api.put(`http://localhost:4000/api/v1/superadmin/escolinhas/${id}`, { planoSaaS: novoPlano });
+      toast.success(`Plano alterado com sucesso!`);
+      queryClient.invalidateQueries({ queryKey: ["assinaturas"] });
+    } catch {
+      toast.error("Erro ao alterar plano");
+    }
   };
 
-  const handleCancelar = (id: string) => {
-    toast.success(`Assinatura ${id} cancelada`);
+  const handleCancelar = async (id: string) => {
+    try {
+      await api.put(`http://localhost:4000/api/v1/superadmin/escolinhas/${id}`, { statusPagamentoSaaS: "cancelado" });
+      toast.success(`Assinatura cancelada!`);
+      queryClient.invalidateQueries({ queryKey: ["assinaturas"] });
+    } catch {
+      toast.error("Erro ao cancelar assinatura");
+    }
   };
 
-  const handleReativar = (id: string) => {
-    toast.success(`Assinatura ${id} reativada`);
+  const handleReativar = async (id: string) => {
+    try {
+      await api.put(`http://localhost:4000/api/v1/superadmin/escolinhas/${id}`, { statusPagamentoSaaS: "ativo" });
+      toast.success(`Assinatura reativada!`);
+      queryClient.invalidateQueries({ queryKey: ["assinaturas"] });
+    } catch {
+      toast.error("Erro ao reativar assinatura");
+    }
   };
+
+  if (isLoading) {
+    return (
+      <div className="p-8 flex items-center justify-center min-h-screen">
+        <Loader2 className="h-12 w-12 animate-spin text-purple-600" />
+        <span className="ml-4 text-xl">Carregando assinaturas...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-8 text-center text-red-600">
+        <AlertCircle className="h-12 w-12 mx-auto mb-4" />
+        <h2 className="text-2xl font-bold">Erro ao carregar assinaturas</h2>
+        <p className="mt-2">{(error as any).message || "Tente novamente mais tarde"}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 lg:p-8 space-y-8">
@@ -201,10 +199,10 @@ const AssinaturasPage = () => {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="todos">Todos os status</SelectItem>
-            <SelectItem value="Ativa">Ativa</SelectItem>
-            <SelectItem value="Atrasada">Atrasada</SelectItem>
-            <SelectItem value="Suspensa">Suspensa</SelectItem>
-            <SelectItem value="Cancelada">Cancelada</SelectItem>
+            <SelectItem value="ativo">Ativa</SelectItem>
+            <SelectItem value="atrasado">Atrasada</SelectItem>
+            <SelectItem value="suspenso">Suspensa</SelectItem>
+            <SelectItem value="cancelado">Cancelada</SelectItem>
           </SelectContent>
         </Select>
 
@@ -214,9 +212,9 @@ const AssinaturasPage = () => {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="todos">Todos os planos</SelectItem>
-            <SelectItem value="Básico">Básico</SelectItem>
-            <SelectItem value="Pro">Pro</SelectItem>
-            <SelectItem value="Enterprise">Enterprise</SelectItem>
+            <SelectItem value="basico">Básico</SelectItem>
+            <SelectItem value="pro">Pro</SelectItem>
+            <SelectItem value="enterprise">Enterprise</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -224,71 +222,86 @@ const AssinaturasPage = () => {
       {/* Tabela de Assinaturas */}
       <Card>
         <CardHeader>
-          <CardTitle>Todas as Assinaturas</CardTitle>
+          <CardTitle>Todas as Assinaturas ({filtered.length})</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Escolinha</TableHead>
-                <TableHead>Plano</TableHead>
-                <TableHead>Valor Mensal</TableHead>
-                <TableHead>Início</TableHead>
-                <TableHead>Próximo Vencimento</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map((assinatura) => (
-                <TableRow key={assinatura.id}>
-                  <TableCell className="font-medium">{assinatura.escolinha}</TableCell>
-                  <TableCell>
-                    <Badge className={getPlanoColor(assinatura.plano)}>
-                      {assinatura.plano}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="font-medium">
-                    R$ {assinatura.valorMensal.toLocaleString("pt-BR")}
-                  </TableCell>
-                  <TableCell>{format(assinatura.dataInicio, "dd/MM/yyyy")}</TableCell>
-                  <TableCell>{format(assinatura.proximoVencimento, "dd/MM/yyyy")}</TableCell>
-                  <TableCell>{getStatusBadge(assinatura.status)}</TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>
-                          <Edit className="mr-2 h-4 w-4" />
-                          Ver detalhes
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleAlterarPlano(assinatura.id)}>
-                          <DollarSign className="mr-2 h-4 w-4" />
-                          Alterar plano
-                        </DropdownMenuItem>
-                        {assinatura.status === "Ativa" && (
-                          <DropdownMenuItem className="text-red-600" onClick={() => handleCancelar(assinatura.id)}>
-                            <XCircle className="mr-2 h-4 w-4" />
-                            Cancelar assinatura
-                          </DropdownMenuItem>
-                        )}
-                        {(assinatura.status === "Atrasada" || assinatura.status === "Suspensa") && (
-                          <DropdownMenuItem className="text-green-600" onClick={() => handleReativar(assinatura.id)}>
-                            <CheckCircle className="mr-2 h-4 w-4" />
-                            Reativar assinatura
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
+          {filtered.length === 0 ? (
+            <div className="text-center py-12 text-gray-500">
+              Nenhuma assinatura encontrada com os filtros aplicados.
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Escolinha</TableHead>
+                  <TableHead>Plano</TableHead>
+                  <TableHead>Valor Mensal</TableHead>
+                  <TableHead>Início</TableHead>
+                  <TableHead>Próximo Vencimento</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((assinatura) => (
+                  <TableRow key={assinatura.id}>
+                    <TableCell className="font-medium">{assinatura.nome}</TableCell>
+                    <TableCell>
+                      <Badge className={getPlanoColor(assinatura.planoSaaS)}>
+                        {assinatura.planoSaaS}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      R$ {assinatura.valorPlanoMensal?.toLocaleString("pt-BR") || "0,00"}
+                    </TableCell>
+                    <TableCell>
+                      {assinatura.dataInicioPlano
+                        ? format(new Date(assinatura.dataInicioPlano), "dd/MM/yyyy")
+                        : "-"}
+                    </TableCell>
+                    <TableCell>
+                      {assinatura.dataProximoCobranca
+                        ? format(new Date(assinatura.dataProximoCobranca), "dd/MM/yyyy")
+                        : "Não informado"}
+                    </TableCell>
+                    <TableCell>{getStatusBadge(assinatura.statusPagamentoSaaS)}</TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => window.location.href = `/superadmin/tenants/${assinatura.id}`}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            Ver detalhes
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleAlterarPlano(assinatura.id, "pro")}>
+                            <DollarSign className="mr-2 h-4 w-4" />
+                            Alterar para Pro
+                          </DropdownMenuItem>
+                          {assinatura.statusPagamentoSaaS.toLowerCase() === "ativo" && (
+                            <DropdownMenuItem className="text-red-600" onClick={() => handleCancelar(assinatura.id)}>
+                              <XCircle className="mr-2 h-4 w-4" />
+                              Cancelar assinatura
+                            </DropdownMenuItem>
+                          )}
+                          {(assinatura.statusPagamentoSaaS.toLowerCase() === "atrasado" || 
+                            assinatura.statusPagamentoSaaS.toLowerCase() === "suspenso") && (
+                            <DropdownMenuItem className="text-green-600" onClick={() => handleReativar(assinatura.id)}>
+                              <CheckCircle className="mr-2 h-4 w-4" />
+                              Reativar assinatura
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>

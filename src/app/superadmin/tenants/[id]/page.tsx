@@ -1,8 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
 import api from "@/src/lib/api";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useState } from "react";
 import CreateLoginModal from "@/src/components/common/CreateLoginModal";
 import { Avatar, AvatarFallback } from "@/src/components/ui/avatar";
@@ -13,19 +14,51 @@ import { Calendar, ChevronLeft, DollarSign, Edit, Mail, MapPin, Phone, Shield, U
 import Link from "next/link";
 import { Loader2 } from "lucide-react";
 
+// Interface para tipagem segura
+interface EscolinhaDetails {
+  id: string;
+  nome?: string;
+  endereco?: string;
+  logoUrl?: string;
+  tipoDocumento?: string;
+  documento?: string;
+  nomeResponsavel?: string;
+  emailContato?: string;
+  telefone?: string;
+  planoSaaS?: string;
+  valorPlanoMensal?: number;
+  statusPagamentoSaaS?: string;
+  dataInicioPlano?: string;
+  dataProximoCobranca?: string;
+  aulasExtrasAtivas?: boolean;
+  crossfitAtivo?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+  totalAlunos?: number;
+  // Campos extras se o backend retornar
+  nomeAdmin?: string;
+  categorias?: string[];
+  observacoes?: string;
+  cidade?: string;
+  estado?: string;
+}
+
 const TenantDetalhePage = () => {
   const { id } = useParams() as { id: string };
-  const router = useRouter();
   const [openLoginModal, setOpenLoginModal] = useState(false);
 
-  const { data: tenant, isLoading, error } = useQuery({
-    queryKey: ["tenant", id],
+  const { data: response, isLoading, error } = useQuery<{ success: boolean; data: EscolinhaDetails }>({
+    queryKey: ["escolinha", id],
     queryFn: async () => {
-      const { data } = await api.get(`/superadmin/tenants/${id}`);
-      return data;
+      console.log("[Detalhe] Buscando escolinha com ID:", id);
+      const res = await api.get(`http://localhost:4000/api/v1/superadmin/escolinhas/${id}`);
+      console.log("[Detalhe] Response completo:", res);
+      return res.data; // retorna { success, data }
     },
-    enabled: !!id,
   });
+
+  // Pega o objeto real da escolinha (data.data)
+  const escolinha = response?.data;
 
   if (isLoading) {
     return (
@@ -36,11 +69,15 @@ const TenantDetalhePage = () => {
     );
   }
 
-  if (error || !tenant) {
+  if (error || !escolinha) {
+    console.error("[Detalhe] Erro completo:", error);
     return (
       <div className="p-8 text-center">
         <AlertCircle className="h-16 w-16 mx-auto mb-6 text-red-500" />
         <h1 className="text-2xl font-bold text-red-600 mb-4">Escolinha não encontrada</h1>
+        <p className="text-gray-600 mb-6">
+          {error ? (error as any).message || "Erro ao buscar dados" : "A escolinha pode ter sido removida ou o ID está incorreto."}
+        </p>
         <Button asChild>
           <Link href="/superadmin/tenants">Voltar para lista</Link>
         </Button>
@@ -48,7 +85,11 @@ const TenantDetalhePage = () => {
     );
   }
 
-  const getPlanoColor = (plano: string) => {
+  // Fallbacks seguros para evitar crashes
+  const nome = escolinha.nome || "Escolinha sem nome";
+  const iniciais = nome.split(" ").map((n: string) => n[0] || "").join("");
+
+  const getPlanoColor = (plano: string = "Básico") => {
     switch (plano) {
       case "Enterprise": return "bg-gradient-to-r from-purple-600 to-pink-600 text-white";
       case "Pro": return "bg-gradient-to-r from-blue-600 to-cyan-600 text-white";
@@ -57,7 +98,7 @@ const TenantDetalhePage = () => {
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string = "ATIVA") => {
     switch (status) {
       case "ATIVA": return "bg-green-600";
       case "PENDENTE": return "bg-orange-600";
@@ -66,8 +107,8 @@ const TenantDetalhePage = () => {
     }
   };
 
-    return ( 
-<div className="p-4 lg:p-8 max-w-6xl mx-auto space-y-8">
+  return (
+ <div className="p-4 lg:p-8 max-w-6xl mx-auto space-y-8">
       {/* Cabeçalho */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild>
@@ -77,7 +118,7 @@ const TenantDetalhePage = () => {
         </Button>
         <div>
           <h1 className="text-3xl font-bold">Detalhes da Escolinha</h1>
-          <p className="text-gray-600">Informações completas de {tenant.nome}</p>
+          <p className="text-gray-600">Informações completas de {nome}</p>
         </div>
       </div>
 
@@ -88,23 +129,23 @@ const TenantDetalhePage = () => {
           <div className="flex flex-col sm:flex-row items-center sm:items-end gap-6 -mt-16">
             <Avatar className="h-32 w-32 ring-8 ring-white shadow-2xl">
               <AvatarFallback className="bg-gradient-to-r from-green-600 to-emerald-600 text-white text-4xl font-bold">
-                {tenant.nome.split(" ").map((n: string) => n[0]).join("")}
+                {iniciais}
               </AvatarFallback>
             </Avatar>
             <div className="text-center sm:text-left flex-1">
-              <h2 className="text-3xl font-bold">{tenant.nome}</h2>
+              <h2 className="text-3xl font-bold">{nome}</h2>
               <div className="flex flex-wrap items-center gap-3 mt-2 justify-center sm:justify-start">
-                <Badge className={getPlanoColor(tenant.planoSaaS)}>
-                  Plano {tenant.planoSaaS}
+                <Badge className={getPlanoColor(escolinha.planoSaaS)}>
+                  Plano {escolinha.planoSaaS || "Não informado"}
                 </Badge>
-                <Badge className={getStatusColor(tenant.statusPagamentoSaaS)}>
-                  {tenant.statusPagamentoSaaS}
+                <Badge className={getStatusColor(escolinha.statusPagamentoSaaS)}>
+                  {escolinha.statusPagamentoSaaS || "Não informado"}
                 </Badge>
               </div>
             </div>
             <div className="ml-auto">
               <Button size="lg" asChild className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700">
-                <Link href={`/superadmin/tenants/${tenant.id}/editar`}>
+                <Link href={`/superadmin/tenants/${escolinha.id}/editar`}>
                   <Edit className="mr-2 h-5 w-5" />
                   Editar Escolinha
                 </Link>
@@ -125,8 +166,8 @@ const TenantDetalhePage = () => {
         <CardContent>
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium text-lg">{tenant.nomeAdmin || "Não informado"}</p>
-              <p className="text-gray-600">{tenant.emailContato || "Não informado"}</p>
+              <p className="font-medium text-lg">{escolinha.nomeResponsavel || "Não informado"}</p>
+              <p className="text-gray-600">{escolinha.emailContato || "Não informado"}</p>
             </div>
             <div className="text-right">
               <Badge className="bg-green-600 text-lg px-6 py-2">
@@ -146,7 +187,7 @@ const TenantDetalhePage = () => {
       </Card>
 
       {/* Informações Gerais */}
-     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -157,15 +198,15 @@ const TenantDetalhePage = () => {
           <CardContent className="space-y-4">
             <div className="flex justify-between">
               <span className="text-gray-600">Alunos matriculados</span>
-              <span className="font-bold text-2xl">{tenant.totalAlunos}</span>
+              <span className="font-bold text-2xl">{escolinha.totalAlunos || 0}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Responsáveis</span>
-              <span className="font-medium">{tenant.responsaveis || 0}</span>
+             {/*} <span className="font-medium">{escolinha.responsaveis || 0}</span>*/}
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Treinadores</span>
-              <span className="font-medium">{tenant.treinadores || 0}</span>
+            {/*}  <span className="font-medium">{escolinha.treinadores || 0}</span>*/}
             </div>
           </CardContent>
         </Card>
@@ -179,18 +220,26 @@ const TenantDetalhePage = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex justify-between">
-              <span className="text-gray-600">Receita mensal</span>
-              <span className="font-bold text-2xl text-green-600">{tenant.receitaMensal}</span>
+              <span className="text-gray-600">Valor do Plano SaaS</span>
+              <span className="font-bold text-2xl text-green-600">
+                {escolinha.valorPlanoMensal ? `R$ ${escolinha.valorPlanoMensal.toFixed(2)}` : "Não informado"}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Último pagamento SaaS</span>
               <span className="font-medium">
-                {new Date(tenant.ultimoPagamento).toLocaleDateString("pt-BR")}
+                {escolinha.dataInicioPlano 
+                  ? new Date(escolinha.dataInicioPlano).toLocaleDateString("pt-BR") 
+                  : "Não informado"}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Próximo vencimento</span>
-              <span className="font-medium text-orange-600">10/01/2026</span>
+              <span className="font-medium text-orange-600">
+                {escolinha.dataProximoCobranca 
+                  ? new Date(escolinha.dataProximoCobranca).toLocaleDateString("pt-BR") 
+                  : "Não informado"}
+              </span>
             </div>
           </CardContent>
         </Card>
@@ -206,16 +255,18 @@ const TenantDetalhePage = () => {
             <div className="flex justify-between">
               <span className="text-gray-600">Criada em</span>
               <span className="font-medium">
-                {new Date(tenant.dataCriacao).toLocaleDateString("pt-BR")}
+                {escolinha.createdAt 
+                  ? new Date(escolinha.createdAt).toLocaleDateString("pt-BR") 
+                  : "Não informado"}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Administrador</span>
-              <span className="font-medium">{tenant.nomeAdmin}</span>
+              <span className="font-medium">{escolinha.nomeResponsavel || "Não informado"}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Contato Admin</span>
-              <span className="font-medium">{tenant.emailAdmin}</span>
+              <span className="font-medium">{escolinha.emailContato || "Não informado"}</span>
             </div>
           </CardContent>
         </Card>
@@ -231,8 +282,10 @@ const TenantDetalhePage = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-gray-700">{tenant.endereco}</p>
-            <p className="text-gray-600 mt-2">{tenant.cidade} - {tenant.estado}</p>
+            <p className="text-gray-700">{escolinha.endereco || "Não informado"}</p>
+            <p className="text-gray-600 mt-2">
+            Cidade {escolinha.cidade || "Não informado"} Estado - {escolinha.estado || "Não informado"}
+            </p>
             <div className="mt-4 p-4 bg-gray-100 rounded-lg">
               <p className="text-sm text-gray-600">Mapa placeholder (integração Google Maps futura)</p>
             </div>
@@ -249,11 +302,11 @@ const TenantDetalhePage = () => {
           <CardContent className="space-y-4">
             <div className="flex items-center gap-3">
               <Phone className="h-5 w-5 text-gray-500" />
-              <span className="font-medium">{tenant.telefone}</span>
+              <span className="font-medium">{escolinha.telefone || "Não informado"}</span>
             </div>
             <div className="flex items-center gap-3">
               <Mail className="h-5 w-5 text-gray-500" />
-              <span className="font-medium">{tenant.emailAdmin}</span>
+              <span className="font-medium">{escolinha.emailContato || "Não informado"}</span>
             </div>
           </CardContent>
         </Card>
@@ -266,13 +319,17 @@ const TenantDetalhePage = () => {
             <CardTitle>Categorias Atendidas</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-wrap gap-2">
-             {tenant.categorias.map((cat: string) => (
-           <Badge key={cat} variant="secondary" className="text-sm">
-               {cat}
-          </Badge>
-))}
-            </div>
+            {escolinha.categorias && escolinha.categorias.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {escolinha.categorias.map((cat: string) => (
+                  <Badge key={cat} variant="secondary" className="text-sm">
+                    {cat}
+                  </Badge>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-600">Nenhuma categoria cadastrada.</p>
+            )}
           </CardContent>
         </Card>
 
@@ -282,15 +339,15 @@ const TenantDetalhePage = () => {
           </CardHeader>
           <CardContent>
             <p className="text-gray-700 leading-relaxed">
-              {tenant.observacoes || "Nenhuma observação cadastrada."}
+              {escolinha.observacoes || "Nenhuma observação cadastrada."}
             </p>
           </CardContent>
         </Card>
       </div>
 {/* MODAL DE LOGIN DO ADMIN */}
       <CreateLoginModal
-       name={tenant.nomeAdmin || "Administrador"}
-        currentEmail={tenant.emailContato || ""}
+       name={escolinha.nomeAdmin || "Administrador"}
+        currentEmail={escolinha.emailContato || ""}
         open={openLoginModal}
         onOpenChange={setOpenLoginModal}
       />

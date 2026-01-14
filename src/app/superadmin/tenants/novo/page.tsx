@@ -23,6 +23,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/src/components/ui/avatar"
 const novoEscolinhaSchema = z.object({
   nome: z.string().min(3, "Nome da escolinha é obrigatório"),
   endereco: z.string().optional(),
+  estado: z.string().optional(),
+  cidade: z.string().optional(),
   tipoDocumento: z.enum(["cpf", "cnpj"]).optional(),
   documento: z.string().optional(),
   nomeResponsavel: z.string().min(3, "Nome do responsável obrigatório"),
@@ -266,11 +268,74 @@ const NovoTenantPage = () => {
               </div>
             </div>
 
-            {/* Endereço */}
-            <div className="space-y-2">
-              <Label htmlFor="endereco">Endereço</Label>
-              <Textarea id="endereco" placeholder="Rua das Flores, 123 - Centro" {...register("endereco")} />
-            </div>
+           {/* Endereço + Cidade + Estado */}
+<div className="space-y-6">
+  {/* Endereço completo */}
+  <div className="space-y-2">
+    <Label htmlFor="endereco">Endereço completo *</Label>
+    <Textarea 
+      id="endereco" 
+      placeholder="Rua das Flores, 123 - Centro" 
+      {...register("endereco")} 
+    />
+    {errors.endereco && (
+      <p className="text-sm text-red-600">{errors.endereco.message}</p>
+    )}
+  </div>
+
+            {/* Cidade e Estado lado a lado */}
+        <div className="space-y-2">
+          <Label htmlFor="cidade">Cidade *</Label>
+          <Input id="cidade" {...register("cidade")} />
+          {errors.cidade && <p className="text-sm text-red-600">{errors.cidade.message}</p>}
+        </div>
+
+              {/* Estado */}
+             <div className="space-y-2">
+              <Label htmlFor="estado">Estado *</Label>
+                  <Controller
+                    name="estado"
+                    control={control}
+                    render={({ field }) => (
+                      <Select onValueChange={field.onChange} value={field.value}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o estado" />
+                    </SelectTrigger>
+                      <SelectContent className="max-h-60 overflow-auto">
+                        <SelectItem value="AC">Acre</SelectItem>
+                        <SelectItem value="AL">Alagoas</SelectItem>
+                        <SelectItem value="AP">Amapá</SelectItem>
+                        <SelectItem value="AM">Amazonas</SelectItem>
+                        <SelectItem value="BA">Bahia</SelectItem>
+                        <SelectItem value="CE">Ceará</SelectItem>
+                        <SelectItem value="DF">Distrito Federal</SelectItem>
+                        <SelectItem value="ES">Espírito Santo</SelectItem>
+                        <SelectItem value="GO">Goiás</SelectItem>
+                        <SelectItem value="MA">Maranhão</SelectItem>
+                        <SelectItem value="MT">Mato Grosso</SelectItem>
+                        <SelectItem value="MS">Mato Grosso do Sul</SelectItem>
+                        <SelectItem value="MG">Minas Gerais</SelectItem>
+                        <SelectItem value="PA">Pará</SelectItem>
+                        <SelectItem value="PB">Paraíba</SelectItem>
+                        <SelectItem value="PR">Paraná</SelectItem>
+                        <SelectItem value="PE">Pernambuco</SelectItem>
+                        <SelectItem value="PI">Piauí</SelectItem>
+                        <SelectItem value="RJ">Rio de Janeiro</SelectItem>
+                        <SelectItem value="RN">Rio Grande do Norte</SelectItem>
+                        <SelectItem value="RS">Rio Grande do Sul</SelectItem>
+                        <SelectItem value="RO">Rondônia</SelectItem>
+                        <SelectItem value="RR">Roraima</SelectItem>
+                        <SelectItem value="SC">Santa Catarina</SelectItem>
+                        <SelectItem value="SP">São Paulo</SelectItem>
+                        <SelectItem value="SE">Sergipe</SelectItem>
+                        <SelectItem value="TO">Tocantins</SelectItem>
+                      </SelectContent>
+                   </Select>
+                    )}
+                  />
+                  {errors.estado && <p className="text-sm text-red-600">{errors.estado.message}</p>}
+                </div>
+              </div>
 
             {/* Plano SaaS */}
             <div className="space-y-2">

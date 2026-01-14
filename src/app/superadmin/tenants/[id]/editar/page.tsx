@@ -1,14 +1,14 @@
-// src/app/superadmin/tenants/[id]/editar/page.tsx
 "use client";
 
 import { useEffect, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { toast } from "sonner";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { ChevronLeft, Save, Loader2, Camera, Trash2 } from "lucide-react";
 import { Button } from "@/src/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/card";
@@ -18,58 +18,54 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/src/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/src/components/ui/radio-group";
 import { Avatar, AvatarFallback, AvatarImage } from "@/src/components/ui/avatar";
-
-// Máscaras
-const formatCPF = (value: string) => {
-  const cleaned = value.replace(/\D/g, "");
-  return cleaned.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
-};
-
-const formatCNPJ = (value: string) => {
-  const cleaned = value.replace(/\D/g, "");
-  return cleaned.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
-};
+import api from "@/src/lib/api";
 
 // Schema Zod
-const editTenantSchema = z.object({
-  name: z.string().min(3, "Nome da escolinha deve ter pelo menos 3 caracteres"),
-  tipoDocumento: z.enum(["CPF", "CNPJ"]),
-  documento: z.string().min(1, "Documento é obrigatório"),
-  cidade: z.string().min(2, "Cidade obrigatória"),
-  estado: z.enum(["AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO"]),
-  endereco: z.string().min(5, "Endereço completo obrigatório"),
-  telefone: z.string().min(10, "Telefone inválido"),
-  emailAdmin: z.string().email("E-mail do admin inválido"),
-  nomeAdmin: z.string().min(3, "Nome do administrador obrigatório"),
-  plano: z.enum(["Básico", "Pro", "Enterprise"]),
+const editEscolinhaSchema = z.object({
+  nome: z.string().min(3, "Nome da escolinha deve ter pelo menos 3 caracteres"),
+  tipoDocumento: z.enum(["CPF", "CNPJ"]).optional(),
+  documento: z.string().min(1, "Documento é obrigatório").optional(),
+  endereco: z.string().min(5, "Endereço completo obrigatório").optional(),
+  telefone: z.string().min(10, "Telefone inválido").optional(),
+  emailContato: z.string().email("E-mail do responsável inválido").optional(),
+  nomeResponsavel: z.string().min(3, "Nome do responsável obrigatório").optional(),
+  planoSaaS: z.enum(["basico", "pro", "enterprise"]).optional(),
   observacoes: z.string().optional(),
 });
 
-type EditTenantFormData = z.infer<typeof editTenantSchema>;
+type EditEscolinhaFormData = z.infer<typeof editEscolinhaSchema>;
 
-// Mock
-const tenantsMock = [
-  {
-    id: "1",
-    name: "Escolinha Gol de Placa",
-    tipoDocumento: "CNPJ" as const,
-    documento: "12345678000199",
-    cidade: "São Paulo",
-    estado: "SP" as const,
-    endereco: "Rua das Flores, 123",
-    telefone: "(11) 99999-8888",
-    emailAdmin: "admin@goldeplaca.com",
-    nomeAdmin: "João Silva",
-    plano: "Pro" as const,
-    observacoes: "Foco em sub-11 e sub-13.",
-    logoUrl: "https://example.com/logo-goldeplaca.png",
-  },
-];
-
-const EditarTenantPage = () => {
-  const { id } = useParams();
+const EditarEscolinhaPage = () => {
+  const { id } = useParams() as { id: string };
+  const router = useRouter();
+  const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+
+  // Funções de máscara movidas para dentro do componente
+  const formatCPF = (value: string) => {
+    const cleaned = value.replace(/\D/g, "");
+    return cleaned.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+  };
+
+  const formatCNPJ = (value: string) => {
+    const cleaned = value.replace(/\D/g, "");
+    return cleaned.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+  };
+
+  // Busca dados reais do backend
+  const { data: response, isLoading: isLoadingTenant } = useQuery({
+    queryKey: ["escolinha", id],
+    queryFn: async () => {
+      console.log("[Editar] Buscando escolinha com ID:", id);
+      const res = await api.get(`http://localhost:4000/api/v1/superadmin/escolinhas/${id}`);
+      console.log("[Editar] Dados recebidos:", res.data);
+      return res.data; // { success: true, data: {...} }
+    },
+  });
+
+  const tenant = response?.data; // objeto real da escolinha
 
   const {
     register,
@@ -79,77 +75,74 @@ const EditarTenantPage = () => {
     watch,
     reset,
     formState: { errors, isSubmitting },
-  } = useForm<EditTenantFormData>({
-    resolver: zodResolver(editTenantSchema),
+  } = useForm<EditEscolinhaFormData>({
+    resolver: zodResolver(editEscolinhaSchema),
   });
 
-  const tenant = tenantsMock.find(t => t.id === id);
-
-  // Assista os valores do form (sem state local!)
   const tipoDocumento = watch("tipoDocumento") || "CPF";
   const documento = watch("documento") || "";
 
-  // Pré-preenche com reset (sem setState local)
+  // Pré-preenche com dados reais
   useEffect(() => {
     if (tenant) {
-      const cleaned = tenant.documento.replace(/\D/g, "");
+      const cleaned = tenant.documento?.replace(/\D/g, "") || "";
 
       reset({
-        name: tenant.name,
-        tipoDocumento: tenant.tipoDocumento,
+        nome: tenant.nome || "",
+        tipoDocumento: tenant.tipoDocumento || "CPF",
         documento: cleaned,
-        cidade: tenant.cidade,
-        estado: tenant.estado,
-        endereco: tenant.endereco,
-        telefone: tenant.telefone,
-        emailAdmin: tenant.emailAdmin,
-        nomeAdmin: tenant.nomeAdmin,
-        plano: tenant.plano,
-        observacoes: tenant.observacoes,
+        endereco: tenant.endereco || "",
+        telefone: tenant.telefone || "",
+        emailContato: tenant.emailContato || "",
+        nomeResponsavel: tenant.nomeResponsavel || "",
+        planoSaaS: tenant.planoSaaS || "basico",
+        observacoes: tenant.observacoes || "",
       });
 
       setLogoPreview(tenant.logoUrl || null);
     }
   }, [tenant, reset]);
 
-  if (!tenant) {
-    return (
-      <div className="p-8 text-center">
-        <h1 className="text-2xl font-bold">Escolinha não encontrada</h1>
-        <Button asChild className="mt-4">
-          <Link href="/superadmin/tenants">Voltar</Link>
-        </Button>
-      </div>
-    );
-  }
+ const updateMutation = useMutation({
+  mutationFn: async (data: EditEscolinhaFormData) => {
+    console.log("[Frontend] Enviando dados para PUT:", data); // ← log para debug
+    await api.put(`http://localhost:4000/api/v1/superadmin/escolinhas/${id}`, data); // ← JSON direto
+  },
+  onSuccess: () => {
+    toast.success("Escolinha atualizada com sucesso!");
+    queryClient.invalidateQueries({ queryKey: ["escolinha", id] });
+    queryClient.invalidateQueries({ queryKey: ["escolinhas"] });
+    router.push(`/superadmin/tenants/${id}`);
+  },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onError: (err: any) => {
+    console.error("[Frontend] Erro completo ao salvar:", err);
+    toast.error("Erro ao atualizar escolinha");
+  },
+});
 
-  const validarDocumento = (tipo: "CPF" | "CNPJ", valor: string): boolean => {
+  const validarDocumento = (tipo: "CPF" | "CNPJ" = "CPF", valor: string = ""): boolean => {
     const cleaned = valor.replace(/\D/g, "");
     if (tipo === "CPF") return cleaned.length === 11;
     if (tipo === "CNPJ") return cleaned.length === 14;
-    return false;
+    return true; // se não tiver documento, aceita
   };
 
-  const onSubmit = async (data: EditTenantFormData) => {
-    if (!validarDocumento(data.tipoDocumento, data.documento)) {
+  const onSubmit = async (data: EditEscolinhaFormData) => {
+    if (data.documento && !validarDocumento(data.tipoDocumento, data.documento)) {
       toast.error("Documento inválido", {
         description: data.tipoDocumento === "CPF" ? "CPF deve ter 11 dígitos" : "CNPJ deve ter 14 dígitos",
       });
       return;
     }
 
-    try {
-      console.log("Tenant atualizado:", data);
-      await new Promise(r => setTimeout(r, 1200));
-      toast.success("Escolinha atualizada com sucesso!");
-    } catch {
-      toast.error("Erro ao salvar");
-    }
+    updateMutation.mutate(data);
   };
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setLogoFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setLogoPreview(reader.result as string);
@@ -160,20 +153,41 @@ const EditarTenantPage = () => {
 
   const removeLogo = () => {
     setLogoPreview(null);
+    setLogoFile(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
+
+  if (isLoadingTenant) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
+        <p className="ml-4 text-lg font-medium">Carregando dados da escolinha...</p>
+      </div>
+    );
+  }
+
+  if (!tenant) {
+    return (
+      <div className="p-8 text-center">
+        <h1 className="text-2xl font-bold text-red-600">Escolinha não encontrada</h1>
+        <Button asChild className="mt-4">
+          <Link href="/superadmin/tenants">Voltar para lista</Link>
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 lg:p-8 max-w-5xl mx-auto space-y-8">
       <div className="flex items-center gap-4 mb-8">
         <Button variant="ghost" size="icon" asChild>
-          <Link href="/superadmin/tenants">
+          <Link href={`/superadmin/tenants/${id}`}>
             <ChevronLeft className="h-5 w-5" />
           </Link>
         </Button>
         <div>
           <h1 className="text-3xl font-bold">Editar Escolinha</h1>
-          <p className="text-gray-600">Atualize as informações de {tenant.name}</p>
+          <p className="text-gray-600">Atualize as informações de {tenant.nome}</p>
         </div>
       </div>
 
@@ -190,8 +204,8 @@ const EditarTenantPage = () => {
             <div className="flex flex-col items-center gap-4 py-6 border-b">
               <Avatar className="h-32 w-32 ring-4 ring-green-100">
                 <AvatarImage src={logoPreview || undefined} />
-                <AvatarFallback className="bg-linear-to-br from-green-600 to-emerald-600 text-white text-3xl font-bold">
-                  {tenant.name.split(" ").map(n => n[0]).join("")}
+                <AvatarFallback className="bg-gradient-to-br from-green-600 to-emerald-600 text-white text-3xl font-bold">
+                  {tenant.nome?.split(" ").map((n: string) => n[0]).join("") || ""}
                 </AvatarFallback>
               </Avatar>
 
@@ -220,14 +234,14 @@ const EditarTenantPage = () => {
 
             {/* Nome da Escolinha */}
             <div className="space-y-2">
-              <Label htmlFor="name">Nome da Escolinha *</Label>
-              <Input id="name" {...register("name")} />
-              {errors.name && <p className="text-sm text-red-600">{errors.name.message}</p>}
+              <Label htmlFor="nome">Nome da Escolinha *</Label>
+              <Input id="nome" {...register("nome")} />
+              {errors.nome && <p className="text-sm text-red-600">{errors.nome.message}</p>}
             </div>
 
             {/* Tipo de Documento + CPF/CNPJ */}
             <div className="space-y-4">
-              <Label>Tipo de Documento *</Label>
+              <Label>Tipo de Documento</Label>
               <RadioGroup 
                 value={tipoDocumento} 
                 onValueChange={(v) => {
@@ -248,7 +262,7 @@ const EditarTenantPage = () => {
               </RadioGroup>
 
               <div className="space-y-2">
-                <Label htmlFor="documento">{tipoDocumento} *</Label>
+                <Label htmlFor="documento">{tipoDocumento}</Label>
                 <Input
                   id="documento"
                   placeholder={tipoDocumento === "CPF" ? "000.000.000-00" : "00.000.000/0000-00"}
@@ -263,95 +277,42 @@ const EditarTenantPage = () => {
               </div>
             </div>
 
-            {/* Cidade e Estado */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label>Cidade *</Label>
-                <Input {...register("cidade")} />
-                {errors.cidade && <p className="text-sm text-red-600">{errors.cidade.message}</p>}
-              </div>
-              <div className="space-y-2">
-                <Label>Estado *</Label>
-                <Controller
-                  name="estado"
-                  control={control}
-                  render={({ field }) => (
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o estado" />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-60 overflow-auto">
-                        <SelectItem value="AC">Acre</SelectItem>
-                        <SelectItem value="AL">Alagoas</SelectItem>
-                        <SelectItem value="AP">Amapá</SelectItem>
-                        <SelectItem value="AM">Amazonas</SelectItem>
-                        <SelectItem value="BA">Bahia</SelectItem>
-                        <SelectItem value="CE">Ceará</SelectItem>
-                        <SelectItem value="DF">Distrito Federal</SelectItem>
-                        <SelectItem value="ES">Espírito Santo</SelectItem>
-                        <SelectItem value="GO">Goiás</SelectItem>
-                        <SelectItem value="MA">Maranhão</SelectItem>
-                        <SelectItem value="MT">Mato Grosso</SelectItem>
-                        <SelectItem value="MS">Mato Grosso do Sul</SelectItem>
-                        <SelectItem value="MG">Minas Gerais</SelectItem>
-                        <SelectItem value="PA">Pará</SelectItem>
-                        <SelectItem value="PB">Paraíba</SelectItem>
-                        <SelectItem value="PR">Paraná</SelectItem>
-                        <SelectItem value="PE">Pernambuco</SelectItem>
-                        <SelectItem value="PI">Piauí</SelectItem>
-                        <SelectItem value="RJ">Rio de Janeiro</SelectItem>
-                        <SelectItem value="RN">Rio Grande do Norte</SelectItem>
-                        <SelectItem value="RS">Rio Grande do Sul</SelectItem>
-                        <SelectItem value="RO">Rondônia</SelectItem>
-                        <SelectItem value="RR">Roraima</SelectItem>
-                        <SelectItem value="SC">Santa Catarina</SelectItem>
-                        <SelectItem value="SP">São Paulo</SelectItem>
-                        <SelectItem value="SE">Sergipe</SelectItem>
-                        <SelectItem value="TO">Tocantins</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-                {errors.estado && <p className="text-sm text-red-600">{errors.estado.message}</p>}
-              </div>
-            </div>
-
             {/* Endereço e Telefone */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="endereco">Endereço completo *</Label>
+                <Label htmlFor="endereco">Endereço completo</Label>
                 <Input id="endereco" {...register("endereco")} />
                 {errors.endereco && <p className="text-sm text-red-600">{errors.endereco.message}</p>}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="telefone">Telefone *</Label>
+                <Label htmlFor="telefone">Telefone</Label>
                 <Input id="telefone" {...register("telefone")} />
                 {errors.telefone && <p className="text-sm text-red-600">{errors.telefone.message}</p>}
               </div>
             </div>
 
-            {/* Administrador */}
+            {/* Responsável */}
             <div className="space-y-4 pt-6 border-t">
-              <h3 className="text-lg font-semibold">Administrador da Escolinha</h3>
+              <h3 className="text-lg font-semibold">Responsável da Escolinha</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="nomeAdmin">Nome do administrador *</Label>
-                  <Input id="nomeAdmin" {...register("nomeAdmin")} />
-                  {errors.nomeAdmin && <p className="text-sm text-red-600">{errors.nomeAdmin.message}</p>}
+                  <Label htmlFor="nomeResponsavel">Nome do responsável</Label>
+                  <Input id="nomeResponsavel" {...register("nomeResponsavel")} />
+                  {errors.nomeResponsavel && <p className="text-sm text-red-600">{errors.nomeResponsavel.message}</p>}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="emailAdmin">E-mail do administrador *</Label>
-                  <Input id="emailAdmin" type="email" {...register("emailAdmin")} />
-                  {errors.emailAdmin && <p className="text-sm text-red-600">{errors.emailAdmin.message}</p>}
+                  <Label htmlFor="emailContato">E-mail do responsável</Label>
+                  <Input id="emailContato" type="email" {...register("emailContato")} />
+                  {errors.emailContato && <p className="text-sm text-red-600">{errors.emailContato.message}</p>}
                 </div>
               </div>
             </div>
 
             {/* Plano */}
             <div className="space-y-2">
-              <Label>Plano *</Label>
+              <Label>Plano SaaS</Label>
               <Controller
-                name="plano"
+                name="planoSaaS"
                 control={control}
                 render={({ field }) => (
                   <Select onValueChange={field.onChange} value={field.value}>
@@ -359,14 +320,14 @@ const EditarTenantPage = () => {
                       <SelectValue placeholder="Selecione o plano" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Básico">Básico</SelectItem>
-                      <SelectItem value="Pro">Pro</SelectItem>
-                      <SelectItem value="Enterprise">Enterprise</SelectItem>
+                      <SelectItem value="basico">Básico</SelectItem>
+                      <SelectItem value="pro">Pro</SelectItem>
+                      <SelectItem value="enterprise">Enterprise</SelectItem>
                     </SelectContent>
                   </Select>
                 )}
               />
-              {errors.plano && <p className="text-sm text-red-600">{errors.plano.message}</p>}
+              {errors.planoSaaS && <p className="text-sm text-red-600">{errors.planoSaaS.message}</p>}
             </div>
 
             {/* Observações */}
@@ -382,7 +343,7 @@ const EditarTenantPage = () => {
 
             {/* Botões */}
             <div className="flex gap-4 pt-6">
-              <Button type="submit" disabled={isSubmitting} className="flex-1 bg-linear-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700">
+              <Button type="submit" disabled={isSubmitting} className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700">
                 {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -396,7 +357,7 @@ const EditarTenantPage = () => {
                 )}
               </Button>
               <Button type="button" variant="outline" asChild>
-                <Link href="/superadmin/tenants">Cancelar</Link>
+                <Link href={`/superadmin/tenants/${id}`}>Cancelar</Link>
               </Button>
             </div>
           </form>
@@ -406,4 +367,4 @@ const EditarTenantPage = () => {
   );
 };
 
-export default EditarTenantPage;
+export default EditarEscolinhaPage;
