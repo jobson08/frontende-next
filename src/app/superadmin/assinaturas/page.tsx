@@ -1,10 +1,10 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "@/src/lib/api";
 import { useState } from "react";
 import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import { DollarSign, Calendar, Search, MoreVertical, Edit, XCircle, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/card";
 import { Badge } from "@/src/components/ui/badge";
@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/src/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/src/components/ui/dropdown-menu";
 import { toast } from "sonner";
+import { Pagination } from "@/src/components/common/Pagination";
 
 interface Assinatura {
   id: string;
@@ -23,7 +24,6 @@ interface Assinatura {
   dataInicioPlano: string | null;
   dataProximoCobranca: string | null;
   statusPagamentoSaaS: string;
-  ultimoPagamento?: string | null; // opcional, se quiser puxar do Pagamento
 }
 
 const AssinaturasPage = () => {
@@ -32,15 +32,25 @@ const AssinaturasPage = () => {
   const [filtroStatus, setFiltroStatus] = useState("todos");
   const [filtroPlano, setFiltroPlano] = useState("todos");
 
-  // Puxa todas as escolinhas (assinaturas SaaS)
-  const { data: assinaturas = [], isLoading, error } = useQuery<Assinatura[]>({
+  // Estados para paginação da atividade recente
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10); // padrão 10 itens
+
+  // ÚNICA chamada useQuery da página
+  const { 
+    data: response, 
+    isLoading, 
+    error 
+  } = useQuery<{ success: boolean; data: Assinatura[] }>({
     queryKey: ["assinaturas"],
     queryFn: async () => {
-      const { data } = await api.get("/api/v1/superadmin/escolinhas");
-      console.log("[Assinaturas] Dados recebidos:", data);
-      return data.data; // ajuste conforme seu response { success: true, data: [...] }
+      const { data } = await api.get("/superadmin/escolinhas"); // ← rota correta com baseURL
+      console.log("[Assinaturas] Resposta completa do backend:", data);
+      return data;
     },
   });
+
+  const assinaturas = response?.data || [];
 
   const filtered = assinaturas.filter((a) => {
     const matchSearch = a.nome.toLowerCase().includes(searchTerm.toLowerCase());
@@ -52,7 +62,7 @@ const AssinaturasPage = () => {
   const totalAtivas = filtered.filter(a => a.statusPagamentoSaaS.toLowerCase() === "ativo").length;
   const totalAtrasadas = filtered.filter(a => a.statusPagamentoSaaS.toLowerCase() === "atrasado").length;
   const receitaMensalPrevista = filtered
-    .filter(a => a.statusPagamentoSaaS.toLowerCase() === "ativo" || a.statusPagamentoSaaS.toLowerCase() === "atrasado")
+    .filter(a => ["ativo", "atrasado"].includes(a.statusPagamentoSaaS.toLowerCase()))
     .reduce((acc, a) => acc + (a.valorPlanoMensal || 0), 0);
 
   const getStatusBadge = (status: string) => {
@@ -70,6 +80,11 @@ const AssinaturasPage = () => {
     }
   };
 
+  // Paginação aplicada na lista filtrada
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginated = filtered.slice(startIndex, startIndex + itemsPerPage);
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+
   const getPlanoColor = (plano: string) => {
     switch (plano.toLowerCase()) {
       case "enterprise": return "bg-gradient-to-r from-purple-600 to-pink-600 text-white";
@@ -79,20 +94,20 @@ const AssinaturasPage = () => {
     }
   };
 
-  // Ações (exemplo - você pode criar endpoints reais no backend para cada uma)
   const handleAlterarPlano = async (id: string, novoPlano: string) => {
     try {
-      await api.put(`http://localhost:4000/api/v1/superadmin/escolinhas/${id}`, { planoSaaS: novoPlano });
+      await api.put(`/superadmin/escolinhas/${id}`, { planoSaaS: novoPlano });
       toast.success(`Plano alterado com sucesso!`);
       queryClient.invalidateQueries({ queryKey: ["assinaturas"] });
-    } catch {
+    } catch (err) {
+      console.error("[AlterarPlano] Erro:", err);
       toast.error("Erro ao alterar plano");
     }
   };
 
   const handleCancelar = async (id: string) => {
     try {
-      await api.put(`http://localhost:4000/api/v1/superadmin/escolinhas/${id}`, { statusPagamentoSaaS: "cancelado" });
+      await api.put(`/superadmin/escolinhas/${id}`, { statusPagamentoSaaS: "cancelado" });
       toast.success(`Assinatura cancelada!`);
       queryClient.invalidateQueries({ queryKey: ["assinaturas"] });
     } catch {
@@ -102,7 +117,7 @@ const AssinaturasPage = () => {
 
   const handleReativar = async (id: string) => {
     try {
-      await api.put(`http://localhost:4000/api/v1/superadmin/escolinhas/${id}`, { statusPagamentoSaaS: "ativo" });
+      await api.put(`/superadmin/escolinhas/${id}`, { statusPagamentoSaaS: "ativo" });
       toast.success(`Assinatura reativada!`);
       queryClient.invalidateQueries({ queryKey: ["assinaturas"] });
     } catch {
@@ -120,6 +135,7 @@ const AssinaturasPage = () => {
   }
 
   if (error) {
+    console.error("[Assinaturas] Erro ao carregar:", error);
     return (
       <div className="p-8 text-center text-red-600">
         <AlertCircle className="h-12 w-12 mx-auto mb-4" />
@@ -220,90 +236,105 @@ const AssinaturasPage = () => {
       </div>
 
       {/* Tabela de Assinaturas */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Todas as Assinaturas ({filtered.length})</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {filtered.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
-              Nenhuma assinatura encontrada com os filtros aplicados.
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Escolinha</TableHead>
-                  <TableHead>Plano</TableHead>
-                  <TableHead>Valor Mensal</TableHead>
-                  <TableHead>Início</TableHead>
-                  <TableHead>Próximo Vencimento</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.map((assinatura) => (
-                  <TableRow key={assinatura.id}>
-                    <TableCell className="font-medium">{assinatura.nome}</TableCell>
-                    <TableCell>
-                      <Badge className={getPlanoColor(assinatura.planoSaaS)}>
-                        {assinatura.planoSaaS}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      R$ {assinatura.valorPlanoMensal?.toLocaleString("pt-BR") || "0,00"}
-                    </TableCell>
-                    <TableCell>
-                      {assinatura.dataInicioPlano
-                        ? format(new Date(assinatura.dataInicioPlano), "dd/MM/yyyy")
-                        : "-"}
-                    </TableCell>
-                    <TableCell>
-                      {assinatura.dataProximoCobranca
-                        ? format(new Date(assinatura.dataProximoCobranca), "dd/MM/yyyy")
-                        : "Não informado"}
-                    </TableCell>
-                    <TableCell>{getStatusBadge(assinatura.statusPagamentoSaaS)}</TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => window.location.href = `/superadmin/tenants/${assinatura.id}`}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Ver detalhes
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleAlterarPlano(assinatura.id, "pro")}>
-                            <DollarSign className="mr-2 h-4 w-4" />
-                            Alterar para Pro
-                          </DropdownMenuItem>
-                          {assinatura.statusPagamentoSaaS.toLowerCase() === "ativo" && (
-                            <DropdownMenuItem className="text-red-600" onClick={() => handleCancelar(assinatura.id)}>
-                              <XCircle className="mr-2 h-4 w-4" />
-                              Cancelar assinatura
-                            </DropdownMenuItem>
-                          )}
-                          {(assinatura.statusPagamentoSaaS.toLowerCase() === "atrasado" || 
-                            assinatura.statusPagamentoSaaS.toLowerCase() === "suspenso") && (
-                            <DropdownMenuItem className="text-green-600" onClick={() => handleReativar(assinatura.id)}>
-                              <CheckCircle className="mr-2 h-4 w-4" />
-                              Reativar assinatura
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+<Card>
+  <CardHeader>
+    <CardTitle>Todas as Assinaturas ({filtered.length})</CardTitle>
+  </CardHeader>
+  <CardContent>
+    {filtered.length === 0 ? (
+      <div className="text-center py-12 text-gray-500">
+        Nenhuma assinatura encontrada com os filtros aplicados.
+      </div>
+    ) : (
+      <>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Escolinha</TableHead>
+              <TableHead>Plano</TableHead>
+              <TableHead>Valor Mensal</TableHead>
+              <TableHead>Início</TableHead>
+              <TableHead>Próximo Vencimento</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Ações</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {paginated.map((assinatura) => (
+              <TableRow key={assinatura.id}>
+                <TableCell className="font-medium">{assinatura.nome}</TableCell>
+                <TableCell>
+                  <Badge className={getPlanoColor(assinatura.planoSaaS)}>
+                    {assinatura.planoSaaS}
+                  </Badge>
+                </TableCell>
+                <TableCell className="font-medium">
+                  R$ {assinatura.valorPlanoMensal?.toLocaleString("pt-BR") || "0,00"}
+                </TableCell>
+                <TableCell>
+                  {assinatura.dataInicioPlano
+                    ? format(new Date(assinatura.dataInicioPlano), "dd/MM/yyyy")
+                    : "-"}
+                </TableCell>
+                <TableCell>
+                  {assinatura.dataProximoCobranca
+                    ? format(new Date(assinatura.dataProximoCobranca), "dd/MM/yyyy")
+                    : "Não informado"}
+                </TableCell>
+                <TableCell>{getStatusBadge(assinatura.statusPagamentoSaaS)}</TableCell>
+                <TableCell className="text-right">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => window.location.href = `/superadmin/tenants/${assinatura.id}`}>
+                        <Edit className="mr-2 h-4 w-4" />
+                        Ver detalhes
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleAlterarPlano(assinatura.id, "pro")}>
+                        <DollarSign className="mr-2 h-4 w-4" />
+                        Alterar para Pro
+                      </DropdownMenuItem>
+                      {assinatura.statusPagamentoSaaS.toLowerCase() === "ativo" && (
+                        <DropdownMenuItem className="text-red-600" onClick={() => handleCancelar(assinatura.id)}>
+                          <XCircle className="mr-2 h-4 w-4" />
+                          Cancelar assinatura
+                        </DropdownMenuItem>
+                      )}
+                      {(assinatura.statusPagamentoSaaS.toLowerCase() === "atrasado" || 
+                        assinatura.statusPagamentoSaaS.toLowerCase() === "suspenso") && (
+                        <DropdownMenuItem className="text-green-600" onClick={() => handleReativar(assinatura.id)}>
+                          <CheckCircle className="mr-2 h-4 w-4" />
+                          Reativar assinatura
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+
+            {/* Paginação no final */}
+            <Pagination
+              currentPage={currentPage}
+              totalItems={filtered.length}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+              onItemsPerPageChange={(value) => {
+                setItemsPerPage(value);
+                setCurrentPage(1); // reseta para a primeira página
+              }}
+              className="mt-6"
+            />
+          </>
+        )}
+      </CardContent>
+    </Card>
     </div>
   );
 };

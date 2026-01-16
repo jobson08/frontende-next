@@ -24,7 +24,7 @@ interface NavbarProps {
 
 const menuItems = {
   SUPERADMIN: [
-    { icon: Home, label: "Dashboard Global", href: "/superadmin" },
+    { icon: Home, label: "Dashboard", href: "/superadmin" },
     { icon: Building2, label: "Escolinhas", href: "/superadmin/tenants" },
     { icon: UserPlus, label: "Criar Nova Escolinha", href: "/superadmin/tenants/novo" },
     { icon: DollarSign, label: "Pagamentos SaaS", href: "/superadmin/pagamentos" },

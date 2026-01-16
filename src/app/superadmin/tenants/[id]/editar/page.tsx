@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -20,17 +21,19 @@ import { RadioGroup, RadioGroupItem } from "@/src/components/ui/radio-group";
 import { Avatar, AvatarFallback, AvatarImage } from "@/src/components/ui/avatar";
 import api from "@/src/lib/api";
 
-// Schema Zod
+// Schema Zod atualizado com campos novos
 const editEscolinhaSchema = z.object({
   nome: z.string().min(3, "Nome da escolinha deve ter pelo menos 3 caracteres"),
   tipoDocumento: z.enum(["CPF", "CNPJ"]).optional(),
   documento: z.string().min(1, "Documento é obrigatório").optional(),
   endereco: z.string().min(5, "Endereço completo obrigatório").optional(),
+  cidade: z.string().min(2, "Cidade é obrigatória").optional(),
+  estado: z.string().min(2, "Estado é obrigatório").optional(),
+  observacoes: z.string().optional(),
   telefone: z.string().min(10, "Telefone inválido").optional(),
   emailContato: z.string().email("E-mail do responsável inválido").optional(),
   nomeResponsavel: z.string().min(3, "Nome do responsável obrigatório").optional(),
   planoSaaS: z.enum(["basico", "pro", "enterprise"]).optional(),
-  observacoes: z.string().optional(),
 });
 
 type EditEscolinhaFormData = z.infer<typeof editEscolinhaSchema>;
@@ -43,7 +46,7 @@ const EditarEscolinhaPage = () => {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
 
-  // Funções de máscara movidas para dentro do componente
+  // Funções de máscara
   const formatCPF = (value: string) => {
     const cleaned = value.replace(/\D/g, "");
     return cleaned.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
@@ -54,18 +57,18 @@ const EditarEscolinhaPage = () => {
     return cleaned.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
   };
 
-  // Busca dados reais do backend
+  // Busca dados reais
   const { data: response, isLoading: isLoadingTenant } = useQuery({
     queryKey: ["escolinha", id],
     queryFn: async () => {
-      console.log("[Editar] Buscando escolinha com ID:", id);
-      const res = await api.get(`http://localhost:4000/api/v1/superadmin/escolinhas/${id}`);
-      console.log("[Editar] Dados recebidos:", res.data);
-      return res.data; // { success: true, data: {...} }
+      console.log("[Editar] Buscando ID:", id);
+      const res = await api.get(`/superadmin/escolinhas/${id}`); // rota correta
+      console.log("[Editar] Dados:", res.data);
+      return res.data;
     },
   });
 
-  const tenant = response?.data; // objeto real da escolinha
+  const tenant = response?.data;
 
   const {
     register,
@@ -92,40 +95,41 @@ const EditarEscolinhaPage = () => {
         tipoDocumento: tenant.tipoDocumento || "CPF",
         documento: cleaned,
         endereco: tenant.endereco || "",
+        cidade: tenant.cidade || "",
+        estado: tenant.estado || "",
+        observacoes: tenant.observacoes || "",
         telefone: tenant.telefone || "",
         emailContato: tenant.emailContato || "",
         nomeResponsavel: tenant.nomeResponsavel || "",
         planoSaaS: tenant.planoSaaS || "basico",
-        observacoes: tenant.observacoes || "",
       });
 
       setLogoPreview(tenant.logoUrl || null);
     }
   }, [tenant, reset]);
 
- const updateMutation = useMutation({
-  mutationFn: async (data: EditEscolinhaFormData) => {
-    console.log("[Frontend] Enviando dados para PUT:", data); // ← log para debug
-    await api.put(`http://localhost:4000/api/v1/superadmin/escolinhas/${id}`, data); // ← JSON direto
-  },
-  onSuccess: () => {
-    toast.success("Escolinha atualizada com sucesso!");
-    queryClient.invalidateQueries({ queryKey: ["escolinha", id] });
-    queryClient.invalidateQueries({ queryKey: ["escolinhas"] });
-    router.push(`/superadmin/tenants/${id}`);
-  },
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  onError: (err: any) => {
-    console.error("[Frontend] Erro completo ao salvar:", err);
-    toast.error("Erro ao atualizar escolinha");
-  },
-});
+  const updateMutation = useMutation({
+    mutationFn: async (data: EditEscolinhaFormData) => {
+      console.log("[Editar] Enviando dados:", data);
+      await api.put(`/superadmin/escolinhas/${id}`, data);
+    },
+    onSuccess: () => {
+      toast.success("Escolinha atualizada com sucesso!");
+      queryClient.invalidateQueries({ queryKey: ["escolinha", id] });
+      queryClient.invalidateQueries({ queryKey: ["escolinhas"] });
+      router.push(`/superadmin/tenants/${id}`);
+    },
+    onError: (err: any) => {
+      console.error("[Editar] Erro:", err);
+      toast.error("Erro ao atualizar escolinha");
+    },
+  });
 
   const validarDocumento = (tipo: "CPF" | "CNPJ" = "CPF", valor: string = ""): boolean => {
     const cleaned = valor.replace(/\D/g, "");
     if (tipo === "CPF") return cleaned.length === 11;
     if (tipo === "CNPJ") return cleaned.length === 14;
-    return true; // se não tiver documento, aceita
+    return true;
   };
 
   const onSubmit = async (data: EditEscolinhaFormData) => {
@@ -144,9 +148,7 @@ const EditarEscolinhaPage = () => {
     if (file) {
       setLogoFile(file);
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setLogoPreview(reader.result as string);
-      };
+      reader.onloadend = () => setLogoPreview(reader.result as string);
       reader.readAsDataURL(file);
     }
   };
@@ -161,7 +163,7 @@ const EditarEscolinhaPage = () => {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
-        <p className="ml-4 text-lg font-medium">Carregando dados da escolinha...</p>
+        <p className="ml-4 text-lg font-medium">Carregando dados...</p>
       </div>
     );
   }
@@ -200,7 +202,7 @@ const EditarEscolinhaPage = () => {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-            {/* Logo da Escolinha */}
+            {/* Logo */}
             <div className="flex flex-col items-center gap-4 py-6 border-b">
               <Avatar className="h-32 w-32 ring-4 ring-green-100">
                 <AvatarImage src={logoPreview || undefined} />
@@ -232,18 +234,18 @@ const EditarEscolinhaPage = () => {
               <p className="text-xs text-gray-500 text-center">Logo opcional (JPG, PNG, recomendado quadrado)</p>
             </div>
 
-            {/* Nome da Escolinha */}
+            {/* Nome */}
             <div className="space-y-2">
               <Label htmlFor="nome">Nome da Escolinha *</Label>
               <Input id="nome" {...register("nome")} />
               {errors.nome && <p className="text-sm text-red-600">{errors.nome.message}</p>}
             </div>
 
-            {/* Tipo de Documento + CPF/CNPJ */}
+            {/* Tipo Documento + CPF/CNPJ */}
             <div className="space-y-4">
               <Label>Tipo de Documento</Label>
-              <RadioGroup 
-                value={tipoDocumento} 
+              <RadioGroup
+                value={tipoDocumento}
                 onValueChange={(v) => {
                   setValue("tipoDocumento", v as "CPF" | "CNPJ");
                   setValue("documento", "");
@@ -252,11 +254,11 @@ const EditarEscolinhaPage = () => {
                 <div className="flex items-center gap-6">
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="CPF" id="cpf" />
-                    <Label htmlFor="cpf">CPF (Pessoa Física)</Label>
+                    <Label htmlFor="cpf">CPF</Label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="CNPJ" id="cnpj" />
-                    <Label htmlFor="cnpj">CNPJ (Pessoa Jurídica)</Label>
+                    <Label htmlFor="cnpj">CNPJ</Label>
                   </div>
                 </div>
               </RadioGroup>
@@ -277,18 +279,81 @@ const EditarEscolinhaPage = () => {
               </div>
             </div>
 
-            {/* Endereço e Telefone */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Endereço + Cidade + Estado */}
+            <div className="space-y-6">
+              {/* Endereço completo */}
               <div className="space-y-2">
                 <Label htmlFor="endereco">Endereço completo</Label>
-                <Input id="endereco" {...register("endereco")} />
+                <Input id="endereco" {...register("endereco")} placeholder="Rua Exemplo, 123 - Bairro" />
                 {errors.endereco && <p className="text-sm text-red-600">{errors.endereco.message}</p>}
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="telefone">Telefone</Label>
-                <Input id="telefone" {...register("telefone")} />
-                {errors.telefone && <p className="text-sm text-red-600">{errors.telefone.message}</p>}
+
+              {/* Cidade e Estado lado a lado */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Cidade */}
+                <div className="space-y-2">
+                  <Label htmlFor="cidade">Cidade</Label>
+                  <Input
+                    id="cidade"
+                    {...register("cidade")}
+                    placeholder="Ex: Cabo de Santo Agostinho"
+                  />
+                  {errors.cidade && <p className="text-sm text-red-600">{errors.cidade.message}</p>}
+                </div>
+
+                {/* Estado - com select completo */}
+                <div className="space-y-2">
+                  <Label htmlFor="estado">Estado *</Label>
+                  <Controller
+                    name="estado"
+                    control={control}
+                    rules={{ required: "Estado é obrigatório" }} // opcional: torna obrigatório
+                    render={({ field }) => (
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o estado" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-60 overflow-auto">
+                          <SelectItem value="AC">Acre</SelectItem>
+                          <SelectItem value="AL">Alagoas</SelectItem>
+                          <SelectItem value="AP">Amapá</SelectItem>
+                          <SelectItem value="AM">Amazonas</SelectItem>
+                          <SelectItem value="BA">Bahia</SelectItem>
+                          <SelectItem value="CE">Ceará</SelectItem>
+                          <SelectItem value="DF">Distrito Federal</SelectItem>
+                          <SelectItem value="ES">Espírito Santo</SelectItem>
+                          <SelectItem value="GO">Goiás</SelectItem>
+                          <SelectItem value="MA">Maranhão</SelectItem>
+                          <SelectItem value="MT">Mato Grosso</SelectItem>
+                          <SelectItem value="MS">Mato Grosso do Sul</SelectItem>
+                          <SelectItem value="MG">Minas Gerais</SelectItem>
+                          <SelectItem value="PA">Pará</SelectItem>
+                          <SelectItem value="PB">Paraíba</SelectItem>
+                          <SelectItem value="PR">Paraná</SelectItem>
+                          <SelectItem value="PE">Pernambuco</SelectItem>
+                          <SelectItem value="PI">Piauí</SelectItem>
+                          <SelectItem value="RJ">Rio de Janeiro</SelectItem>
+                          <SelectItem value="RN">Rio Grande do Norte</SelectItem>
+                          <SelectItem value="RS">Rio Grande do Sul</SelectItem>
+                          <SelectItem value="RO">Rondônia</SelectItem>
+                          <SelectItem value="RR">Roraima</SelectItem>
+                          <SelectItem value="SC">Santa Catarina</SelectItem>
+                          <SelectItem value="SP">São Paulo</SelectItem>
+                          <SelectItem value="SE">Sergipe</SelectItem>
+                          <SelectItem value="TO">Tocantins</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  {errors.estado && <p className="text-sm text-red-600">{errors.estado.message}</p>}
+                </div>
               </div>
+            </div>
+            {/* Telefone */}
+            <div className="space-y-2">
+              <Label htmlFor="telefone">Telefone</Label>
+              <Input id="telefone" {...register("telefone")} />
+              {errors.telefone && <p className="text-sm text-red-600">{errors.telefone.message}</p>}
             </div>
 
             {/* Responsável */}
@@ -338,6 +403,7 @@ const EditarEscolinhaPage = () => {
                 className="resize-none"
                 rows={4}
                 {...register("observacoes")}
+                placeholder="Informações adicionais sobre a escolinha..."
               />
             </div>
 

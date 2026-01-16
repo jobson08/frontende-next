@@ -11,6 +11,7 @@ import { Badge } from "@/src/components/ui/badge";
 import Link from "next/link";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { Pagination } from "@/src/components/common/Pagination";
 
 interface Escolinha {
   id: string;
@@ -32,6 +33,10 @@ const TenantsPage = () => {
   const [escolinhas, setEscolinhas] = useState<Escolinha[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  
+// Estados para paginação
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10); // padrão 10 cards por página
 
   useEffect(() => {
     const fetchEscolinhas = async () => {
@@ -90,6 +95,11 @@ const TenantsPage = () => {
         (t.cidade?.toLowerCase().includes(searchTerm.toLowerCase())) ||
         (t.estado?.toLowerCase().includes(searchTerm.toLowerCase()))
       );
+
+      // Paginação aplicada na lista filtrada
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const paginated = filtered.slice(startIndex, startIndex + itemsPerPage);
+        const totalPages = Math.ceil(filtered.length / itemsPerPage);
 
         const getPlanoColor = (plano: string) => {
           switch (plano) {
@@ -157,7 +167,7 @@ const TenantsPage = () => {
         />
       </div>
 
-      {/* Lista */}
+{/* Lista paginada */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {filtered.length === 0 ? (
           <p className="text-center text-gray-500 col-span-full py-12 text-lg">
@@ -168,14 +178,14 @@ const TenantsPage = () => {
             </Link>
           </p>
         ) : (
-          filtered.map((escolinha) => (
+          paginated.map((escolinha) => (
             <Card key={escolinha.id} className="hover:shadow-xl transition-shadow">
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
                     <Avatar className="h-16 w-16 ring-4 ring-white shadow-lg">
                       <AvatarImage src={escolinha.logoUrl ?? undefined} alt={escolinha.nome} />
-                      <AvatarFallback className="bg-linear-to-br from-green-600 to-emerald-600 text-white text-2xl font-bold">
+                      <AvatarFallback className="bg-gradient-to-br from-green-600 to-emerald-600 text-white text-2xl font-bold">
                         {escolinha.nome.split(" ").map(n => n[0]).join("")}
                       </AvatarFallback>
                     </Avatar>
@@ -223,13 +233,14 @@ const TenantsPage = () => {
                     Próxima cobrança: {formatDate(escolinha.dataInicioPlano || escolinha.createdAt)}
                   </div>
                 </div>
+
                 <div className="pt-4 flex gap-2">
                   <Button size="sm" variant="outline" asChild>
                     <Link href={`/superadmin/tenants/${escolinha.id}`}>
                       <Eye className="mr-2 h-4 w-4" /> Ver detalhes
                     </Link>
                   </Button>
-                  <Button size="sm" asChild className="bg-linear-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700">
+                  <Button size="sm" asChild className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700">
                     <Link href={`/superadmin/tenants/${escolinha.id}/editar`}>
                       <Edit className="mr-2 h-4 w-4" />
                       Editar
@@ -241,6 +252,21 @@ const TenantsPage = () => {
           ))
         )}
       </div>
+
+      {/* Paginação no final */}
+      {filtered.length > 0 && (
+        <Pagination
+          currentPage={currentPage}
+          totalItems={filtered.length}
+          itemsPerPage={itemsPerPage}
+          onPageChange={setCurrentPage}
+          onItemsPerPageChange={(value) => {
+            setItemsPerPage(value);
+            setCurrentPage(1); // reseta para primeira página ao mudar o limite
+          }}
+          className="mt-8"
+        />
+      )}
     </div>
   );
 };

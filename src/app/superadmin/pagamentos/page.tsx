@@ -35,7 +35,7 @@ const PagamentosPage = () => {
     queryKey: ["pagamentos"],
     queryFn: async () => {
       console.log("[Pagamentos] Fazendo requisição ao backend...");
-      const { data } = await api.get("http://localhost:4000/api/v1/superadmin/pagamentos");
+      const { data } = await api.get("superadmin/pagamentos");
       console.log("[Pagamentos] Resposta completa do backend:", data);
       return data;
     },
