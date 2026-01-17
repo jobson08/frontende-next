@@ -133,8 +133,8 @@ const Header = ({
       { icon: Building2, label: "Escolinhas", href: "/superadmin/tenants" },
       { icon: UserPlus, label: "Criar Nova Escolinha", href: "/superadmin/tenants/novo" },
       { icon: DollarSign, label: "Pagamentos SaaS", href: "/superadmin/pagamentos" },
-      { icon: BarChart3, label: "Relatórios Globais", href: "/superadmin/relatorios" },
       { icon: CreditCard, label: "Assinaturas", href: "/superadmin/assinaturas" },
+      { icon: BarChart3, label: "Relatórios Globais", href: "/superadmin/relatorios" },
       { icon: Settings, label: "Configurações SaaS", href: "/superadmin/configuracoes" },
       { icon: LifeBuoy, label: "Suporte", href: "/superadmin/suporte" },
     ];

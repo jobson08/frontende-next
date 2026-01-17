@@ -213,7 +213,7 @@ const TenantsPage = () => {
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div className="flex items-center gap-2">
                     <Users className="h-4 w-4 text-gray-500" />
-                    <span>{escolinha.totalAlunos} alunos</span>
+                    <span>{escolinha.totalAlunos|| 0 } alunos</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <DollarSign className="h-4 w-4 text-green-600" />
