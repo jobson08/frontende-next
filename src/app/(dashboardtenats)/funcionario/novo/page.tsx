@@ -163,7 +163,7 @@ const NovoFuncionarioPage = () => {
               </Button>
 
               <Button type="button" variant="outline" asChild>
-                <Link href={`/tenants/${tenantId}/funcionarios`}>Cancelar</Link>
+                <Link href={`/${tenantId}/funcionario`}>Cancelar</Link>
               </Button>
             </div>
           </form>

@@ -24,13 +24,15 @@ interface CreateLoginModalProps {
   currentEmail?: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onSave?: (email: string, password: string) => void; // ← ADICIONE ESSA PROP
 }
 
 const CreateLoginModal= ({ 
-  name,
+ name,
   currentEmail = null,
   open,
   onOpenChange,
+  onSave,
 }: CreateLoginModalProps) => {
 
 const [isSubmitting, setIsSubmitting] = useState(false);
@@ -49,7 +51,9 @@ const {
 const onSubmit = async (data: FormData) => {
     setIsSubmitting(true);
     try {
-      await new Promise(r => setTimeout(r, 1200));
+      if (onSave) {
+        await onSave(data.email, data.password);
+      }
       toast.success(isEdit ? "Login atualizado!" : "Login criado com sucesso!", {
         description: `${name} agora pode acessar o sistema`,
       });
