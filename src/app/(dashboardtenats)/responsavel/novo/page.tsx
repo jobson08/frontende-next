@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/app/(dashboard)/responsaveis/novo/page.tsx
 "use client";
 
@@ -14,6 +15,7 @@ import { Input } from "@/src/components/ui/input";
 import { Label } from "@/src/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/card";
 import { Textarea } from "@/src/components/ui/textarea";
+import api from "@/src/lib/api";
 
 // Função para gerar senha aleatória
 function gerarSenhaAleatoria(tamanho = 10) {
@@ -42,6 +44,7 @@ const NovoResponsavelPage = () => {
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -50,48 +53,43 @@ const NovoResponsavelPage = () => {
   const onSubmit = async (data: FormData) => {
     setIsSubmitting(true);
     try {
-      // Simulação de criação do responsável
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Normaliza email para minúsculo antes de enviar (defesa extra)
+      data.email = data.email.toLowerCase().trim();
 
-      const responsavelIdSimulado = Math.floor(Math.random() * 10000) + 1000;
-      const username = data.email.split("@")[0].toLowerCase() + "." + responsavelIdSimulado; // ex: maria.1234
+      // Gera senha aleatória
       const senhaTemporaria = gerarSenhaAleatoria(10);
 
-      // Simulação de criação de usuário e envio de e-mail
-      console.log("=== RESPONSÁVEL CADASTRADO COM SUCESSO (MOCK) ===");
-      console.log("Dados:", data);
-      console.log("\n--- USUÁRIO CRIADO AUTOMATICAMENTE ---");
-      console.log(`Username: ${username}`);
-      console.log(`Senha temporária: ${senhaTemporaria}`);
-      console.log(`Role: RESPONSAVEL`);
-      console.log(`ID simulado: ${responsavelIdSimulado}`);
-      console.log("\n--- E-MAIL DE BOAS-VINDAS ENVIADO ---");
-      console.log(`Para: ${data.email}`);
-      console.log(`Assunto: Bem-vindo ao FutElite, ${data.name.split(" ")[0]}!`);
-      console.log(`
-Olá ${data.name},
-
-Você foi cadastrado como responsável no portal FutElite.
-
-Acesse com:
-Link: https://app.futelite.com/login
-Usuário: ${username}
-Senha temporária: ${senhaTemporaria}
-
-No primeiro acesso, troque a senha para maior segurança.
-
-Você poderá ver os filhos matriculados, pagamentos, comunicados e mais.
-
-Qualquer dúvida, entre em contato!
-
-Equipe FutElite ⚽
-      `);
+      // Envia para o backend (rota real)
+      const response = await api.post('/tenant/responsaveis', {
+        nome: data.name,
+        email: data.email,
+        telefone: data.phone,
+        cpf: data.cpf,
+        observacoes: data.observations,
+        password: senhaTemporaria, // envia senha gerada
+      });
 
       toast.success("Responsável criado com sucesso!", {
-        description: "Login gerado automaticamente e 'enviado' por e-mail (veja no console)",
+        description: (
+          <div className="space-y-1">
+            <p>Login gerado automaticamente:</p>
+            <p className="font-mono text-sm">Email: {data.email}</p>
+            <p className="font-mono text-sm">Senha temporária: {senhaTemporaria}</p>
+            <p className="text-xs text-gray-500 mt-2">
+              Copie a senha e envie para o responsável. Ele deve trocar no primeiro acesso.
+            </p>
+          </div>
+        ),
+        duration: 12000, // tempo suficiente para copiar
       });
-    } catch (error) {
-      toast.error("Erro ao criar responsável");
+
+      // Redireciona para lista (ajuste a rota se necessário)
+      // router.push('/responsaveis');
+    } catch (error: any) {
+      console.error("[Criar Responsável] Erro:", error);
+      toast.error("Erro ao criar responsável", {
+        description: error.response?.data?.error || "Verifique os dados e tente novamente",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -102,7 +100,7 @@ Equipe FutElite ⚽
       {/* Cabeçalho */}
       <div className="flex items-center gap-4 mb-8">
         <Button variant="ghost" size="icon" asChild>
-          <Link href="/responsavel">
+          <Link href="/responsaveis">
             <ChevronLeft className="h-5 w-5" />
           </Link>
         </Button>
@@ -128,9 +126,20 @@ Equipe FutElite ⚽
             {/* E-mail (obrigatório para login) */}
             <div className="space-y-2">
               <Label htmlFor="email">E-mail *</Label>
-              <Input id="email" type="email" placeholder="maria@email.com" {...register("email")} />
+              <Input 
+                id="email" 
+                type="email" 
+                placeholder="maria@email.com"
+                {...register("email", {
+                  // Transforma em minúsculo AO DIGITAR (UX imediata)
+                  onChange: (e) => {
+                    e.target.value = e.target.value.toLowerCase();
+                    setValue("email", e.target.value);
+                  },
+                })}
+              />
               {errors.email && <p className="text-sm text-red-600">{errors.email.message}</p>}
-              <p className="text-xs text-gray-500">O login do responsável será enviado para este e-mail</p>
+              <p className="text-xs text-gray-500">O login será criado automaticamente e enviado para este e-mail</p>
             </div>
 
             {/* Telefone */}
@@ -175,7 +184,7 @@ Equipe FutElite ⚽
                 )}
               </Button>
               <Button type="button" variant="outline" asChild className="flex-1">
-                <Link href="/responsavel">Cancelar</Link>
+                <Link href="/responsaveis">Cancelar</Link>
               </Button>
             </div>
           </form>
