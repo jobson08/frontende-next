@@ -17,6 +17,7 @@ import { Label } from "@/src/components/ui/label";
 import { Input } from "@/src/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/src/components/ui/select";
 import { Textarea } from "@/src/components/ui/textarea";
+import InputTelefone from "@/src/components/common/InputTelefone";
 
 // Schema Zod para edição (campos parciais)
 const editFuncionarioSchema = z.object({
@@ -142,7 +143,7 @@ const EditarFuncionarioPage = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="telefone">Telefone</Label>
-                <Input id="telefone" {...register("telefone")} />
+                <InputTelefone id="telefone" {...register("telefone")} />
                 {errors.telefone && <p className="text-sm text-red-600">{errors.telefone.message}</p>}
               </div>
 

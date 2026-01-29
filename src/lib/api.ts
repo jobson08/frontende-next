@@ -11,7 +11,22 @@ api.interceptors.request.use((config) => {
     config.headers.Authorization = `Bearer ${token}`;
     console.log("[api] Enviando Authorization: Bearer", token);
   }
+  console.log("Requisição iniciada:", config.method?.toUpperCase(), config.url);
+  console.log("Headers:", config.headers);
+  console.log("Dados enviados:", config.data);
   return config;
 });
+/*
+api.interceptors.response.use(
+  (response) => {
+    console.log("Resposta recebida:", response.status, response.config.url);
+    return response;
+  },
+  (error) => {
+    console.error("Erro na resposta:", error.response?.status, error.response?.data);
+    return Promise.reject(error);
+  }
+);
+*/
 
 export default api;

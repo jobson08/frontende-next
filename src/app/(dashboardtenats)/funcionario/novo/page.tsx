@@ -16,6 +16,7 @@ import { Input } from "@/src/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/src/components/ui/select";
 import { Textarea } from "@/src/components/ui/textarea";
 import api from "@/src/lib/api";
+import InputTelefone from "@/src/components/common/InputTelefone";
 
 // Schema combinado: Funcionário + Login (obrigatório)
 const novoFuncionarioSchema = z.object({
@@ -109,7 +110,7 @@ const createMutation = useMutation({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label htmlFor="telefone">Telefone</Label>
-                  <Input id="telefone" placeholder="(81) 99999-8888" {...register("telefone")} />
+                  <InputTelefone id="telefone" placeholder="(81) 99999-8888" {...register("telefone")} />
                   {errors.telefone && <p className="text-sm text-red-600">{errors.telefone.message}</p>}
                 </div>
 

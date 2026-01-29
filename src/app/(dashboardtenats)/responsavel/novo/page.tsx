@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// src/app/(dashboard)/responsaveis/novo/page.tsx
+// src/app/(dashboard)/responsavel/novo/page.tsx
 "use client";
 
 import { useState } from "react";
@@ -16,6 +16,9 @@ import { Label } from "@/src/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/card";
 import { Textarea } from "@/src/components/ui/textarea";
 import api from "@/src/lib/api";
+import InputCPF from "@/src/components/common/InputCPF";
+import InputTelefone from "@/src/components/common/InputTelefone";
+import { useRouter } from "next/navigation";
 
 // Função para gerar senha aleatória
 function gerarSenhaAleatoria(tamanho = 10) {
@@ -29,7 +32,7 @@ function gerarSenhaAleatoria(tamanho = 10) {
 
 // Schema Zod
 const formSchema = z.object({
-  name: z.string().min(3, { message: "Nome completo é obrigatório" }),
+  nome: z.string().min(3, { message: "Nome completo é obrigatório" }),
   email: z.string().email({ message: "E-mail inválido" }).min(1, { message: "E-mail é obrigatório para envio do login" }),
   phone: z.string().min(10, { message: "Telefone inválido" }),
   cpf: z.string().optional(),
@@ -40,6 +43,7 @@ type FormData = z.infer<typeof formSchema>;
 
 const NovoResponsavelPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const router = useRouter(); // ← adicionado para redirecionar
 
   const {
     register,
@@ -50,57 +54,78 @@ const NovoResponsavelPage = () => {
     resolver: zodResolver(formSchema),
   });
 
-  const onSubmit = async (data: FormData) => {
-    setIsSubmitting(true);
-    try {
-      // Normaliza email para minúsculo antes de enviar (defesa extra)
-      data.email = data.email.toLowerCase().trim();
+ const onSubmit = async (data: FormData) => {
+  setIsSubmitting(true);
+  try {
+    // Normaliza email para minúsculo
+    data.email = data.email.toLowerCase().trim();
 
-      // Gera senha aleatória
-      const senhaTemporaria = gerarSenhaAleatoria(10);
+    // Gera senha aleatória
+    const senhaTemporaria = gerarSenhaAleatoria(10);
 
-      // Envia para o backend (rota real)
-      const response = await api.post('/tenant/responsaveis', {
-        nome: data.name,
-        email: data.email,
-        telefone: data.phone,
-        cpf: data.cpf,
-        observacoes: data.observations,
-        password: senhaTemporaria, // envia senha gerada
-      });
+    // Envia para o backend (rota corrigida)
+    const response = await api.post('/tenant/responsaveis', {
+      nome: data.nome,
+      email: data.email,
+      telefone: data.phone,
+      cpf: data.cpf ? data.cpf.replace(/\D/g, "") : null, // limpa máscara
+      observacoes: data.observations,
+      password: senhaTemporaria,
+    });
 
-      toast.success("Responsável criado com sucesso!", {
-        description: (
-          <div className="space-y-1">
-            <p>Login gerado automaticamente:</p>
-            <p className="font-mono text-sm">Email: {data.email}</p>
-            <p className="font-mono text-sm">Senha temporária: {senhaTemporaria}</p>
-            <p className="text-xs text-gray-500 mt-2">
-              Copie a senha e envie para o responsável. Ele deve trocar no primeiro acesso.
-            </p>
+    toast.success("Responsável criado com sucesso!", {
+      description: (
+        <div className="space-y-3 text-sm">
+          <p className="font-medium">Responsável adicionado com login gerado.</p>
+          
+          <div className="bg-gray-100 p-3 rounded-md border border-gray-300">
+            <p className="font-semibold mb-1">Dados do login criado:</p>
+            <div className="space-y-1">
+              <p><span className="font-medium">Nome:</span> {data.nome || "Não informado"}</p>
+              <p><span className="font-medium">E-mail (usuário):</span> {data.email || "Não gerado"}</p>
+              <p className="font-bold text-blue-700">
+                <span className="font-medium">Senha temporária:</span> {senhaTemporaria || "Gerada automaticamente"}
+              </p>
+            </div>
           </div>
-        ),
-        duration: 12000, // tempo suficiente para copiar
-      });
 
-      // Redireciona para lista (ajuste a rota se necessário)
-      // router.push('/responsaveis');
-    } catch (error: any) {
-      console.error("[Criar Responsável] Erro:", error);
-      toast.error("Erro ao criar responsável", {
-        description: error.response?.data?.error || "Verifique os dados e tente novamente",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+          <p className="text-xs text-gray-600 mt-2">
+            Copie a senha e envie ao responsável imediatamente. Ele deve trocar no primeiro acesso.
+          </p>
+        </div>
+      ),
+      duration: 30000, // tempo suficiente para copiar
+      action: {
+        label: "Copiar senha",
+        onClick: () => {
+          navigator.clipboard.writeText(email || "");
+          navigator.clipboard.writeText(senhaTemporaria || "");
+          toast("Usuario e Senha copiada para a área de transferência!");
+        },
+      },
+    });
+
+    // Redireciona automaticamente para a lista de responsáveis após 2 segundos
+    setTimeout(() => {
+      router.push("/responsavel");  // ← rota corrigida (plural)
+    }, 2000);
+
+  } catch (error: any) {
+    console.error("[Criar Responsável] Erro:", error);
+    toast.error("Erro ao criar responsável", {
+      description: error.response?.data?.error || error.response?.data?.details?.[0]?.message || error.message || "Verifique os dados e tente novamente",
+    });
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   return (
     <div className="p-4 lg:p-8 max-w-4xl mx-auto space-y-8">
       {/* Cabeçalho */}
       <div className="flex items-center gap-4 mb-8">
         <Button variant="ghost" size="icon" asChild>
-          <Link href="/responsaveis">
+          <Link href="/responsavel">
             <ChevronLeft className="h-5 w-5" />
           </Link>
         </Button>
@@ -118,9 +143,9 @@ const NovoResponsavelPage = () => {
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             {/* Nome Completo */}
             <div className="space-y-2">
-              <Label htmlFor="name">Nome completo *</Label>
-              <Input id="name" placeholder="Maria Oliveira Santos" {...register("name")} />
-              {errors.name && <p className="text-sm text-red-600">{errors.name.message}</p>}
+              <Label htmlFor="nome">Nome completo *</Label>
+              <Input id="nome" placeholder="Maria Oliveira Santos" {...register("nome")} />
+              {errors.nome && <p className="text-sm text-red-600">{errors.nome.message}</p>}
             </div>
 
             {/* E-mail (obrigatório para login) */}
@@ -145,14 +170,14 @@ const NovoResponsavelPage = () => {
             {/* Telefone */}
             <div className="space-y-2">
               <Label htmlFor="phone">Telefone *</Label>
-              <Input id="phone" placeholder="(11) 97777-6666" {...register("phone")} />
+              <InputTelefone id="phone" placeholder="(11) 97777-6666" {...register("phone")} />
               {errors.phone && <p className="text-sm text-red-600">{errors.phone.message}</p>}
             </div>
 
             {/* CPF */}
             <div className="space-y-2">
               <Label htmlFor="cpf">CPF</Label>
-              <Input id="cpf" placeholder="123.456.789-00" {...register("cpf")} />
+              <InputCPF id="cpf" placeholder="123.456.789-00" {...register("cpf")} />
             </div>
 
             {/* Observações */}
@@ -184,7 +209,7 @@ const NovoResponsavelPage = () => {
                 )}
               </Button>
               <Button type="button" variant="outline" asChild className="flex-1">
-                <Link href="/responsaveis">Cancelar</Link>
+                <Link href="/responsavel">Cancelar</Link>
               </Button>
             </div>
           </form>

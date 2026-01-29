@@ -1,15 +1,15 @@
-// src/app/(dashboard)/alunos/[id]/editar/page.tsx
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useState, useRef, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { format } from "date-fns";
-import Link from "next/link";
-import { useParams } from "next/navigation";
-import { ChevronLeft, Loader2, Trash2, Camera, UserPlus, CalendarIcon } from "lucide-react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { toast, Toaster } from "sonner";
+import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
+import { ChevronLeft, Loader2, Trash2, Camera, CalendarIcon, UserPlus, AlertCircle } from "lucide-react";
 
 import { Button } from "@/src/components/ui/button";
 import { Input } from "@/src/components/ui/input";
@@ -21,141 +21,234 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/src/components/ui/pop
 import { Calendar } from "@/src/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/src/components/ui/avatar";
+import api from "@/src/lib/api";
+import { format } from "date-fns";
 
-// Mock de responsáveis
-const responsaveisMock = [
-  { id: "1", name: "Maria Oliveira Santos" },
-  { id: "2", name: "João Pedro Costa" },
-  { id: "3", name: "Ana Clara Lima" },
-];
+import InputDataEdit from "@/src/components/common/inputsEdit/InputDataEdit";
+import InputTelefoneEdit from "@/src/components/common/inputsEdit/InputTelefoneEdit";
+import InputCPFEdit from "@/src/components/common/inputsEdit/InputCPFEdit";
+import { Controller } from "react-hook-form";
 
-// Mock de alunos (em produção vem do banco)
-const alunosMock = [
-  {
-    id: "1",
-    name: "Enzo Gabriel Silva",
-    birthDate: "2014-05-15",
-    phone: "(11) 98888-7777",
-    cpf: "123.456.789-00",
-    categoria: "Sub-11",
-    responsavelId: "1",
-    status: "ATIVO",
-    observations: "Alergia a amendoim. Usa óculos.",
-    photo: null,
-    username: "enzo.gabriel.1",
-  },
-  {
-    id: "2",
-    name: "Maria Luiza Costa",
-    birthDate: "2019-02-20",
-    phone: "11977778888",
-    cpf: "123.456.789-00",
-    categoria: "Sub-9",
-    responsavelId: "2",
-    status: "ATIVO" as const,
-    observations: "Adora natação!",
-    photo: null,
-    username: "maria.luiza.2",
-  },
-  {
-    id: "3",
-    name: "Lucas Andrade",
-    birthDate: "2005-11-30",
-    phone: "11966667777",
-    cpf: "123.456.789-00",
-    categoria: "Sub-17",
-    responsavelId: null,
-    status: "ATIVO" as const,
-    observations: "Maior de idade. Paga sozinho.",
-    photo: null,
-    username: "lucas.andrade.3",
-  },
-];
-
-// Função para gerar senha aleatória
-function gerarSenhaAleatoria(tamanho = 10) {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$";
-  let senha = "";
-  for (let i = 0; i < tamanho; i++) {
-    senha += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return senha;
-}
-
-// Schema Zod
+// Schema Zod para edição
 const formSchema = z.object({
-  name: z.string().min(3, { message: "Nome completo é obrigatório" }),
-  birthDate: z.date({ message: "Data de nascimento é obrigatória e deve ser válida" }),
-  phone: z.string().min(10, { message: "Telefone inválido" }),
+  nome: z.string().min(3, "Nome completo é obrigatório"),
+  dataNascimento: z.string().min(10, "Data de nascimento é obrigatória (dd/mm/aaaa)"),
+  telefone: z.string().min(10, "Telefone é obrigatório"),
   cpf: z.string().optional(),
-  categoria: z.string().min(1, { message: "Categoria é obrigatória" }),
+  categoria: z.string().min(1, "Categoria é obrigatória"),
   responsavelId: z.string().optional(),
+  email: z.string().email("E-mail inválido").optional(),
   status: z.enum(["ATIVO", "INATIVO", "TRANCADO"]),
-  observations: z.string().optional(),
+  observacoes: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
 
-const EditarAlunoPage = () => {
-  const { id } = useParams();
-  const [date, setDate] = useState<Date | undefined>(undefined);
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+// Interface do aluno retornada pelo backend
+interface AlunoDetalhe {
+  id: string;
+  nome: string;
+  dataNascimento: string;
+  telefone: string | null;
+  cpf: string | null;
+  categoria: string;
+  responsavelId: string | null;
+  email: string | null;
+  status: "ATIVO" | "INATIVO" | "TRANCADO";
+  observacoes: string | null;
+  userId: string | null;
+  fotoUrl?: string | null;
+  responsavel?: { nome: string; telefone: string | null; email: string | null } | null;
+}
 
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    watch,
-    formState: { errors },
-  } = useForm<FormData>({
-    resolver: zodResolver(formSchema),
+// Interface para lista de responsáveis
+interface Responsavel {
+  id: string;
+  nome: string;
+  telefone?: string | null;
+  email?: string | null;
+}
+
+const EditarAlunoPage = () => {
+ const { id } = useParams();
+  const router = useRouter();
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [date, setDate] = useState<Date | undefined>(undefined);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+const {
+  register,
+  handleSubmit,
+  setValue,
+  watch,
+  control,           // ← OBRIGATÓRIO
+  formState: { errors, isValid },
+} = useForm<FormData>({
+  resolver: zodResolver(formSchema),
+  mode: "onChange",
+});
+
+  const watchedName = watch("nome");
+
+  // Busca detalhes do aluno
+  const { data: aluno, isLoading: isLoadingAluno, error: errorAluno } = useQuery<AlunoDetalhe>({
+    queryKey: ["aluno", id],
+    queryFn: async () => {
+      const res = await api.get(`/tenant/alunos/${id}`);
+      return res.data.data;
+    },
+    enabled: !!id,
   });
 
-  const watchedName = watch("name");
+  // Busca lista de responsáveis reais
+  const { data: responsaveis = [], isLoading: isLoadingResponsaveis } = useQuery<Responsavel[]>({
+    queryKey: ["responsaveis"],
+    queryFn: async () => {
+      const res = await api.get("/tenant/responsaveis");
+      return res.data.data || [];
+    },
+  });
 
-  // Busca o aluno
-  const aluno = alunosMock.find(a => a.id === id);
-
-  // Pré-preenche os dados
+  // Pré-preenche o form quando os dados do aluno chegam
   useEffect(() => {
-    if (aluno) {
-      const birthDate = new Date(aluno.birthDate);
-      setDate(birthDate);
-      setPhotoPreview(aluno.photo);
+if (aluno && aluno.dataNascimento) {
+    // Separa a data ISO ou string
+    const [ano, mes, dia] = aluno.dataNascimento.split("T")[0].split("-");
+    const dataFormatada = `${dia}/${mes}/${ano}`;
 
-      setValue("name", aluno.name);
-      setValue("birthDate", birthDate);
-      setValue("phone", aluno.phone);
+    setDate(new Date(`${ano}-${mes}-${dia}`)); // cria Date sem hora/fuso
+      setPhotoPreview(aluno.fotoUrl || null);
+
+      setValue("nome", aluno.nome);
+      setValue("dataNascimento", dataFormatada);
+      setValue("telefone", aluno.telefone || "");
       setValue("cpf", aluno.cpf || "");
-      setValue("categoria", aluno.categoria);
-      setValue("responsavelId", aluno.responsavelId || "");
-     // setValue("status", aluno.status);
-      setValue("observations", aluno.observations);
+      setValue("categoria", aluno.categoria || "");
+      setValue("responsavelId", aluno.responsavelId || "" as string | undefined);
+      setValue("email", aluno.email || "");
+      setValue("status", aluno.status);
+      setValue("observacoes", aluno.observacoes || "");
     }
   }, [aluno, setValue]);
 
-  if (!aluno) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Aluno não encontrado</h1>
-          <Button asChild>
-            <Link href="/aluno">Voltar para lista</Link>
-          </Button>
-        </div>
-      </div>
-    );
-  }
+  // Mutation para atualizar aluno
+const updateMutation = useMutation({
+  mutationFn: async (data: FormData) => {
+    console.log("=== [UPDATE] Iniciando salvamento do aluno ===");
+    console.log("ID do aluno:", id);
+    console.log("Dados do form (data):", data);
+
+    const payload = {
+      nome: data.nome.trim(),
+      dataNascimento: data.dataNascimento
+        ? data.dataNascimento.split("/").reverse().join("-")
+        : null,
+      telefone: data.telefone.trim() || null,
+      cpf: data.cpf 
+      ? data.cpf.replace(/\D/g, "")   // ← remove tudo que não é dígito (pontos, traços, espaços)
+      : null,
+      categoria: data.categoria.trim(),
+      responsavelId: data.responsavelId === "none" ? null : data.responsavelId,
+      email: data.email?.toLowerCase().trim() || null,
+      status: data.status,
+      observacoes: data.observacoes?.trim() || null,
+    };
+
+    console.log("Payload que será enviado:");
+    console.log(JSON.stringify(payload, null, 2));
+
+    const url = `/tenant/alunos/${id}`;
+    console.log("URL completa chamada:", api.getUri() + url);  // mostra baseURL + caminho
+
+    try {
+      const res = await api.patch(url, payload);
+      console.log("Resposta de SUCESSO do PATCH:");
+      console.log("Status:", res.status);
+      console.log("Dados retornados:", res.data);
+      return res.data;
+    } catch (error: any) {
+      console.error("=== [UPDATE] ERRO NO PATCH ===");
+      console.error("Status do erro:", error.response?.status);
+      console.error("URL chamada:", error.config?.url);
+      console.error("Método:", error.config?.method);
+      console.error("Headers enviados:", error.config?.headers);
+      console.error("Payload enviado:", error.config?.data);
+      console.error("Resposta do servidor:", error.response?.data);
+      console.error("Mensagem do erro:", error.message);
+      throw error;
+    }
+  },
+
+  onSuccess: () => {
+    console.log("=== [UPDATE] Sucesso total! ===");
+    toast.success("Aluno atualizado com sucesso!");
+    setTimeout(() => {
+      router.push("/aluno");
+    }, 1500);
+  },
+
+  onError: (err: any) => {
+    console.error("=== [UPDATE] Erro capturado no onError ===");
+    console.error("Erro completo:", err);
+    console.error("Resposta do erro:", err.response?.data);
+    console.error("Mensagem:", err.message);
+    toast.error("Erro ao atualizar aluno", {
+      description: err.response?.data?.error || err.message || "Tente novamente",
+    });
+  },
+});
+
+  // Mutation para redefinir senha
+  const redefinirSenhaMutation = useMutation({
+    mutationFn: async () => {
+      const res = await api.post(`/tenant/alunos/${id}/redefinir-senha`);
+      return res.data;
+    },
+    onSuccess: (result) => {
+      toast.success("Senha redefinida com sucesso!", {
+        description: (
+          <div className="space-y-2">
+            <p>Nova senha temporária gerada:</p>
+            <div className="bg-gray-100 p-3 rounded-md font-mono text-center">
+              {result.senhaTemporaria}
+            </div>
+            <p className="text-xs text-gray-500">
+              Copie e envie ao responsável ou ao aluno.
+            </p>
+          </div>
+        ),
+        duration: 30000,
+        action: {
+          label: "Copiar senha",
+          onClick: () => {
+            navigator.clipboard.writeText(result.senhaTemporaria || "");
+            toast("Senha copiada!");
+          },
+        },
+      });
+    },
+    onError: (err: any) => {
+      toast.error("Erro ao redefinir senha", {
+        description: err.response?.data?.error || err.message,
+      });
+    },
+  });
+
+  const onSubmit = (data: FormData) => {
+    updateMutation.mutate(data);
+  };
+
+  const redefinirSenha = () => {
+    if (confirm("Tem certeza que deseja gerar uma nova senha temporária?")) {
+      redefinirSenhaMutation.mutate();
+    }
+  };
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setPhotoPreview(reader.result as string);
-      };
+      reader.onloadend = () => setPhotoPreview(reader.result as string);
       reader.readAsDataURL(file);
     }
   };
@@ -165,33 +258,28 @@ const EditarAlunoPage = () => {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const onSubmit = async (data: FormData) => {
-    setIsSubmitting(true);
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      console.log("Aluno atualizado:", data);
-      toast.success("Aluno atualizado com sucesso!");
-    } catch {
-      toast.error("Erro ao salvar");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+ if (isLoadingAluno || isLoadingResponsaveis) {
+  return (
+    <div className="flex min-h-screen items-center justify-center">
+      <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
+    </div>
+  );
+}
 
-  const redefinirSenha = async () => {
-    const novaSenha = gerarSenhaAleatoria(10);
-    console.log("NOVA SENHA GERADA PARA O ALUNO:");
-    console.log(`Username: ${aluno.username}`);
-    console.log(`Nova senha temporária: ${novaSenha}`);
-    console.log(`E-mail enviado para o responsável`);
-
-    toast.success("Nova senha gerada e 'enviada' por e-mail!", {
-      description: "Veja os detalhes no console",
-    });
-  };
+  if (errorAluno || !aluno) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center text-red-600">
+        <AlertCircle className="h-16 w-16" />
+        <h2 className="mt-4 text-2xl font-bold">Aluno não encontrado</h2>
+        <Button className="mt-6" asChild>
+          <Link href="/aluno">Voltar para lista</Link>
+        </Button>
+      </div>
+    );
+  }
 
   return (
-    <div className="p-4 lg:p-8 max-w-4xl mx-auto space-y-8">
+ <div className="p-4 lg:p-8 max-w-4xl mx-auto space-y-8">
       {/* Cabeçalho */}
       <div className="flex items-center gap-4 mb-8">
         <Button variant="ghost" size="icon" asChild>
@@ -201,7 +289,7 @@ const EditarAlunoPage = () => {
         </Button>
         <div>
           <h1 className="text-3xl font-bold">Editar Aluno</h1>
-          <p className="text-gray-600">Atualize as informações de {aluno.name}</p>
+          <p className="text-gray-600">Atualize as informações de {aluno.nome}</p>
         </div>
       </div>
 
@@ -214,10 +302,10 @@ const EditarAlunoPage = () => {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-            {/* Foto do Aluno */}
+            {/* Foto */}
             <div className="flex flex-col items-center gap-4 py-6 border-b">
               <Avatar className="h-32 w-32 ring-4 ring-blue-100">
-                <AvatarImage src={photoPreview || undefined} />
+                <AvatarImage src={photoPreview || aluno.fotoUrl || undefined} />
                 <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-3xl font-bold">
                   {watchedName ? watchedName.split(" ").map(n => n[0]).join("").toUpperCase() : "?"}
                 </AvatarFallback>
@@ -245,62 +333,89 @@ const EditarAlunoPage = () => {
               />
             </div>
 
-            {/* Informações Pessoais */}
+              {/* Informações Pessoais */}
             <div className="space-y-6">
               <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">Informações Pessoais</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Nome Completo */}
+                {/* Nome completo */}
                 <div className="md:col-span-2 space-y-2">
-                  <Label htmlFor="name">Nome completo *</Label>
-                  <Input id="name" placeholder="Enzo Gabriel Silva" {...register("name")} />
-                  {errors.name && <p className="text-sm text-red-600">{errors.name.message}</p>}
-                </div>
-
-                {/* Data de Nascimento */}
-                <div className="space-y-2">
-                  <Label>Data de nascimento *</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn("w-full justify-start text-left font-normal", !date && "text-muted-foreground")}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {date ? format(date, "dd/MM/yyyy") : "Selecione a data"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={date}
-                        onSelect={(newDate) => {
-                          setDate(newDate || undefined);
-                          if (newDate) setValue("birthDate", newDate);
-                        }}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  {errors.birthDate && <p className="text-sm text-red-600">Data de nascimento é obrigatória</p>}
-                </div>
-
-                {/* Telefone */}
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Telefone *</Label>
-                  <Input id="phone" placeholder="(11) 98888-7777" {...register("phone")} />
-                  {errors.phone && <p className="text-sm text-red-600">{errors.phone.message}</p>}
+                  <Label htmlFor="nome">Nome completo *</Label>
+                  <Input id="nome" placeholder="Nome completo" {...register("nome")} />
+                  {errors.nome && <p className="text-sm text-red-600">{errors.nome.message}</p>}
                 </div>
 
                 {/* CPF */}
                 <div className="space-y-2">
-                  <Label htmlFor="cpf">CPF</Label>
-                  <Input id="cpf" placeholder="123.456.789-00" {...register("cpf")} />
+                  <Label htmlFor="cpf">CPF (opcional)</Label>
+                  <Controller
+                    name="cpf"
+                    control={control}
+                    render={({ field }) => (
+                      <InputCPFEdit
+                        id="cpf"
+                        placeholder="000.000.000-00"
+                        value={field.value || ""}                  // ← força o valor pré-preenchido
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => field.onChange(e.target.value)} // ← atualiza o form
+                      />
+                    )}
+                  />
+                  {errors.cpf && <p className="text-sm text-red-600">{errors.cpf.message}</p>}
+                </div>
+
+                {/* Data de Nascimento */}
+                <div className="space-y-2">
+                  <Label htmlFor="dataNascimento">Data de nascimento *</Label>
+                  <Controller
+                    name="dataNascimento"
+                    control={control}
+                    render={({ field }) => (
+                      <InputDataEdit
+                        id="dataNascimento"
+                        placeholder="dd/mm/aaaa"
+                        maxLength={10}
+                        value={field.value || ""}                  // ← força o valor pré-preenchido
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => field.onChange(e.target.value)}
+                      />
+                    )}
+                  />
+                  {errors.dataNascimento && <p className="text-sm text-red-600">{errors.dataNascimento.message}</p>}
+                </div>
+
+                {/* Telefone */}
+                <div className="space-y-2">
+                  <Label htmlFor="telefone">Telefone *</Label>
+                  <Controller
+                    name="telefone"
+                    control={control}
+                    render={({ field }) => (
+                      // eslint-disable-next-line react/jsx-no-undef
+                      <InputTelefoneEdit
+                        id="telefone"
+                        placeholder="(xx) xxxxx-xxxx"
+                        value={field.value || ""}                  // ← força o valor pré-preenchido
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => field.onChange(e.target.value)}
+                      />
+                    )}
+                  />
+                  {errors.telefone && <p className="text-sm text-red-600">{errors.telefone.message}</p>}
+                </div>
+
+                {/* E-mail (opcional) */}
+                <div className="space-y-2">
+                  <Label htmlFor="email">E-mail (opcional)</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="aluno@email.com"
+                    {...register("email")}
+                  />
+                  {errors.email && <p className="text-sm text-red-600">{errors.email.message}</p>}
                 </div>
 
                 {/* Categoria */}
                 <div className="space-y-2">
-                  <Label>Categoria *</Label>
-                  <Select onValueChange={(value) => setValue("categoria", value)} defaultValue={aluno.categoria}>
+                  <Label htmlFor="categoria">Categoria *</Label>
+                  <Select onValueChange={(value) => setValue("categoria", value)} defaultValue={aluno?.categoria || ""}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione a categoria" />
                     </SelectTrigger>
@@ -319,27 +434,34 @@ const EditarAlunoPage = () => {
 
             {/* Responsável */}
             <div className="space-y-6">
-              <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">Responsável</h3>
+              <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">Responsável (opcional)</h3>
               <div className="space-y-2">
                 <Label>Responsável</Label>
-                <Select onValueChange={(value) => setValue("responsavelId", value || undefined)} defaultValue={aluno.responsavelId || ""}>
+                {isLoadingResponsaveis ? (
+                  <p className="text-sm text-gray-500">Carregando responsáveis...</p>
+                ) : (
+                 <Select
+                  onValueChange={(value) => setValue("responsavelId", value === "none" ? undefined : value)}
+                  defaultValue={aluno.responsavelId ?? "none"}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione um responsável (opcional)" />
                   </SelectTrigger>
                   <SelectContent>
-                    {responsaveisMock.map((r) => (
+                    <SelectItem value="none">Nenhum / Sem responsável</SelectItem>
+                    {responsaveis.map((r) => (
                       <SelectItem key={r.id} value={r.id}>
-                        {r.name}
+                        {r.nome}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                )}
               </div>
             </div>
 
             {/* Status e Observações */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Status */}
               <div className="space-y-2">
                 <Label>Status</Label>
                 <Select defaultValue={aluno.status} onValueChange={(value) => setValue("status", value as "ATIVO" | "INATIVO" | "TRANCADO")}>
@@ -354,15 +476,12 @@ const EditarAlunoPage = () => {
                 </Select>
               </div>
 
-              {/* Observações */}
               <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="observations">Observações</Label>
+                <Label htmlFor="observacoes">Observações</Label>
                 <Textarea
-                  id="observations"
-                  placeholder="Alergias, restrições médicas, informações importantes..."
-                  className="resize-none min-h-32"
-                  rows={5}
-                  {...register("observations")}
+                  id="observacoes"
+                  placeholder="Alergias, restrições, informações importantes..."
+                  {...register("observacoes")}
                 />
               </div>
             </div>
@@ -370,30 +489,43 @@ const EditarAlunoPage = () => {
             {/* Acesso do Aluno + Redefinir Senha */}
             <div className="space-y-6 pt-6 border-t">
               <h3 className="text-lg font-semibold text-gray-800">Acesso do Aluno</h3>
-              <div className="flex items-center gap-4">
-                <div className="flex-1">
-                  <Label>Usuário</Label>
-                  <Input value={aluno.username || "Não criado"} disabled />
+              <div className="flex flex-col sm:flex-row items-center gap-6">
+                <div className="flex-1 space-y-2">
+                  <Label>E-mail (usuário)</Label>
+                  <Input value={aluno.email || "Não criado"} disabled />
                 </div>
+
                 <div className="self-end">
-                  <Button type="button" variant="outline" onClick={redefinirSenha}>
-                    Redefinir Senha
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={redefinirSenha}
+                    disabled={redefinirSenhaMutation.isPending || !aluno.userId}
+                  >
+                    {redefinirSenhaMutation.isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Redefinindo...
+                      </>
+                    ) : (
+                      "Redefinir Senha"
+                    )}
                   </Button>
                 </div>
               </div>
               <p className="text-xs text-gray-500">
-                Ao redefinir, uma nova senha temporária será gerada enviad por e-mail ao responsável
+                Ao redefinir, uma nova senha temporária será gerada e exibida abaixo. Envie ao responsável ou aluno.
               </p>
             </div>
 
             {/* Botões */}
             <div className="flex flex-col sm:flex-row gap-4 pt-8">
-              <Button 
-                type="submit" 
-                disabled={isSubmitting} 
+              <Button
+                type="submit"
+                disabled={!isValid || updateMutation.isPending}
                 className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
               >
-                {isSubmitting ? (
+                {updateMutation.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Salvando...
@@ -402,6 +534,7 @@ const EditarAlunoPage = () => {
                   "Salvar Alterações"
                 )}
               </Button>
+
               <Button type="button" variant="outline" asChild className="flex-1">
                 <Link href="/aluno">Cancelar</Link>
               </Button>
