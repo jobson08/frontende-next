@@ -98,7 +98,6 @@ const NovoResponsavelPage = () => {
       action: {
         label: "Copiar senha",
         onClick: () => {
-          navigator.clipboard.writeText(email || "");
           navigator.clipboard.writeText(senhaTemporaria || "");
           toast("Usuario e Senha copiada para a área de transferência!");
         },

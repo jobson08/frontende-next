@@ -167,7 +167,7 @@ const TenantsPage = () => {
         />
       </div>
 
-{/* Lista paginada */}
+      {/* Lista paginada */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {filtered.length === 0 ? (
           <p className="text-center text-gray-500 col-span-full py-12 text-lg">

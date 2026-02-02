@@ -3,89 +3,126 @@
 
 import { useParams } from "next/navigation";
 import { format } from "date-fns";
-import { DollarSign, Calendar, CheckCircle, AlertCircle, ArrowLeft } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/card";
+import {
+  DollarSign,
+  Calendar,
+  CheckCircle,
+  AlertCircle,
+  ArrowLeft,
+  Loader2,
+} from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/src/components/ui/card";
 import { Badge } from "@/src/components/ui/badge";
 import { Button } from "@/src/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/src/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/src/components/ui/table";
 import Link from "next/link";
+import api from "@/src/lib/api";
 
-interface Pagamento {
+interface Mensalidade {
   id: string;
-  dataVencimento: Date;
-  dataPagamento: Date | null;
+  dataVencimento: string;
+  dataPagamento: string | null;
   valor: number;
-  status: "Pago" | "Atrasado" | "Pendente";
-  metodo: "PIX" | "Cartão" | "Boleto";
+  status: "pago" | "atrasado" | "pendente";
+  metodoPagamento: string | null;
 }
 
-interface Cliente {
+interface AlunoCrossfit {
   id: string;
   nome: string;
-  plano: string;
-  valorMensal: number;
+  email: string;
+  mensalidades: Mensalidade[];
+  valorMensalAtual?: number; // opcional, se você tiver esse campo no backend
+  planoAtual?: string;       // opcional
 }
-
-// Mock (em produção vem do Supabase)
-const clientesMock: Record<string, Cliente> = {
-  "1": {
-    id: "1",
-    nome: "Carlos Silva",
-    plano: "Mensal",
-    valorMensal: 149,
-  },
-};
-
-const pagamentosMock: Record<string, Pagamento[]> = {
-  "1": [
-    { id: "p1", dataVencimento: new Date(2025, 11, 10), dataPagamento: new Date(2025, 11, 10), valor: 149, status: "Pago", metodo: "PIX" },
-    { id: "p2", dataVencimento: new Date(2025, 10, 10), dataPagamento: new Date(2025, 10, 8), valor: 149, status: "Pago", metodo: "Cartão" },
-    { id: "p3", dataVencimento: new Date(2025, 9, 10), dataPagamento: null, valor: 149, status: "Atrasado", metodo: "PIX" },
-    { id: "p4", dataVencimento: new Date(2025, 8, 10), dataPagamento: new Date(2025, 8, 12), valor: 149, status: "Pago", metodo: "PIX" },
-  ],
-};
 
 const VerPagamentosCrossFitPage = () => {
   const { id } = useParams();
-  const clienteId = id as string;
-  const cliente = clientesMock[clienteId];
-  const pagamentos = pagamentosMock[clienteId] || [];
+  const alunoId = id as string;
 
-  if (!cliente) {
+  // Busca aluno + mensalidades
+  const { data: aluno, isLoading, error } = useQuery<AlunoCrossfit>({
+    queryKey: ["aluno-crossfit-pagamentos", alunoId],
+    queryFn: async () => {
+      const res = await api.get(`/tenant/alunos-crossfit/${alunoId}`);
+      return res.data.data;
+    },
+    enabled: !!alunoId,
+  });
+
+  // Calcula resumo
+  const mensalidades = aluno?.mensalidades || [];
+  const totalPago = mensalidades
+    .filter((m) => m.status === "pago")
+    .reduce((acc, m) => acc + m.valor, 0);
+
+  const totalAtrasado = mensalidades
+    .filter((m) => m.status === "atrasado" || m.status === "pendente")
+    .reduce((acc, m) => acc + m.valor, 0);
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "pago":
+        return (
+          <Badge className="bg-green-600 flex items-center gap-1">
+            <CheckCircle className="h-3 w-3" /> Pago
+          </Badge>
+        );
+      case "atrasado":
+        return (
+          <Badge className="bg-red-600 flex items-center gap-1">
+            <AlertCircle className="h-3 w-3" /> Atrasado
+          </Badge>
+        );
+      case "pendente":
+        return (
+          <Badge className="bg-orange-600 flex items-center gap-1">
+            <Calendar className="h-3 w-3" /> Pendente
+          </Badge>
+        );
+      default:
+        return <Badge variant="secondary">{status}</Badge>;
+    }
+  };
+
+  if (isLoading) {
     return (
-      <div className="p-8 text-center">
-        <h1 className="text-2xl font-bold">Cliente não encontrado</h1>
-        <Button asChild className="mt-4">
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-12 w-12 animate-spin text-red-600" />
+        <span className="ml-4 text-xl">Carregando pagamentos...</span>
+      </div>
+    );
+  }
+
+  if (error || !aluno) {
+    return (
+      <div className="p-8 text-center text-red-600">
+        <AlertCircle className="h-16 w-16 mx-auto mb-4" />
+        <h1 className="text-2xl font-bold">Aluno não encontrado</h1>
+        <Button asChild className="mt-6">
           <Link href="/crossfit">Voltar para lista</Link>
         </Button>
       </div>
     );
   }
 
-  const totalPago = pagamentos
-    .filter(p => p.status === "Pago")
-    .reduce((acc, p) => acc + p.valor, 0);
-
-  const totalAtrasado = pagamentos
-    .filter(p => p.status === "Atrasado" || p.status === "Pendente")
-    .reduce((acc, p) => acc + p.valor, 0);
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "Pago":
-        return <Badge className="bg-green-600"><CheckCircle className="mr-1 h-3 w-3" /> Pago</Badge>;
-      case "Atrasado":
-        return <Badge className="bg-red-600"><AlertCircle className="mr-1 h-3 w-3" /> Atrasado</Badge>;
-      case "Pendente":
-        return <Badge className="bg-orange-600"><Calendar className="mr-1 h-3 w-3" /> Pendente</Badge>;
-      default:
-        return <Badge>{status}</Badge>;
-    }
-  };
-
   return (
     <div className="p-4 lg:p-8 max-w-5xl mx-auto space-y-8">
-      {/* Cabeçalho com voltar */}
+      {/* Cabeçalho */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild>
           <Link href="/crossfit">
@@ -93,8 +130,8 @@ const VerPagamentosCrossFitPage = () => {
           </Link>
         </Button>
         <div>
-          <h1 className="text-3xl font-bold">Pagamentos - {cliente.nome}</h1>
-          <p className="text-gray-600">Histórico completo de pagamentos do cliente CrossFit</p>
+          <h1 className="text-3xl font-bold">Pagamentos - {aluno.nome}</h1>
+          <p className="text-gray-600">Histórico completo de mensalidades e pagamentos</p>
         </div>
       </div>
 
@@ -109,7 +146,7 @@ const VerPagamentosCrossFitPage = () => {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-green-600">
-              R$ {totalPago.toLocaleString("pt-BR")}
+              R$ {totalPago.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
             </div>
           </CardContent>
         </Card>
@@ -123,7 +160,7 @@ const VerPagamentosCrossFitPage = () => {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-red-600">
-              R$ {totalAtrasado.toLocaleString("pt-BR")}
+              R$ {totalAtrasado.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
             </div>
           </CardContent>
         </Card>
@@ -137,9 +174,11 @@ const VerPagamentosCrossFitPage = () => {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-blue-600">
-              R$ {cliente.valorMensal.toLocaleString("pt-BR")}
+              R$ {(aluno.valorMensalAtual || 149).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
             </div>
-            <p className="text-sm text-gray-600 mt-1">Plano: {cliente.plano}</p>
+            <p className="text-sm text-gray-600 mt-1">
+              Plano: {aluno.planoAtual || "Mensal"}
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -147,37 +186,52 @@ const VerPagamentosCrossFitPage = () => {
       {/* Tabela de Histórico */}
       <Card>
         <CardHeader>
-          <CardTitle>Histórico de Pagamentos</CardTitle>
+          <div className="flex items-center justify-between">
+            <Button asChild className="bg-gradient-to-r from-green-600 to-emerald-600">
+            <Link href={`/crossfit/${aluno.id}/pagamentos/novo`}>
+              <DollarSign className="mr-2 h-4 w-4" />
+              Gerar Mensalidade Manual
+            </Link>
+          </Button>
+          </div>
+          <CardTitle>Histórico de Mensalidades</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Vencimento</TableHead>
-                <TableHead>Pagamento</TableHead>
-                <TableHead>Valor</TableHead>
-                <TableHead>Método</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {pagamentos.map((pagamento) => (
-                <TableRow key={pagamento.id}>
-                  <TableCell>{format(pagamento.dataVencimento, "dd/MM/yyyy")}</TableCell>
-                  <TableCell>
-                    {pagamento.dataPagamento 
-                      ? format(pagamento.dataPagamento, "dd/MM/yyyy")
-                      : "-"}
-                  </TableCell>
-                  <TableCell className="font-medium">
-                    R$ {pagamento.valor.toLocaleString("pt-BR")}
-                  </TableCell>
-                  <TableCell>{pagamento.metodo}</TableCell>
-                  <TableCell>{getStatusBadge(pagamento.status)}</TableCell>
+          {mensalidades.length === 0 ? (
+            <div className="text-center py-12 text-gray-500">
+              <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>Nenhuma mensalidade registrada ainda para este aluno.</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Vencimento</TableHead>
+                  <TableHead>Pagamento</TableHead>
+                  <TableHead>Valor</TableHead>
+                  <TableHead>Método</TableHead>
+                  <TableHead>Status</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {mensalidades.map((m) => (
+                  <TableRow key={m.id}>
+                    <TableCell>{format(new Date(m.dataVencimento), "dd/MM/yyyy")}</TableCell>
+                    <TableCell>
+                      {m.dataPagamento
+                        ? format(new Date(m.dataPagamento), "dd/MM/yyyy")
+                        : "-"}
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      R$ {m.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                    </TableCell>
+                    <TableCell>{m.metodoPagamento || "-"}</TableCell>
+                    <TableCell>{getStatusBadge(m.status)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>

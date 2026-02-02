@@ -1,20 +1,55 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/app/(dashboard)/crossfit/page.tsx
 "use client";
 
 import { useState } from "react";
 import { format } from "date-fns";
-import { Activity, Search, DollarSign, Calendar, Phone, Mail, MoreVertical, Edit, Trash2, AlertCircle, Users, UserPlus } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/card";
+import {
+  Activity,
+  Search,
+  DollarSign,
+  Calendar,
+  Phone,
+  Mail,
+  MoreVertical,
+  Edit,
+  Trash2,
+  AlertCircle,
+  Users,
+  UserPlus,
+  LayoutGrid,
+  Table as TableIcon,
+  Loader2,
+} from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/src/components/ui/card";
 import { Badge } from "@/src/components/ui/badge";
 import { Input } from "@/src/components/ui/input";
 import { Button } from "@/src/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/src/components/ui/table";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/src/components/ui/dropdown-menu";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/src/components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/src/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/src/components/ui/avatar";
 import Link from "next/link";
-
-import { toast } from "sonner";
-import { AlertDialog,
+import {
+  AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
@@ -22,76 +57,92 @@ import { AlertDialog,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger, } from "@/src/components/ui/alert-dialog";
+  AlertDialogTrigger,
+} from "@/src/components/ui/alert-dialog";
+import api from "@/src/lib/api";
+import { Pagination } from "@/src/components/common/Pagination"; // ajuste o caminho se necessário
 
-interface ClienteCrossFit {
+// Função para formatar telefone
+const formatarTelefone = (phone: string | null) => {
+  if (!phone) return "Não informado";
+  const cleaned = phone.replace(/\D/g, "");
+  if (cleaned.length === 11) {
+    return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2, 7)}-${cleaned.slice(7)}`;
+  }
+  return phone;
+};
+
+interface AlunoCrossfit {
   id: string;
   nome: string;
   email: string;
-  telefone: string;
-  dataInscricao: Date;
-  ultimoPagamento: Date | null;
-  statusPagamento: "Em Dia" | "Atrasado" | "Pendente";
-  frequenciaSemanal: number; // média de aulas por semana
+  telefone: string | null;
+  dataNascimento: string;
+  observacoes: string | null;
+  frequencia: number;
+  status: string;
+  createdAt: string;
+  ultimoPagamento?: string | null;
+  statusPagamento?: "Em Dia" | "Atrasado" | "Pendente";
 }
-
-const clientesMock: ClienteCrossFit[] = [
-  {
-    id: "1",
-    nome: "Carlos Silva",
-    email: "carlos.silva@email.com",
-    telefone: "(11) 98765-4321",
-    dataInscricao: new Date(2025, 9, 15),
-    ultimoPagamento: new Date(2025, 11, 10),
-    statusPagamento: "Em Dia",
-    frequenciaSemanal: 3,
-  },
-  {
-    id: "2",
-    nome: "Ana Oliveira",
-    email: "ana.oliveira@email.com",
-    telefone: "(11) 97654-3210",
-    dataInscricao: new Date(2025, 8, 20),
-    ultimoPagamento: new Date(2025, 10, 5),
-    statusPagamento: "Atrasado",
-    frequenciaSemanal: 2,
-  },
-  {
-    id: "3",
-    nome: "Roberto Santos",
-    email: "roberto@email.com",
-    telefone: "(11) 96543-2109",
-    dataInscricao: new Date(2025, 11, 1),
-    ultimoPagamento: null,
-    statusPagamento: "Pendente",
-    frequenciaSemanal: 0,
-  },
-  {
-    id: "4",
-    nome: "Juliana Costa",
-    email: "juliana@email.com",
-    telefone: "(11) 95432-1098",
-    dataInscricao: new Date(2025, 7, 10),
-    ultimoPagamento: new Date(2025, 11, 8),
-    statusPagamento: "Em Dia",
-    frequenciaSemanal: 4,
-  },
-];
 
 const ClientesCrossFitPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [clienteParaRemover, setClienteParaRemover] = useState<ClienteCrossFit | null>(null);
+  const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
+  const [alunoParaRemover, setAlunoParaRemover] = useState<AlunoCrossfit | null>(null);
+  
+  // Estados de paginação
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
-  const filtered = clientesMock.filter((cliente) =>
-    cliente.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    cliente.email.toLowerCase().includes(searchTerm.toLowerCase())
+  const queryClient = useQueryClient();
+
+  // Busca alunos reais do backend
+  const { data: alunos = [], isLoading, error } = useQuery<AlunoCrossfit[]>({
+    queryKey: ["alunos-crossfit", searchTerm],
+    queryFn: async () => {
+      const res = await api.get("/tenant/alunos-crossfit", {
+        params: { search: searchTerm || undefined },
+      });
+      return res.data.data || [];
+    },
+  });
+
+  // Mutation para remover aluno
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await api.delete(`/tenant/alunos-crossfit/${id}`);
+    },
+    onSuccess: () => {
+      toast.success("Aluno removido com sucesso!");
+      queryClient.invalidateQueries({ queryKey: ["alunos-crossfit"] });
+      setAlunoParaRemover(null);
+    },
+    onError: (err: any) => {
+      toast.error("Erro ao remover aluno", {
+        description: err.response?.data?.error || "Tente novamente",
+      });
+    },
+  });
+
+  // Filtra os alunos (busca local por enquanto)
+  const filtered = alunos.filter(
+    (aluno) =>
+      aluno.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      aluno.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const totalClientes = filtered.length;
-  const emDia = filtered.filter(c => c.statusPagamento === "Em Dia").length;
-  const atrasados = filtered.filter(c => c.statusPagamento === "Atrasado" || c.statusPagamento === "Pendente").length;
+  // Paginação: calcula itens da página atual
+  const totalItems = filtered.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedItems = filtered.slice(startIndex, startIndex + itemsPerPage);
 
-  const getStatusBadge = (status: string) => {
+  const totalAlunos = filtered.length;
+  const emDia = filtered.filter((a) => a.statusPagamento === "Em Dia").length;
+  const atrasados = filtered.filter((a) => a.statusPagamento !== "Em Dia").length;
+
+  const getStatusBadge = (status?: string) => {
     switch (status) {
       case "Em Dia":
         return <Badge className="bg-green-600">Em Dia</Badge>;
@@ -100,35 +151,84 @@ const ClientesCrossFitPage = () => {
       case "Pendente":
         return <Badge className="bg-orange-600">Pendente</Badge>;
       default:
-        return <Badge>{status}</Badge>;
+        return <Badge variant="secondary">Indefinido</Badge>;
     }
   };
 
-  const handleRemover = (cliente: ClienteCrossFit) => {
-    setClienteParaRemover(cliente);
+  const handleRemover = (aluno: AlunoCrossfit) => {
+    setAlunoParaRemover(aluno);
   };
 
   const confirmarRemocao = () => {
-    if (clienteParaRemover) {
-      // Aqui vai a lógica real de remoção (Supabase delete)
-      console.log("Cliente removido:", clienteParaRemover.id);
-      toast.success("Cliente removido com sucesso!", {
-        description: `${clienteParaRemover.nome} foi excluído da lista CrossFit.`,
-      });
-      setClienteParaRemover(null);
-      // Atualizar lista (em produção: refetch ou remove do state)
+    if (alunoParaRemover) {
+      deleteMutation.mutate(alunoParaRemover.id);
     }
   };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleItemsPerPageChange = (value: number) => {
+    setItemsPerPage(value);
+    setCurrentPage(1); // reseta para página 1 ao mudar o tamanho
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-12 w-12 animate-spin text-red-600" />
+        <p className="ml-4 text-lg text-gray-600">Carregando alunos CrossFit...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-8 text-center text-red-600">
+        <AlertCircle className="h-16 w-16 mx-auto mb-4" />
+        <h2 className="text-2xl font-bold">Erro ao carregar alunos</h2>
+        <p className="mt-2">{(error as Error).message || "Tente novamente mais tarde"}</p>
+        <Button className="mt-6" onClick={() => queryClient.refetchQueries({ queryKey: ["alunos-crossfit"] })}>
+          Tentar novamente
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 lg:p-8 space-y-8">
       {/* Cabeçalho */}
-      <div>
-        <h1 className="text-4xl font-bold flex items-center gap-3">
-          <Activity className="h-10 w-10 text-red-600" />
-          Clientes CrossFit
-        </h1>
-        <p className="text-gray-600 text-lg mt-2">Gerencie os alunos adultos do CrossFit da sua escolinha</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-4xl font-bold flex items-center gap-3">
+            <Activity className="h-10 w-10 text-red-600" />
+            Alunos CrossFit
+          </h1>
+          <p className="text-gray-600 text-lg mt-2">Gerencie os alunos adultos do CrossFit da sua escolinha</p>
+        </div>
+
+        {/* Alternância de visualização */}
+        <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-lg">
+          <Button
+            variant={viewMode === "cards" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setViewMode("cards")}
+            className="gap-1"
+          >
+            <LayoutGrid className="h-4 w-4" />
+            Cards
+          </Button>
+          <Button
+            variant={viewMode === "table" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setViewMode("table")}
+            className="gap-1"
+          >
+            <TableIcon className="h-4 w-4" />
+            Tabela
+          </Button>
+        </div>
       </div>
 
       {/* Cards de Totais */}
@@ -137,11 +237,11 @@ const ClientesCrossFitPage = () => {
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <Users className="h-5 w-5 text-red-600" />
-              Total de Clientes
+              Total de Alunos
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-red-600">{totalClientes}</div>
+            <div className="text-3xl font-bold text-red-600">{totalAlunos}</div>
           </CardContent>
         </Card>
 
@@ -170,85 +270,54 @@ const ClientesCrossFitPage = () => {
         </Card>
       </div>
 
-      {/* Busca */}
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
-        <Input
-          placeholder="Buscar por nome ou e-mail..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-11 h-12"
-        />
+      {/* Busca + Botões de ação */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="relative max-w-md w-full">
+          <Search className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
+          <Input
+            placeholder="Buscar por nome ou e-mail..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-11 h-12"
+          />
+        </div>
+
+        <div className="flex flex-wrap gap-3">
+          <Button asChild className="bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700">
+            <Link href="/crossfit/presenca">
+              <Calendar className="mr-2 h-4 w-4" />
+              Marca Presença
+            </Link>
+          </Button>
+          <Button asChild className="bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700">
+            <Link href="/crossfit/novo">
+              <UserPlus className="mr-2 h-4 w-4" />
+              Novo Aluno
+            </Link>
+          </Button>
+        </div>
       </div>
 
-      {/* Tabela de Clientes */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <Button asChild className="bg-linear-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700">
-              <Link href="/crossfit/presenca">
-                  <Calendar className="mr-2 h-4 w-4" />
-                  Marca Presença
-              </Link>
-            </Button>
-            {/* Botão novo aluno*/}
-             <Button asChild className="bg-linear-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700">
-              <Link href="/crossfit/novo">
-                  <UserPlus className="mr-2 h-4 w-4" />
-                  Novo Aluno
-              </Link>
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Cliente</TableHead>
-                <TableHead>Contato</TableHead>
-                <TableHead>Inscrição</TableHead>
-                <TableHead>Frequência Semanal</TableHead>
-                <TableHead>Pagamento</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map((cliente) => (
-                <TableRow key={cliente.id}>
-                  <TableCell className="font-medium flex items-center gap-3">
-                    <Avatar>
-                      <AvatarFallback className="bg-linear-to-br from-red-600 to-orange-600 text-white">
-                        {cliente.nome.split(" ").map(n => n[0]).join("")}
-                      </AvatarFallback>
-                    </Avatar>
-                    {cliente.nome}
-                  </TableCell>
-
-                    <TableCell>  
-                  <div className="space-y-1">
-                      <div className="flex items-center gap-1 text-sm">
-                        <Mail className="h-3 w-3 text-gray-500" />
-                        {cliente.email}
-                      </div>
-                      <div className="flex items-center gap-1 text-sm">
-                        <Phone className="h-3 w-3 text-gray-500" />
-                        {cliente.telefone}
+      {/* Conteúdo principal: Cards ou Tabela */}
+      {viewMode === "cards" ? (
+        <>
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {paginatedItems.map((aluno) => (
+              <Card key={aluno.id} className="overflow-hidden hover:shadow-md transition-shadow">
+                <CardHeader className="pb-3 bg-gradient-to-r from-red-50 to-orange-50">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Avatar>
+                        <AvatarFallback className="bg-gradient-to-br from-red-600 to-orange-600 text-white">
+                          {aluno.nome.split(" ").map((n) => n[0]).join("")}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <CardTitle className="text-lg">{aluno.nome}</CardTitle>
+                        <p className="text-sm text-gray-600 truncate">{aluno.email}</p>
                       </div>
                     </div>
-                  </TableCell>
 
-                  <TableCell>{format(cliente.dataInscricao, "dd/MM/yyyy")}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{cliente.frequenciaSemanal} aulas/semana</Badge>
-                  </TableCell>
-                  <TableCell>
-                    {cliente.ultimoPagamento 
-                      ? format(cliente.ultimoPagamento, "dd/MM/yyyy")
-                      : "-"}
-                  </TableCell>
-                  <TableCell>{getStatusBadge(cliente.statusPagamento)}</TableCell>
-                  <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon">
@@ -256,72 +325,265 @@ const ClientesCrossFitPage = () => {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        {/* BOTÃO EDITAR AQUI */}
                         <DropdownMenuItem asChild>
-                          <Link href={`/crossfit/${cliente.id}/editar`}>
+                          <Link href={`/crossfit/${aluno.id}/editar`}>
                             <Edit className="mr-2 h-4 w-4" />
-                            Editar cliente
+                            Editar aluno
                           </Link>
                         </DropdownMenuItem>
-                        {/* BOTÃO VER PAGAMENTOS AQUI */}
                         <DropdownMenuItem asChild>
-                          <Link href={`/crossfit/${cliente.id}/pagamentos`}>
+                          <Link href={`/crossfit/${aluno.id}/pagamentos`}>
                             <DollarSign className="mr-2 h-4 w-4" />
                             Ver pagamentos
                           </Link>
                         </DropdownMenuItem>
-                    {/* BOTÃO MARCAR PRESENÇA AQUI */}
                         <DropdownMenuItem asChild>
                           <Link href="/crossfit/presenca">
                             <Calendar className="mr-2 h-4 w-4" />
                             Marcar presença
                           </Link>
                         </DropdownMenuItem>
-
-                        {/* BOTÃO REMOVER COM MODAL */}
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <DropdownMenuItem 
+                            <DropdownMenuItem
                               className="text-red-600 focus:text-red-600"
-                              onSelect={(e) => e.preventDefault()} // impede fechamento do dropdown
+                              onSelect={(e) => e.preventDefault()}
                             >
                               <Trash2 className="mr-2 h-4 w-4" />
-                              Remover cliente
+                              Remover aluno
                             </DropdownMenuItem>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
                               <AlertDialogTitle>Confirmar remoção?</AlertDialogTitle>
                               <AlertDialogDescription>
-                                Tem certeza que deseja remover <strong>{cliente.nome}</strong> da lista de clientes CrossFit?
+                                Tem certeza que deseja remover <strong>{aluno.nome}</strong> da lista de alunos CrossFit?
                                 <br />
                                 Essa ação não pode ser desfeita.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                              <AlertDialogAction 
+                              <AlertDialogAction
                                 className="bg-red-600 hover:bg-red-700"
-                                onClick={() => {
-                                  confirmarRemocao();
-                                  // Fecha o modal (AlertDialogAction faz isso automaticamente)
-                                }}
+                                onClick={confirmarRemocao}
                               >
                                 Sim, remover
                               </AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>
-
                       </DropdownMenuContent>
                     </DropdownMenu>
-                  </TableCell>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4 pt-4">
+                  <div className="flex items-center gap-3">
+                    <Phone className="h-5 w-5 text-gray-600" />
+                    <span>{formatarTelefone(aluno.telefone || "Não informado")}</span>
+                </div>
+               <div>
+                {/*  
+                  <div className="flex items-center gap-3">
+                    <Mail className="h-5 w-5 text-gray-600" />
+                    <span className="truncate">{aluno.email}</span>
+                  </div>
+                   <div className="flex items-center gap-2">
+                      <Calendar className="h-5 w-5 text-gray-600" />
+                      <span>{format(new Date(aluno.dataNascimento), "dd/MM/yyyy")}</span>
+                  </div>
+                  */}
+                </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Activity className="h-5 w-5 text-gray-600" />
+                      <Badge variant="outline">{aluno.frequencia} aulas/semana</Badge>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between pt-2 border-t">
+                    <span className="text-sm text-gray-600">Status:</span>
+                    <Badge variant={aluno.status === "ativo" ? "default" : "destructive"}>
+                      {aluno.status === "ativo" ? "Ativo" : "Inativo"}
+                    </Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* Paginação no modo cards */}
+          <Pagination
+            currentPage={currentPage}
+            totalItems={totalItems}
+            itemsPerPage={itemsPerPage}
+            onPageChange={handlePageChange}
+            onItemsPerPageChange={handleItemsPerPageChange}
+            className="mt-6"
+          />
+        </>
+      ) : (
+        <Card>
+          <CardHeader>
+{/*
+            <div className="flex items-center justify-between">
+              <Button asChild className="bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700">
+                <Link href="/crossfit/presenca">
+                  <Calendar className="mr-2 h-4 w-4" />
+                  Marca Presença
+                </Link>
+              </Button>
+              <Button asChild className="bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700">
+                <Link href="/crossfit/novo">
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  Novo Aluno
+                </Link>
+              </Button>
+            </div>
+*/}
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Aluno</TableHead>
+                  <TableHead>Contato</TableHead>
+                  <TableHead>Data de Nascimento</TableHead>
+                  <TableHead>Frequência Semanal</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+              </TableHeader>
+              <TableBody>
+                {paginatedItems.map((aluno) => (
+                  <TableRow key={aluno.id}>
+                    <TableCell className="font-medium flex items-center gap-3">
+                      <Avatar>
+                        <AvatarFallback className="bg-gradient-to-br from-red-600 to-orange-600 text-white">
+                          {aluno.nome.split(" ").map((n) => n[0]).join("")}
+                        </AvatarFallback>
+                      </Avatar>
+                      {aluno.nome}
+                    </TableCell>
+                    <TableCell>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1 text-sm">
+                          <Mail className="h-3 w-3 text-gray-500" />
+                          {aluno.email}
+                        </div>
+                        <div className="flex items-center gap-1 text-sm">
+                          <Phone className="h-3 w-3 text-gray-500" />
+                          {formatarTelefone(aluno.telefone || "Não informado")}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>{format(new Date(aluno.dataNascimento), "dd/MM/yyyy")}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{aluno.frequencia} aulas/semana</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={aluno.status === "ativo" ? "default" : "destructive"}>
+                        {aluno.status === "ativo" ? "Ativo" : "Inativo"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem asChild>
+                            <Link href={`/crossfit/${aluno.id}/editar`}>
+                              <Edit className="mr-2 h-4 w-4" />
+                              Editar aluno
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <Link href={`/crossfit/${aluno.id}/pagamentos`}>
+                              <DollarSign className="mr-2 h-4 w-4" />
+                              Ver pagamentos
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <Link href="/crossfit/presenca">
+                              <Calendar className="mr-2 h-4 w-4" />
+                              Marcar presença
+                            </Link>
+                          </DropdownMenuItem>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <DropdownMenuItem
+                                className="text-red-600 focus:text-red-600"
+                                onSelect={(e) => e.preventDefault()}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Remover aluno
+                              </DropdownMenuItem>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Confirmar remoção?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Tem certeza que deseja remover <strong>{aluno.nome}</strong> da lista de alunos CrossFit?
+                                  <br />
+                                  Essa ação não pode ser desfeita.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction
+                                  className="bg-red-600 hover:bg-red-700"
+                                  onClick={confirmarRemocao}
+                                >
+                                  Sim, remover
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+
+            {/* Paginação no modo tabela */}
+            <Pagination
+              currentPage={currentPage}
+              totalItems={totalItems}
+              itemsPerPage={itemsPerPage}
+              onPageChange={handlePageChange}
+              onItemsPerPageChange={handleItemsPerPageChange}
+              className="mt-6"
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* AlertDialog de remoção */}
+      <AlertDialog open={!!alunoParaRemover} onOpenChange={() => setAlunoParaRemover(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar remoção?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja remover <strong>{alunoParaRemover?.nome}</strong> da lista de alunos CrossFit?
+              <br />
+              Essa ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700"
+              onClick={confirmarRemocao}
+            >
+              Sim, remover
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
