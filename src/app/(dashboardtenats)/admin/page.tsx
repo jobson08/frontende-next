@@ -142,9 +142,9 @@ const AdminDashboardPage = () => {
             <Users className="h-4 w-4 text-gray-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data.totalAlunos}</div>
+            <div className="text-2xl font-bold">{data?.totalAlunos ?? 0}</div>
             <p className="text-xs text-gray-500 mt-1">
-              <span className="text-green-600 font-medium">{data.alunosAtivos} ativos</span> este mês
+              <span className="text-green-600 font-medium">{data?.alunosAtivos ?? 0} ativos</span> este mês
             </p>
           </CardContent>
         </Card>
@@ -156,7 +156,7 @@ const AdminDashboardPage = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              R$ {data.receitaMensalEstimada.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+            R$ {(data?.receitaMensalEstimada ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
             </div>
             <div className="flex items-center gap-1 text-xs text-green-600 mt-1">
               <TrendingUp className="h-3 w-3" />
@@ -175,8 +175,8 @@ const AdminDashboardPage = () => {
             )}
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${data.pagamentosPendentes > 0 ? "text-red-600" : "text-green-600"}`}>
-              {data.pagamentosPendentes}
+            <div className="text-2xl font-bold text-red-600">
+              {data?.pagamentosPendentes ?? 0}
             </div>
             <p className="text-xs text-gray-500 mt-1">mensalidades em aberto</p>
           </CardContent>
