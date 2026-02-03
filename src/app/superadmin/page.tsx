@@ -1,11 +1,17 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/app/superadmin/dashboard/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import api from "@/src/lib/api";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { DollarSign, Users, Building2, TrendingUp, Activity, AlertCircle, Calendar, Trophy, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/card";
 import { Badge } from "@/src/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/src/components/ui/avatar";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/src/components/ui/select";
 import { toast } from "sonner";
 
 interface DashboardData {
@@ -25,42 +31,36 @@ interface DashboardData {
 }
 
 const SuperAdminDashboardPage = () => {
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const hoje = new Date();
+  const mesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+  const [mesSelecionado, setMesSelecionado] = useState(mesAtual);
 
-  useEffect(() => {
-    const fetchDashboard = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        if (!token) {
-          toast.error("Sessão expirada. Faça login novamente.");
-          return;
-        }
 
-        const res = await fetch("http://localhost:4000/api/v1/superadmin/dashboard", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
 
-        if (!res.ok) {
-          throw new Error("Erro ao carregar dashboard");
-        }
+  // Gera opções de meses (últimos 24 meses + "Todos")
+  const mesesDisponiveis = [
+    { value: "todos", label: "Todos os meses" },
+    ...Array.from({ length: 24 }, (_, i) => {
+      const date = new Date();
+      date.setMonth(date.getMonth() - i);
+      const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const label = format(date, "MMMM 'de' yyyy", { locale: ptBR });
+      return { value, label: label.charAt(0).toUpperCase() + label.slice(1) };
+    }),
+  ];
 
-        const result = await res.json();
-        setData(result.data);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } catch (error: any) {
-        toast.error("Erro ao carregar dashboard", {
-          description: error.message,
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
+    const mesAtualTexto = mesSelecionado === "todos"
+    ? "Todos os meses"
+    : mesesDisponiveis.find(m => m.value === mesSelecionado)?.label || "Mês atual";
 
-    fetchDashboard();
-  }, []);
+  const { data, isLoading, error } = useQuery<DashboardData>({
+    queryKey: ["superadmin-dashboard", mesSelecionado],
+    queryFn: async () => {
+      const params = mesSelecionado !== "todos" ? { mes: mesSelecionado } : {};
+      const res = await api.get("/superadmin/dashboard", { params });
+      return res.data.data;
+    },
+  });
 
   if (isLoading) {
     return (
@@ -71,24 +71,55 @@ const SuperAdminDashboardPage = () => {
     );
   }
 
-  if (!data) {
+  if (error) {
+    toast.error("Erro ao carregar dashboard", {
+      description: (error as any).message || "Tente novamente mais tarde",
+    });
+
     return (
       <div className="text-center py-20">
         <AlertCircle className="h-16 w-16 text-red-600 mx-auto mb-4" />
         <h2 className="text-2xl font-bold">Erro ao carregar dados</h2>
-        <p className="text-gray-600 mt-2">Tente recarregar a página</p>
+        <p className="text-gray-600 mt-2">Verifique sua conexão ou permissões</p>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="text-center py-20">
+        <AlertCircle className="h-16 w-16 text-red-600 mx-auto mb-4" />
+        <h2 className="text-2xl font-bold">Nenhum dado disponível</h2>
       </div>
     );
   }
 
   return (
     <div className="p-4 lg:p-8 space-y-8">
-      {/* Cabeçalho */}
-      <div>
-        <h1 className="text-4xl font-bold">Dashboard Geral</h1>
-        <p className="text-gray-600 text-lg mt-2">
-          Visão completa da plataforma FutElite • Última atualização: {data.ultimaAtualizacao}
-        </p>
+      {/* Cabeçalho + Filtro de Mês */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+        <div>
+          <h1 className="text-4xl font-bold">Dashboard Geral</h1>
+          <p className="text-gray-600 text-lg mt-2">
+            Visão completa da plataforma FutElite • Última atualização: {data.ultimaAtualizacao}
+          </p>
+        </div>
+
+        {/* Filtro por mês/ano */}
+        <div className="w-full md:w-64">
+          <Select value={mesSelecionado} onValueChange={setMesSelecionado}>
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione o mês" />
+            </SelectTrigger>
+            <SelectContent>
+              {mesesDisponiveis.map((mes) => (
+                <SelectItem key={mes.value} value={mes.value}>
+                  {mes.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Cards Principais */}
@@ -149,9 +180,6 @@ const SuperAdminDashboardPage = () => {
             <div className="text-3xl font-bold text-orange-600">
               {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(data.receitaAnual)}
             </div>
-           {/* <p className="text-xs text-gray-600 mt-2">
-              Conversão de teste: {data.taxaConversaoTeste}
-            </p>*/}
           </CardContent>
         </Card>
       </div>
@@ -161,24 +189,28 @@ const SuperAdminDashboardPage = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Activity className="h-5 w-5 text-indigo-600" />
-            Atividade Recente
+            Atividade Recente ({mesAtualTexto})
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {data.atividadeRecente.map((item, i) => (
-              <div key={i} className="flex items-center gap-4">
-                <Avatar className="h-10 w-10">
-                  <AvatarFallback className="bg-linear-to-br from-indigo-600 to-purple-600 text-white text-sm">
-                    {item.nome.split(" ").map(n => n[0]).join("")}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1">
-                  <p className="text-sm font-medium">{item.nome}</p>
-                  <p className="text-xs text-gray-600">{item.acao} • {item.data}</p>
+            {data.atividadeRecente.length === 0 ? (
+              <p className="text-center text-gray-500 py-4">Nenhuma atividade recente neste mês.</p>
+            ) : (
+              data.atividadeRecente.map((item, i) => (
+                <div key={i} className="flex items-center gap-4">
+                  <Avatar className="h-10 w-10">
+                    <AvatarFallback className="bg-gradient-to-br from-indigo-600 to-purple-600 text-white text-sm">
+                      {item.nome.split(" ").map(n => n[0]).join("")}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">{item.nome}</p>
+                    <p className="text-xs text-gray-600">{item.acao} • {item.data}</p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </CardContent>
       </Card>

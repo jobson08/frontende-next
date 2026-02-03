@@ -51,7 +51,7 @@ const TenantDetalhePage = () => {
     queryKey: ["escolinha", id],
     queryFn: async () => {
       console.log("[Detalhe] Buscando escolinha com ID:", id);
-      const res = await api.get(`http://localhost:4000/api/v1/superadmin/escolinhas/${id}`);
+      const res = await api.get(`/superadmin/escolinhas/${id}`);
       console.log("[Detalhe] Response completo:", res);
       return res.data; // retorna { success, data }
     },
@@ -221,7 +221,7 @@ const TenantDetalhePage = () => {
           <CardContent className="space-y-4">
             <div className="flex justify-between">
               <span className="text-gray-600">Valor do Plano SaaS</span>
-              <span className="font-bold text-2xl text-green-600">
+              <span className="font-bold text-1xl text-green-600">
                 {escolinha.valorPlanoMensal ? `R$ ${escolinha.valorPlanoMensal.toFixed(2)}` : "Não informado"}
               </span>
             </div>
@@ -241,6 +241,11 @@ const TenantDetalhePage = () => {
                   : "Não informado"}
               </span>
             </div>
+            <Button asChild  className="bg-gradient-to-r from-blue-600 to-blue-600 hover:from-blue-700 hover:to-blue-700">
+            <Link href={`/superadmin/tenants/${escolinha.id}/pagamentos-saas/novo`}>
+              Gerar Primeiro Pagamento SaaS
+            </Link>
+          </Button>
           </CardContent>
         </Card>
 
