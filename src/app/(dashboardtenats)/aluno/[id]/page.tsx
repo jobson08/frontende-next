@@ -1,14 +1,75 @@
-"use client"
+/* eslint-disable @typescript-eslint/no-explicit-any */
+"use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/src/lib/api";
 import { useParams, useRouter } from "next/navigation";
-import { Avatar, AvatarFallback } from "@/src/components/ui/avatar";
+import { useState } from "react";
+import {
+  Avatar,
+  AvatarFallback,
+} from "@/src/components/ui/avatar";
 import { Badge } from "@/src/components/ui/badge";
 import { Button } from "@/src/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/card";
-import { ChevronLeft, Edit, Mail, Phone, Shield, UserCheck, Calendar, Loader2, AlertCircle } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/src/components/ui/card";
+import { Input } from "@/src/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/src/components/ui/select";
+import { Checkbox } from "@/src/components/ui/checkbox";
+import { Label } from "@/src/components/ui/label";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/src/components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/src/components/ui/dropdown-menu";
+import {
+  ChevronLeft,
+  Edit,
+  Mail,
+  Phone,
+  Shield,
+  UserCheck,
+  Calendar,
+  Loader2,
+  AlertCircle,
+  DollarSign,
+  CheckCircle,
+  MoreVertical,
+} from "lucide-react";
 import Link from "next/link";
+import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/src/components/ui/alert-dialog";
+import { format, isValid } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { Pagination } from "@/src/components/common/Pagination";
 
 // Função para formatar telefone
 const formatarTelefone = (phone: string | null) => {
@@ -34,7 +95,6 @@ const calcularIdade = (birthDate: string | Date): number => {
   return idade;
 };
 
-// Interface baseada no retorno real do backend
 interface AlunoDetalhe {
   id: string;
   nome: string;
@@ -43,31 +103,120 @@ interface AlunoDetalhe {
   email: string | null;
   status: "ATIVO" | "INATIVO" | "TRANCADO";
   observacoes: string | null;
-  createdAt: string; // data de matrícula
+  createdAt: string;
   responsavel?: {
     nome: string;
     telefone: string | null;
     email: string | null;
   } | null;
-  userId: string | null; // para saber se tem login
+  userId: string | null;
   categoria: string | null;
+  valorPlano?: number; // ← adicione isso no backend se possível (valor atual do plano)
+}
+
+interface PagamentoAluno {
+  id: string;
+  mesReferencia: string;
+  valor: number;
+  dataVencimento: string;
+  dataPagamento: string | null;
+  metodo: string | null;
+  status: "PAGO" | "PENDENTE" | "ATRASADO";
+  observacao: string | null;
 }
 
 const AlunoDetalhePage = () => {
   const { id } = useParams();
   const router = useRouter();
+  const queryClient = useQueryClient();
+
+  const [pagamentoModalOpen, setPagamentoModalOpen] = useState(false);
+  const [valorPagamento, setValorPagamento] = useState<number>(150);
+  const [dataPagamento, setDataPagamento] = useState(new Date().toISOString().split("T")[0]);
+  const [metodoPagamento, setMetodoPagamento] = useState("DINHEIRO");
+  const [observacaoPagamento, setObservacaoPagamento] = useState("");
+  const [gerarProximo, setGerarProximo] = useState(true);
+
+// Paginação da tabela de pagamentos
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // Busca detalhes do aluno
   const { data: aluno, isLoading, error } = useQuery<AlunoDetalhe>({
     queryKey: ["aluno", id],
     queryFn: async () => {
       const res = await api.get(`/tenant/alunos/${id}`);
-      return res.data.data; // ajuste conforme o formato da sua resposta
+      return res.data.data;
     },
     enabled: !!id,
   });
 
-  if (isLoading) {
+  // Mutation para criar pagamento
+const criarPagamentoMutation = useMutation({
+  mutationFn: async () => {
+    // Pega o mês atual como referência (ou adicione um campo no modal se quiser escolher)
+    const mesReferencia = format(new Date(), 'yyyy-MM-dd'); // ex: "2026-02-10"
+
+    const payload = {
+      mesReferencia,               // ← OBRIGATÓRIO! adicionado aqui
+      dataVencimento: mesReferencia, // pode ser o mesmo ou +10 dias (ajuste)
+      valor: valorPagamento,
+      dataPagamento: format(new Date(dataPagamento), 'yyyy-MM-dd'), // formato correto
+      metodo: metodoPagamento,
+      observacao: observacaoPagamento.trim() || undefined,
+      gerarProximo: gerarProximo,
+    };
+
+    console.log("Payload ENVIADO (corrigido):", payload);
+
+    await api.post(`/tenant/alunos/${id}/pagamentos`, payload);
+  },
+  onSuccess: () => {
+    toast.success("Pagamento registrado com sucesso!");
+    queryClient.invalidateQueries({ queryKey: ["aluno", id] });
+    queryClient.invalidateQueries({ queryKey: ["pagamentos-aluno", id] });
+    setPagamentoModalOpen(false);
+
+    setValorPagamento(150);
+    setDataPagamento(new Date().toISOString().split("T")[0]);
+    setMetodoPagamento("DINHEIRO");
+    setObservacaoPagamento("");
+    setGerarProximo(true);
+  },
+  onError: (err: any) => {
+    console.error("Erro completo:", err.response?.data); // ← para debug
+    toast.error("Erro ao registrar pagamento", {
+      description: err.response?.data?.error || err.message || "Verifique os dados",
+    });
+  },
+});
+
+// Busca histórico de pagamentos do aluno ← ESSA É A LINHA QUE DEFINE "pagamentos"
+const { 
+  data: pagamentos = [], 
+  isLoading: isLoadingPagamentos 
+} = useQuery<PagamentoAluno[]>({
+  queryKey: ["pagamentos-aluno", id],
+  queryFn: async () => {
+    const res = await api.get(`/tenant/alunos/${id}/pagamentos`);
+    return res.data.data || [];
+  },
+  enabled: !!id,
+});
+
+  // Agora sim: lógica de paginação DEPOIS da query
+  const totalPagamentos = pagamentos.length;
+  const totalPages = Math.ceil(totalPagamentos / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedPagamentos = pagamentos.slice(startIndex, startIndex + itemsPerPage);
+
+  const handlePageChange = (page: number) => setCurrentPage(page);
+  const handleItemsPerPageChange = (value: number) => {
+    setItemsPerPage(value);
+    setCurrentPage(1);
+  };
+
+if (isLoading || isLoadingPagamentos) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh]">
         <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
@@ -92,6 +241,7 @@ const AlunoDetalhePage = () => {
   const idade = calcularIdade(aluno.dataNascimento);
   const isMaior = idade >= 18;
   const temResponsavel = !!aluno.responsavel;
+  const podeGerarPagamento = aluno.status === "ATIVO";
 
   return (
     <div className="p-4 lg:p-8 max-w-5xl mx-auto space-y-8">
@@ -121,7 +271,15 @@ const AlunoDetalhePage = () => {
             <div className="text-center sm:text-left">
               <h2 className="text-2xl font-bold">{aluno.nome}</h2>
               <div className="flex flex-wrap items-center gap-3 mt-2 justify-center sm:justify-start">
-                <Badge className="text-xs bg-blue-400 text-white" variant={aluno.status === "ATIVO" ? "default" : aluno.status === "INATIVO" ? "secondary" : "destructive" }>
+                <Badge
+                  className={`text-xs text-white ${
+                    aluno.status === "ATIVO"
+                      ? "bg-blue-600 hover:bg-blue-700"
+                      : aluno.status === "INATIVO"
+                      ? "bg-red-600 hover:bg-red-700"
+                      : "bg-orange-600 hover:bg-orange-700"
+                  }`}
+                >
                   {aluno.status}
                 </Badge>
                 {isMaior && <Badge variant="outline">Maior de idade</Badge>}
@@ -129,13 +287,25 @@ const AlunoDetalhePage = () => {
                 <Badge variant="outline">{aluno.categoria || "Sem categoria"}</Badge>
               </div>
             </div>
-            <div className="ml-auto">
+            <div className="ml-auto flex gap-3">
               <Button size="lg" asChild>
                 <Link href={`/aluno/${aluno.id}/editar`}>
                   <Edit className="mr-2 h-5 w-5" />
                   Editar Aluno
                 </Link>
               </Button>
+
+              {/* Botão Gerar Pagamento - só aparece se ATIVO */}
+              {podeGerarPagamento && (
+                <Button
+                  size="lg"
+                  className="bg-green-600 hover:bg-green-700"
+                  onClick={() => setPagamentoModalOpen(true)}
+                >
+                  <DollarSign className="mr-2 h-5 w-5" />
+                  Gerar Pagamento
+                </Button>
+              )}
             </div>
           </div>
         </CardContent>
@@ -151,12 +321,12 @@ const AlunoDetalhePage = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-          <div className="flex justify-between">
+            <div className="flex justify-between">
               <span className="text-gray-600">Data de Nascimento</span>
               <span className="font-medium">
-                {aluno.dataNascimento 
-                  ? aluno.dataNascimento.split("T")[0].split("-").reverse().join("/") 
-                  : "Não informado"} 
+                {aluno.dataNascimento
+                  ? aluno.dataNascimento.split("T")[0].split("-").reverse().join("/")
+                  : "Não informado"}{" "}
                 ({calcularIdade(aluno.dataNascimento)} anos)
               </span>
             </div>
@@ -215,7 +385,7 @@ const AlunoDetalhePage = () => {
               </>
             ) : (
               <div className="text-center py-8 text-gray-500">
-                Aluno  (sem responsável cadastrado)
+                Aluno maior de idade (sem responsável cadastrado)
               </div>
             )}
           </CardContent>
@@ -233,8 +403,213 @@ const AlunoDetalhePage = () => {
           </p>
         </CardContent>
       </Card>
+
+{/* Histórico de Pagamentos - agora usa a variável correta */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <DollarSign className="h-5 w-5 text-green-600" />
+              Histórico de Pagamentos ({totalPagamentos})
+            </div>
+            <Badge variant="secondary" className="text-sm">
+              Total pago: R$ {pagamentos
+                .filter(p => p.status === "PAGO")
+                .reduce((sum, p) => sum + p.valor, 0)
+                .toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+            </Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {totalPagamentos === 0 ? (
+            <div className="text-center py-12 text-gray-500">
+              Nenhum pagamento registrado para este aluno ainda.
+            </div>
+          ) : (
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Mês/Referência</TableHead>
+                    <TableHead className="hidden md:table-cell">Valor</TableHead>
+                    <TableHead className="hidden md:table-cell">Vencimento</TableHead>
+                    <TableHead className="hidden md:table-cell">Pagamento</TableHead>
+                    <TableHead className="hidden md:table-cell">Método</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginatedPagamentos.map((p) => (
+                    <TableRow key={p.id}>
+                      <TableCell className="font-medium">
+                        {format(new Date(p.mesReferencia), "MMMM 'de' yyyy", { locale: ptBR })}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        R$ {p.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        {p.dataVencimento && isValid(new Date(p.dataVencimento))
+                          ? format(new Date(p.dataVencimento), "dd/MM/yyyy", { locale: ptBR })
+                          : "—"}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        {p.dataPagamento && isValid(new Date(p.dataPagamento))
+                          ? format(new Date(p.dataPagamento), "dd/MM/yyyy", { locale: ptBR })
+                          : "—"}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        {p.metodo || "—"}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={p.status === "PAGO" ? "default" : p.status === "PENDENTE" ? "secondary" : "destructive"}
+                          className={
+                            p.status === "PAGO" ? "bg-green-600 text-white" :
+                            p.status === "PENDENTE" ? "bg-orange-600 text-white" :
+                            "bg-red-600 text-white"
+                          }
+                        >
+                          {p.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem asChild>
+                              <Link href={`/pagamento/${p.id}`}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Ver detalhes
+                              </Link>
+                            </DropdownMenuItem>
+                            {p.status !== "PAGO" && (
+                              <DropdownMenuItem className="text-green-600 focus:text-green-600">
+                                <CheckCircle className="mr-2 h-4 w-4" />
+                                Marcar como pago
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+
+              {/* Paginação */}
+              <Pagination
+                currentPage={currentPage}
+                totalItems={totalPagamentos}
+                itemsPerPage={itemsPerPage}
+                onPageChange={handlePageChange}
+                onItemsPerPageChange={handleItemsPerPageChange}
+                className="mt-6"
+              />
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Modal de Gerar Pagamento */}
+      <AlertDialog open={pagamentoModalOpen} onOpenChange={setPagamentoModalOpen}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <DollarSign className="h-5 w-5 text-green-600" />
+              Gerar Pagamento Manual
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Registre o pagamento de <strong>{aluno.nome}</strong>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="space-y-6 py-6">
+            <div className="grid gap-2">
+              <Label htmlFor="valor">Valor do Pagamento</Label>
+              <Input
+                id="valor"
+                type="number"
+                step="0.01"
+                value={valorPagamento}
+                onChange={(e) => setValorPagamento(Number(e.target.value))}
+                className="text-lg font-medium"
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="data">Data do Pagamento</Label>
+              <Input
+                id="data"
+                type="date"
+                value={dataPagamento}
+                onChange={(e) => setDataPagamento(e.target.value)}
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="metodo">Método de Pagamento</Label>
+              <Select value={metodoPagamento} onValueChange={setMetodoPagamento}>
+                <SelectTrigger id="metodo">
+                  <SelectValue placeholder="Selecione o método" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="DINHEIRO">Dinheiro</SelectItem>
+                  <SelectItem value="PIX">PIX</SelectItem>
+                  <SelectItem value="CARTAO">Cartão</SelectItem>
+                  <SelectItem value="TRANSFERENCIA">Transferência</SelectItem>
+                  <SelectItem value="OUTRO">Outro</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="observacao">Observação (opcional)</Label>
+              <Input
+                id="observacao"
+                value={observacaoPagamento}
+                onChange={(e) => setObservacaoPagamento(e.target.value)}
+                placeholder="Ex: Pagamento em dinheiro na secretaria"
+              />
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="gerar-proximo"
+                checked={gerarProximo}
+                onCheckedChange={(checked) => setGerarProximo(!!checked)}
+              />
+              <Label htmlFor="gerar-proximo" className="cursor-pointer">
+                Gerar próxima mensalidade automaticamente (pendente)
+              </Label>
+            </div>
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-green-600 hover:bg-green-700"
+              onClick={() => criarPagamentoMutation.mutate()}
+              disabled={criarPagamentoMutation.isPending}
+            >
+              {criarPagamentoMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Registrando...
+                </>
+              ) : (
+                "Confirmar Pagamento"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
-}
+};
 
 export default AlunoDetalhePage;

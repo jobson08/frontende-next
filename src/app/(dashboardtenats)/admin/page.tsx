@@ -1,8 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/src/lib/api";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Card,
@@ -20,6 +21,31 @@ import {
   SelectValue,
 } from "@/src/components/ui/select";
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/src/components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/src/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback } from "@/src/components/ui/avatar";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/src/components/ui/alert-dialog";
+import {
   Users,
   DollarSign,
   Calendar,
@@ -27,12 +53,18 @@ import {
   AlertCircle,
   Activity,
   Loader2,
+  CheckCircle,
+  MoreVertical,
+  Edit,
 } from "lucide-react";
 import { toast } from "sonner";
+import { format, isValid, startOfWeek, endOfWeek } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { Pagination } from "@/src/components/common/Pagination";
 
 // Meses dinâmicos
 const generateMeses = () => {
-  return Array.from({ length: 12 }, (_, i) => {
+  return Array.from({ length: 13 }, (_, i) => {
     const date = new Date();
     date.setMonth(date.getMonth() - i);
     const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
@@ -41,11 +73,38 @@ const generateMeses = () => {
   });
 };
 
+interface Inadimplente {
+  id: string;
+  alunoNome: string;
+  responsavelNome: string | null;
+  valorDevido: number;
+  dataVencimento: string;
+  status: string;
+  alunoId: string;
+}
+
 const meses = generateMeses();
 
 const AdminDashboardPage = () => {
+  const queryClient = useQueryClient();
   const [mesSelecionado, setMesSelecionado] = useState(meses[0].value);
+  const [pagamentoToPay, setPagamentoToPay] = useState<string | null>(null);
 
+// Persistência do modo cards/tabela
+  const [viewMode, setViewMode] = useState<"cards" | "table">(() => {
+    const saved = localStorage.getItem("dashboard-view-mode");
+    return (saved === "cards" || saved === "table") ? saved : "table";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("dashboard-view-mode", viewMode);
+  }, [viewMode]);
+
+  // Paginação para inadimplentes
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  // Dashboard geral
   const { data, isLoading, error } = useQuery({
     queryKey: ["dashboard-tenant", mesSelecionado],
     queryFn: async () => {
@@ -56,13 +115,19 @@ const AdminDashboardPage = () => {
     },
   });
 
-  // Tratamento de erro
-  if (error) {
-    toast.error("Erro ao carregar dashboard", {
-      description: (error as Error).message || "Tente novamente mais tarde",
+  // Alunos inadimplentes (do mês selecionado)
+const { 
+  data: inadimplentes = [], 
+  isLoading: isLoadingInadimplentes 
+} = useQuery<Inadimplente[]>({
+  queryKey: ["inadimplentes", mesSelecionado],
+  queryFn: async () => {
+    const { data } = await api.get("/tenant/alunos-inadimplentes", {
+      params: { mes: mesSelecionado },
     });
-  }
-
+    return data.data || [];
+  },
+});
   // Mock temporário para seções que ainda não têm rota real
   const proximasAulas = [
     { hora: "09:00", aula: "Musculação - Turma A", professor: "Mariana Costa", alunos: 12 },
@@ -70,12 +135,62 @@ const AdminDashboardPage = () => {
     { hora: "18:00", aula: "Natação Infantil", professor: "Beatriz Souza", alunos: 8 },
   ];
 
-  const aniversariantes = [
-    { nome: "Enzo Gabriel Silva", idade: 8 },
-    { nome: "Maria Luiza Costa", idade: 6 },
-  ];
+  // Aniversariantes da semana (do servidor)
+  const { 
+    data: aniversariantesSemana = [], 
+    isLoading: isLoadingAniversariantes 
+  } = useQuery({
+    queryKey: ["aniversariantes-semana"],
+    queryFn: async () => {
+      const { data } = await api.get("/tenant/aniversariantes-semana");
+      return data.data || [];
+    },
+  });
 
-  if (isLoading) {
+  // Mutation para marcar pagamento como pago
+  const marcarPagoMutation = useMutation({
+    mutationFn: async (pagamentoId: string) => {
+      await api.put(`/tenant/pagamentos/${pagamentoId}/marcar-pago`, {
+        metodo: "DINHEIRO", // ou PIX, CARTAO, etc. — pode virar select depois
+      });
+    },
+    onSuccess: () => {
+      toast.success("Pagamento marcado como pago!", {
+        description: "O status foi atualizado.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-tenant"] });
+      queryClient.invalidateQueries({ queryKey: ["inadimplentes"] });
+      setPagamentoToPay(null);
+    },
+    onError: (err: any) => {
+      toast.error("Erro ao marcar como pago", {
+        description: err.response?.data?.error || "Tente novamente",
+      });
+    },
+  });
+
+  // Paginação local
+  const totalInadimplentes = inadimplentes.length;
+  const totalPages = Math.ceil(totalInadimplentes / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedInadimplentes = inadimplentes.slice(startIndex, startIndex + itemsPerPage);
+
+  const handleMarcarPago = (pagamentoId: string) => {
+    setPagamentoToPay(pagamentoId);
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleItemsPerPageChange = (value: number) => {
+    setItemsPerPage(value);
+    setCurrentPage(1);
+  };
+
+  const mesLabel = meses.find((m) => m.value === mesSelecionado)?.label || "Mês atual";
+
+  if (isLoading || isLoadingInadimplentes || isLoadingAniversariantes) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
@@ -84,7 +199,10 @@ const AdminDashboardPage = () => {
     );
   }
 
-  if (error || !data) {
+  if (error) {
+    toast.error("Erro ao carregar dashboard", {
+      description: (error as Error).message || "Tente novamente mais tarde",
+    });
     return (
       <div className="p-8 text-center text-red-600">
         <AlertCircle className="h-12 w-12 mx-auto mb-4" />
@@ -93,8 +211,6 @@ const AdminDashboardPage = () => {
       </div>
     );
   }
-
-  const mesLabel = meses.find((m) => m.value === mesSelecionado)?.label || "Mês atual";
 
   return (
     <div className="p-4 lg:p-8 space-y-8">
@@ -211,25 +327,27 @@ const AdminDashboardPage = () => {
         {/* Aniversariantes do Dia */}
         <Card>
           <CardHeader>
-            <CardTitle>Aniversariantes Hoje 🎉</CardTitle>
+            <CardTitle>Aniversariantes da Semana 🎉</CardTitle>
           </CardHeader>
           <CardContent>
-            {aniversariantes.length > 0 ? (
+            {aniversariantesSemana.length > 0 ? (
               <div className="space-y-4">
-                {aniversariantes.map((a, i) => (
+                {aniversariantesSemana.map((a: any, i: number) => (
                   <div key={i} className="flex items-center gap-4 p-3 bg-gradient-to-r from-purple-100 to-pink-100 rounded-lg">
                     <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center text-white font-bold">
                       {a.idade}
                     </div>
                     <div>
                       <p className="font-medium">{a.nome}</p>
-                      <p className="text-xs text-gray-600">Faz {a.idade} anos hoje!</p>
+                      <p className="text-xs text-gray-600">
+                        Faz {a.idade} anos em {format(new Date(a.dataAniversario), "dd/MM", { locale: ptBR })}
+                      </p>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-center text-gray-500 py-8">Nenhum aniversariante hoje</p>
+              <p className="text-center text-gray-500 py-8">Nenhum aniversariante esta semana</p>
             )}
           </CardContent>
         </Card>
@@ -258,6 +376,146 @@ const AdminDashboardPage = () => {
             </Button>
           </CardContent>
         </Card>
+      </div>
+
+      <div>
+           {/* Nova seção: Alunos Inadimplentes */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-red-600" />
+              Alunos Inadimplentes ({totalInadimplentes})
+            </div>
+            <Badge variant="destructive" className="text-sm">
+              R$ {inadimplentes.reduce((acc: number, a: Inadimplente) => acc + (a.valorDevido || 0), 0)
+                .toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+            </Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {totalInadimplentes === 0 ? (
+            <div className="text-center py-12 text-gray-500">
+              Nenhum aluno inadimplente neste mês.
+            </div>
+          ) : (
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Aluno</TableHead>
+                    <TableHead className="hidden md:table-cell">Responsável</TableHead>
+                    <TableHead className="hidden md:table-cell">Valor Devido</TableHead>
+                    <TableHead className="hidden md:table-cell">Vencimento</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginatedInadimplentes.map((pagamento) => (
+                    <TableRow key={pagamento.id}>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-10 w-10">
+                            <AvatarFallback className="bg-red-600 text-white">
+                              {pagamento.alunoNome?.split(" ").map(n => n[0]).join("") || "?"}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex flex-col">
+                            <span>{pagamento.alunoNome || "—"}</span>
+                            <span className="text-xs text-gray-500 md:hidden">
+                              {pagamento.responsavelNome || "—"}
+                            </span>
+                          </div>
+                        </div>
+                      </TableCell>
+
+                      <TableCell className="hidden md:table-cell">
+                        {pagamento.responsavelNome || "—"}
+                      </TableCell>
+
+                      <TableCell className="hidden md:table-cell font-medium text-red-600">
+                        R$ {(pagamento.valorDevido || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      </TableCell>
+
+                      <TableCell className="hidden md:table-cell">
+                        {pagamento.dataVencimento && isValid(new Date(pagamento.dataVencimento))
+                          ? format(new Date(pagamento.dataVencimento), "dd/MM/yyyy", { locale: ptBR })
+                          : "—"}
+                      </TableCell>
+
+                      <TableCell>
+                        <Badge variant="destructive">
+                          {pagamento.status || "Atrasado"}
+                        </Badge>
+                      </TableCell>
+
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem asChild>
+                              <Link href={`/aluno/${pagamento.alunoId}`}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Ver detalhes do aluno
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleMarcarPago(pagamento.id)}
+                              className="text-green-600 focus:text-green-600"
+                            >
+                              <CheckCircle className="mr-2 h-4 w-4" />
+                              Marcar como pago
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+
+              <Pagination
+                currentPage={currentPage}
+                totalItems={totalInadimplentes}
+                itemsPerPage={itemsPerPage}
+                onPageChange={handlePageChange}
+                onItemsPerPageChange={handleItemsPerPageChange}
+                className="mt-6"
+              />
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Modal de confirmação para marcar pago */}
+      <AlertDialog open={!!pagamentoToPay} onOpenChange={() => setPagamentoToPay(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Marcar como pago?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja marcar este pagamento como pago? O status será atualizado imediatamente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-green-600 hover:bg-green-700"
+              onClick={() => {
+                if (pagamentoToPay) {
+                  marcarPagoMutation.mutate(pagamentoToPay);
+                }
+              }}
+            >
+              Sim, marcar como pago
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog> 
       </div>
     </div>
   );

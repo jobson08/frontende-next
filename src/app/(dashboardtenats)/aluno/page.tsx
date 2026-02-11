@@ -1,16 +1,66 @@
-"use client"
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// src/app/(dashboard)/aluno/page.tsx
+"use client";
 
-import { useQuery } from "@tanstack/react-query";
-import api from "@/src/lib/api";
-import { useState } from "react";
-import Link from "next/link";
-import { Button } from "@/src/components/ui/button";
-import { Avatar, AvatarFallback } from "@/src/components/ui/avatar";
-import { Badge } from "@/src/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/card";
-import { Input } from "@/src/components/ui/input";
-import { Search, UserPlus, Phone, Calendar, UserCheck, Loader2, AlertCircle, Volleyball } from "lucide-react";
+import { useState, useEffect } from "react";
+import { format } from "date-fns";
+import {
+  Search,
+  UserPlus,
+  Phone,
+  Calendar,
+  UserCheck,
+  Loader2,
+  AlertCircle,
+  Volleyball,
+  MoreVertical,
+  Edit,
+  Trash2,
+  LayoutGrid,
+  Users,
+  Mail,
+  Table as TableIcon,
+} from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/src/components/ui/card";
+import { Badge } from "@/src/components/ui/badge";
+import { Input } from "@/src/components/ui/input";
+import { Button } from "@/src/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/src/components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/src/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback } from "@/src/components/ui/avatar";
+import Link from "next/link";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/src/components/ui/alert-dialog";
+import api from "@/src/lib/api";
+import { Pagination } from "@/src/components/common/Pagination";
 
 // Função para formatar telefone
 const formatarTelefone = (phone: string | null) => {
@@ -25,52 +75,110 @@ const formatarTelefone = (phone: string | null) => {
 // Função para calcular idade
 const calcularIdade = (birthDate: string): number => {
   if (!birthDate) return 0;
-
-  // Parse manual sem fuso horário (pega só a parte da data)
   const [ano, mes, dia] = birthDate.split("T")[0].split("-");
-  const nascimento = new Date(Number(ano), Number(mes) - 1, Number(dia)); // mês -1 porque JS usa 0-11
-
+  const nascimento = new Date(Number(ano), Number(mes) - 1, Number(dia));
   const hoje = new Date();
   let idade = hoje.getFullYear() - nascimento.getFullYear();
   const m = hoje.getMonth() - nascimento.getMonth();
-
   if (m < 0 || (m === 0 && hoje.getDate() < nascimento.getDate())) {
     idade--;
   }
   return idade;
 };
 
-// Interface baseada no retorno real do backend
 interface Aluno {
   id: string;
   nome: string;
-  dataNascimento: string; // ou Date
+  dataNascimento: string;
   telefone: string | null;
   responsavel?: { nome: string } | null;
   status: "ATIVO" | "INATIVO" | "TRANCADO";
   email: string | null;
-  userId: string | null; // para saber se tem login
-  categoria: string | null; // ex: "Sub-13"
+  userId: string | null;
+  categoria: string | null;
 }
 
 const AlunoPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [alunoParaRemover, setAlunoParaRemover] = useState<Aluno | null>(null);
 
-  // Busca real de alunos de futebol
+  // Persistência do modo de visualização (igual ao CrossFit)
+  const [viewMode, setViewMode] = useState<"cards" | "table">(() => {
+    const saved = localStorage.getItem("futebol-view-mode");
+    return (saved === "cards" || saved === "table") ? saved : "table";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("futebol-view-mode", viewMode);
+  }, [viewMode]);
+
+  // Paginação
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  const queryClient = useQueryClient();
+
   const { data: alunos = [], isLoading, error } = useQuery<Aluno[]>({
-    queryKey: ["alunos-futebol"],
+    queryKey: ["alunos-futebol", searchTerm],
     queryFn: async () => {
-      const res = await api.get("/tenant/alunos");
-      return res.data.data || []; // ajuste conforme o formato da sua resposta
+      const res = await api.get("/tenant/alunos", {
+        params: { search: searchTerm || undefined },
+      });
+      return res.data.data || [];
     },
   });
 
-  // Filtra localmente
-  const filteredAlunos = alunos.filter(aluno =>
-    aluno.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (aluno.telefone && aluno.telefone.includes(searchTerm)) ||
-    (aluno.responsavel?.nome?.toLowerCase().includes(searchTerm.toLowerCase()))
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await api.delete(`/tenant/alunos/${id}`);
+    },
+    onSuccess: () => {
+      toast.success("Aluno removido com sucesso!");
+      queryClient.invalidateQueries({ queryKey: ["alunos-futebol"] });
+      setAlunoParaRemover(null);
+    },
+    onError: (err: any) => {
+      toast.error("Erro ao remover aluno", {
+        description: err.response?.data?.error || "Tente novamente",
+      });
+    },
+  });
+
+  const filteredAlunos = alunos.filter(
+    (aluno) =>
+      aluno.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (aluno.telefone && aluno.telefone.includes(searchTerm)) ||
+      (aluno.responsavel?.nome?.toLowerCase().includes(searchTerm.toLowerCase()))
   );
+
+  const totalItems = filteredAlunos.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedItems = filteredAlunos.slice(startIndex, startIndex + itemsPerPage);
+
+  const totalAlunos = filteredAlunos.length;
+  // Se tiver statusPagamento no model, ajuste aqui
+  const emDia = filteredAlunos.filter((a) => a.status === "ATIVO").length; // exemplo
+  const atrasados = filteredAlunos.length - emDia;
+
+  const handleRemover = (aluno: Aluno) => {
+    setAlunoParaRemover(aluno);
+  };
+
+  const confirmarRemocao = () => {
+    if (alunoParaRemover) {
+      deleteMutation.mutate(alunoParaRemover.id);
+    }
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleItemsPerPageChange = (value: number) => {
+    setItemsPerPage(value);
+    setCurrentPage(1);
+  };
 
   if (isLoading) {
     return (
@@ -93,18 +201,20 @@ const AlunoPage = () => {
 
   return (
     <div className="space-y-6 p-4 lg:p-8">
-      {/* Cabeçalho */}
+      {/* Cabeçalho + Botões de ação */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Alunos de Futebol</h1>
           <p className="text-gray-600">Gerencie todos os alunos cadastrados</p>
         </div>
-        <Button asChild className="bg-blue-600 hover:bg-blue-700">
-          <Link href="/aluno/novo">
-            <UserPlus className="mr-2 h-4 w-4" />
-            Novo Aluno
-          </Link>
-        </Button>
+        <div className="flex flex-wrap gap-3">
+          <Button asChild className="bg-blue-600 hover:bg-blue-700">
+            <Link href="/aluno/novo">
+              <UserPlus className="mr-2 h-4 w-4" />
+              Novo Aluno
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Busca */}
@@ -118,102 +228,350 @@ const AlunoPage = () => {
         />
       </div>
 
-      {/* Sem alunos */}
-      {filteredAlunos.length === 0 && (
-        <div className="text-center py-12 text-gray-500">
-          {searchTerm ? "Nenhum aluno encontrado na busca" : "Nenhum aluno de futebol cadastrado ainda"}
-        </div>
-      )}
+      {/* Cards de Totais */}
+      <div className="grid gap-6 md:grid-cols-3">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Users className="h-5 w-5 text-blue-600" />
+              Total de Alunos
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-blue-600">{totalAlunos}</div>
+          </CardContent>
+        </Card>
 
-      {/* Grid de Cards */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {filteredAlunos.map((aluno) => {
-          const idade = calcularIdade(aluno.dataNascimento);
-          const isMaior = idade >= 18;
+        {/* Se tiver statusPagamento no model, ajuste aqui */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <UserCheck className="h-5 w-5 text-green-600" />
+              Ativos
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-green-600">
+              {filteredAlunos.filter(a => a.status === "ATIVO").length}
+            </div>
+          </CardContent>
+        </Card>
 
-          return (
-            <Card key={aluno.id} className="hover:shadow-lg transition-shadow">
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-12 w-12">
-                      <AvatarFallback className="bg-blue-600 text-white">
-                        {aluno.nome.split(" ").map(n => n[0]).join("")}
-                      </AvatarFallback>
-                     </Avatar>
-                      <CardTitle className="text-lg">{aluno.nome}</CardTitle>
-                  </div>
-                </div>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-orange-600" />
+              Inativos/Trancados
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-orange-600">
+              {filteredAlunos.filter(a => a.status !== "ATIVO").length}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+ {/* Alternância de visualização */}
+          <div className="flex items-center gap-2s p-1 rounded-lg">
+            <Button
+              variant={viewMode === "cards" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("cards")}
+              className="gap-1"
+            >
+              <LayoutGrid className="h-4 w-4" />
+              Cards
+            </Button>
+            <Button
+              variant={viewMode === "table" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("table")}
+              className="gap-1"
+            >
+              <TableIcon className="h-4 w-4" />
+              Tabela
+            </Button>
+          </div>
+
+      {/* Conteúdo principal: Cards ou Tabela */}
+      {viewMode === "cards" ? (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {paginatedItems.map((aluno) => {
+            const idade = calcularIdade(aluno.dataNascimento);
+            const isMaior = idade >= 18;
+
+            return (
+              <Card key={aluno.id} className="hover:shadow-lg transition-shadow">
+                <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
-                        <p className="text-xs text-gray-500 flex items-center gap-2">
-                        <Calendar className="h-3 w-3" />
-                        {aluno.dataNascimento 
-                          ? aluno.dataNascimento.split("T")[0].split("-").reverse().join("/") 
-                          : "Não informado"} • {calcularIdade(aluno.dataNascimento)} anos
-                        {idade >= 18 && <Badge variant="outline" className="text-xs ml-1">Maior</Badge>}
-                      </p>
-                       {/* Badge de Futebol */}
-                  <Badge variant="secondary" className="flex items-center gap-1">
-                    <Volleyball className="h-3 w-3" />
-                    Futebol
-                  </Badge>
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-12 w-12">
+                        <AvatarFallback className="bg-blue-600 text-white">
+                          {aluno.nome.split(" ").map(n => n[0]).join("")}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <CardTitle className="text-lg">{aluno.nome}</CardTitle>
+                        <p className="text-xs text-gray-500">
+                          {aluno.dataNascimento
+                            ? aluno.dataNascimento.split("T")[0].split("-").reverse().join("/")
+                            : "Não informado"}{" "}
+                          • {idade} anos {isMaior && <Badge variant="outline" className="text-xs ml-1">Maior</Badge>}
+                        </p>
+                      </div>
+                    </div>
+
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem asChild>
+                          <Link href={`/aluno/${aluno.id}`}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            Ver detalhes / Editar
+                          </Link>
+                        </DropdownMenuItem>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <DropdownMenuItem
+                              className="text-red-600 focus:text-red-600"
+                              onSelect={(e) => e.preventDefault()}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Remover aluno
+                            </DropdownMenuItem>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Confirmar remoção?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Tem certeza que deseja remover <strong>{aluno.nome}</strong>?
+                                <br />
+                                Essa ação não pode ser desfeita.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction
+                                className="bg-red-600 hover:bg-red-700"
+                                onClick={confirmarRemocao}
+                              >
+                                Sim, remover
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
-              </CardHeader>
+                </CardHeader>
 
-              <CardContent className="space-y-3">
-                <div className="flex items-center gap-2 text-sm">
-                  <Phone className="h-4 w-4 text-gray-500" />
-                  {formatarTelefone(aluno.telefone)}
-                </div>
-
-                {aluno.responsavel && (
+                <CardContent className="space-y-3">
                   <div className="flex items-center gap-2 text-sm">
-                    <UserCheck className="h-4 w-4 text-gray-500" />
-                    {aluno.responsavel.nome}
+                    <Phone className="h-4 w-4 text-gray-500" />
+                    {formatarTelefone(aluno.telefone)}
                   </div>
-                )}
-                <div className="flex items-center justify-between">
-                {/* Categoria (ex: Sub-13) */}
-                <div className="pt-1">
-                  <Badge variant="outline" className="text-xs">
-                    {aluno.categoria || "Sem categoria informada"}
-                  </Badge>
-                </div>
 
-                {/* Status */}
-                <div>
-                  <Badge 
-                    variant={aluno.status === "ATIVO" ? "default" : aluno.status === "INATIVO" ? "secondary" : "destructive"}
-                    className="text-xs bg-blue-400 text-white"
-                  >
-                    {aluno.status}
-                  </Badge>
-                </div>
+                  {aluno.responsavel && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <UserCheck className="h-4 w-4 text-gray-500" />
+                      {aluno.responsavel.nome}
+                    </div>
+                  )}
 
-                {/* Login */}
-                {aluno.userId && (
-                  <div className="pt-1">
+                  <div className="flex items-center justify-between pt-2 border-t">
+                    <Badge variant="outline" className="text-xs">
+                      {aluno.categoria || "Sem categoria"}
+                    </Badge>
+
+                    <Badge
+                      variant="default"
+                      className={`text-xs text-white ${
+                        aluno.status === "ATIVO"
+                          ? "bg-blue-600 hover:bg-blue-700"
+                          : aluno.status === "INATIVO"
+                          ? "bg-red-600 hover:bg-red-700"
+                          : "bg-orange-600 hover:bg-orange-700"
+                      }`}
+                    >
+                      {aluno.status}
+                    </Badge>
+                  </div>
+
+                  {aluno.userId && (
                     <Badge className="text-xs bg-green-600 text-white">
                       Tem login
                     </Badge>
-                  </div>
-                )}
-              </div>
-                {/* Botão Ver detalhes */}
-                <div className="pt-2 flex gap-2">
-                  <Button size="sm" variant="outline" asChild>
-                    <Link href={`/aluno/${aluno.id}`}>
-                      Ver detalhes
-                    </Link>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      ) : (
+        <Card>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Aluno</TableHead>
+                  <TableHead className="hidden md:table-cell">Contato</TableHead>
+                  <TableHead className="hidden md:table-cell">Idade</TableHead>
+                  <TableHead className="hidden md:table-cell">Categoria</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {paginatedItems.map((aluno) => {
+                  const idade = calcularIdade(aluno.dataNascimento);
+
+                  return (
+                    <TableRow key={aluno.id}>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-10 w-10">
+                            <AvatarFallback className="bg-blue-600 text-white">
+                              {aluno.nome.split(" ").map(n => n[0]).join("")}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex flex-col">
+                            <span>{aluno.nome}</span>
+                            <span className="text-xs text-gray-500 md:hidden">
+                              {aluno.email || "Sem e-mail"}
+                            </span>
+                          </div>
+                        </div>
+                      </TableCell>
+
+                      <TableCell className="hidden md:table-cell">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1 text-sm">
+                            <Mail className="h-3 w-3 text-gray-500" />
+                            {aluno.email || "—"}
+                          </div>
+                          <div className="flex items-center gap-1 text-sm">
+                            <Phone className="h-3 w-3 text-gray-500" />
+                            {formatarTelefone(aluno.telefone)}
+                          </div>
+                        </div>
+                      </TableCell>
+
+                      <TableCell className="hidden md:table-cell">
+                        {idade} anos {idade >= 18 && <Badge variant="outline" className="ml-2 text-xs">Maior</Badge>}
+                      </TableCell>
+
+                      <TableCell className="hidden md:table-cell">
+                        <Badge variant="outline">{aluno.categoria || "Sem categoria"}</Badge>
+                      </TableCell>
+
+                      <TableCell>
+                      <Badge
+                          variant="default"
+                          className={`text-xs text-white ${
+                            aluno.status === "ATIVO"
+                              ? "bg-blue-600 hover:bg-blue-700"
+                              : aluno.status === "INATIVO"
+                              ? "bg-red-600 hover:bg-red-700"
+                              : "bg-orange-600 hover:bg-orange-700"
+                          }`}
+                        >
+                          {aluno.status}
+                        </Badge>
+                      </TableCell>
+
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem asChild>
+                              <Link href={`/aluno/${aluno.id}`}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Ver detalhes / Editar
+                              </Link>
+                            </DropdownMenuItem>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <DropdownMenuItem
+                                  className="text-red-600 focus:text-red-600"
+                                  onSelect={(e) => e.preventDefault()}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Remover aluno
+                                </DropdownMenuItem>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Confirmar remoção?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Tem certeza que deseja remover <strong>{aluno.nome}</strong>?
+                                    <br />
+                                    Essa ação não pode ser desfeita.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    className="bg-red-600 hover:bg-red-700"
+                                    onClick={confirmarRemocao}
+                                  >
+                                    Sim, remover
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+
+            <Pagination
+              currentPage={currentPage}
+              totalItems={totalItems}
+              itemsPerPage={itemsPerPage}
+              onPageChange={handlePageChange}
+              onItemsPerPageChange={handleItemsPerPageChange}
+              className="mt-6"
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* AlertDialog de remoção */}
+      <AlertDialog open={!!alunoParaRemover} onOpenChange={() => setAlunoParaRemover(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar remoção?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja remover <strong>{alunoParaRemover?.nome}</strong>?
+              <br />
+              Essa ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700"
+              onClick={confirmarRemocao}
+            >
+              Sim, remover
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
-}
+};
 
 export default AlunoPage;

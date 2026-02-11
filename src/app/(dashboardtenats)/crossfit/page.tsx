@@ -2,7 +2,7 @@
 // src/app/(dashboard)/crossfit/page.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react"; // ← adicionei useEffect aqui
 import { format } from "date-fns";
 import {
   Activity,
@@ -60,7 +60,7 @@ import {
   AlertDialogTrigger,
 } from "@/src/components/ui/alert-dialog";
 import api from "@/src/lib/api";
-import { Pagination } from "@/src/components/common/Pagination"; // ajuste o caminho se necessário
+import { Pagination } from "@/src/components/common/Pagination";
 
 // Função para formatar telefone
 const formatarTelefone = (phone: string | null) => {
@@ -88,16 +88,25 @@ interface AlunoCrossfit {
 
 const ClientesCrossFitPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
   const [alunoParaRemover, setAlunoParaRemover] = useState<AlunoCrossfit | null>(null);
-  
+
+  // Recupera o modo salvo ou usa "table" como padrão
+  const [viewMode, setViewMode] = useState<"cards" | "table">(() => {
+    const saved = localStorage.getItem("crossfit-view-mode");
+    return (saved === "cards" || saved === "table") ? saved : "table";
+  });
+
+  // Salva no localStorage sempre que mudar (no topo do componente!)
+  useEffect(() => {
+    localStorage.setItem("crossfit-view-mode", viewMode);
+  }, [viewMode]);
+
   // Estados de paginação
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const queryClient = useQueryClient();
 
-  // Busca alunos reais do backend
   const { data: alunos = [], isLoading, error } = useQuery<AlunoCrossfit[]>({
     queryKey: ["alunos-crossfit", searchTerm],
     queryFn: async () => {
@@ -108,7 +117,6 @@ const ClientesCrossFitPage = () => {
     },
   });
 
-  // Mutation para remover aluno
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       await api.delete(`/tenant/alunos-crossfit/${id}`);
@@ -125,14 +133,12 @@ const ClientesCrossFitPage = () => {
     },
   });
 
-  // Filtra os alunos (busca local por enquanto)
   const filtered = alunos.filter(
     (aluno) =>
       aluno.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
       aluno.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Paginação: calcula itens da página atual
   const totalItems = filtered.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -171,7 +177,7 @@ const ClientesCrossFitPage = () => {
 
   const handleItemsPerPageChange = (value: number) => {
     setItemsPerPage(value);
-    setCurrentPage(1); // reseta para página 1 ao mudar o tamanho
+    setCurrentPage(1);
   };
 
   if (isLoading) {
@@ -206,28 +212,6 @@ const ClientesCrossFitPage = () => {
             Alunos CrossFit
           </h1>
           <p className="text-gray-600 text-lg mt-2">Gerencie os alunos adultos do CrossFit da sua escolinha</p>
-        </div>
-
-        {/* Alternância de visualização */}
-        <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-lg">
-          <Button
-            variant={viewMode === "cards" ? "default" : "ghost"}
-            size="sm"
-            onClick={() => setViewMode("cards")}
-            className="gap-1"
-          >
-            <LayoutGrid className="h-4 w-4" />
-            Cards
-          </Button>
-          <Button
-            variant={viewMode === "table" ? "default" : "ghost"}
-            size="sm"
-            onClick={() => setViewMode("table")}
-            className="gap-1"
-          >
-            <TableIcon className="h-4 w-4" />
-            Tabela
-          </Button>
         </div>
       </div>
 
@@ -295,12 +279,34 @@ const ClientesCrossFitPage = () => {
               Novo Aluno
             </Link>
           </Button>
+
+          {/* Alternância de visualização */}
+          <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-lg">
+            <Button
+              variant={viewMode === "cards" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("cards")}
+              className="gap-1"
+            >
+              <LayoutGrid className="h-4 w-4" />
+              Cards
+            </Button>
+            <Button
+              variant={viewMode === "table" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("table")}
+              className="gap-1"
+            >
+              <TableIcon className="h-4 w-4" />
+              Tabela
+            </Button>
+              </div>
+            </div>
         </div>
-      </div>
 
       {/* Conteúdo principal: Cards ou Tabela */}
       {viewMode === "cards" ? (
-        <>
+      <>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {paginatedItems.map((aluno) => (
               <Card key={aluno.id} className="overflow-hidden hover:shadow-md transition-shadow">
@@ -422,33 +428,22 @@ const ClientesCrossFitPage = () => {
           />
         </>
       ) : (
-        <Card>
+      <Card>
           <CardHeader>
-{/*
-            <div className="flex items-center justify-between">
-              <Button asChild className="bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700">
-                <Link href="/crossfit/presenca">
-                  <Calendar className="mr-2 h-4 w-4" />
-                  Marca Presença
-                </Link>
-              </Button>
-              <Button asChild className="bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700">
-                <Link href="/crossfit/novo">
-                  <UserPlus className="mr-2 h-4 w-4" />
-                  Novo Aluno
-                </Link>
-              </Button>
-            </div>
-*/}
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
+                  {/* Coluna única para Aluno (avatar + nome) */}
                   <TableHead>Aluno</TableHead>
-                  <TableHead>Contato</TableHead>
-                  <TableHead>Data de Nascimento</TableHead>
-                  <TableHead>Frequência Semanal</TableHead>
+                  
+                  {/* Colunas ocultas em mobile */}
+                  <TableHead className="hidden md:table-cell">Contato</TableHead>
+                  <TableHead className="hidden md:table-cell">Data de Nascimento</TableHead>
+                  <TableHead className="hidden md:table-cell">Frequência Semanal</TableHead>
+                  
+                  {/* Sempre visíveis */}
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
@@ -456,15 +451,26 @@ const ClientesCrossFitPage = () => {
               <TableBody>
                 {paginatedItems.map((aluno) => (
                   <TableRow key={aluno.id}>
-                    <TableCell className="font-medium flex items-center gap-3">
-                      <Avatar>
-                        <AvatarFallback className="bg-gradient-to-br from-red-600 to-orange-600 text-white">
-                          {aluno.nome.split(" ").map((n) => n[0]).join("")}
-                        </AvatarFallback>
-                      </Avatar>
-                      {aluno.nome}
+                    {/* Coluna Aluno: avatar + nome (em mobile fica mais compacto) */}
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-10 w-10">
+                          <AvatarFallback className="bg-gradient-to-br from-red-600 to-orange-600 text-white">
+                            {aluno.nome.split(" ").map((n) => n[0]).join("")}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{aluno.nome}</span>
+                          {/* Em desktop mostra email/telefone como subtítulo */}
+                          <span className="text-xs text-gray-500 md:hidden truncate">
+                            {aluno.email}
+                          </span>
+                        </div>
+                      </div>
                     </TableCell>
-                    <TableCell>
+
+                    {/* Colunas extras (só desktop) */}
+                    <TableCell className="hidden md:table-cell">
                       <div className="space-y-1">
                         <div className="flex items-center gap-1 text-sm">
                           <Mail className="h-3 w-3 text-gray-500" />
@@ -476,15 +482,23 @@ const ClientesCrossFitPage = () => {
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell>{format(new Date(aluno.dataNascimento), "dd/MM/yyyy")}</TableCell>
-                    <TableCell>
+
+                    <TableCell className="hidden md:table-cell">
+                      {format(new Date(aluno.dataNascimento), "dd/MM/yyyy")}
+                    </TableCell>
+
+                    <TableCell className="hidden md:table-cell">
                       <Badge variant="outline">{aluno.frequencia} aulas/semana</Badge>
                     </TableCell>
+
+                    {/* Status (sempre visível) */}
                     <TableCell>
                       <Badge variant={aluno.status === "ativo" ? "default" : "destructive"}>
                         {aluno.status === "ativo" ? "Ativo" : "Inativo"}
                       </Badge>
                     </TableCell>
+
+                    {/* Ações (sempre visível) */}
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -549,22 +563,22 @@ const ClientesCrossFitPage = () => {
               </TableBody>
             </Table>
 
-            {/* Paginação no modo tabela */}
-            <Pagination
-              currentPage={currentPage}
-              totalItems={totalItems}
-              itemsPerPage={itemsPerPage}
-              onPageChange={handlePageChange}
-              onItemsPerPageChange={handleItemsPerPageChange}
-              className="mt-6"
-            />
-          </CardContent>
+              {/* Paginação */}
+              <Pagination
+                currentPage={currentPage}
+                totalItems={totalItems}
+                itemsPerPage={itemsPerPage}
+                onPageChange={handlePageChange}
+                onItemsPerPageChange={handleItemsPerPageChange}
+                className="mt-6"
+              />
+            </CardContent>
         </Card>
       )}
 
       {/* AlertDialog de remoção */}
       <AlertDialog open={!!alunoParaRemover} onOpenChange={() => setAlunoParaRemover(null)}>
-        <AlertDialogContent>
+         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar remoção?</AlertDialogTitle>
             <AlertDialogDescription>
