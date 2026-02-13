@@ -58,9 +58,36 @@ import {
   Edit,
 } from "lucide-react";
 import { toast } from "sonner";
-import { format, isValid, startOfWeek, endOfWeek } from "date-fns";
+import { format, isValid } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Pagination } from "@/src/components/common/Pagination";
+
+// Interfaces de dados
+interface DashboardData {
+  aulasHoje: number;
+  totalAlunos: number;
+  alunosAtivos: number;
+  receitaMensalEstimada: number;
+  pagamentosPendentes: number;
+  crescimentoMensal?: string;
+}
+
+interface Inadimplente {
+  id: string;
+  alunoNome: string;
+  responsavelNome: string | null;
+  valorDevido: number;
+  dataVencimento: string;
+  status: string;
+  alunoId: string;
+  modalidade: 'futebol' | 'crossfit';  // ← obrigatório agora
+}
+
+interface Aniversariante {
+  nome: string;
+  idade: number;
+  dataAniversario: string;
+}
 
 // Meses dinâmicos
 const generateMeses = () => {
@@ -73,16 +100,6 @@ const generateMeses = () => {
   });
 };
 
-interface Inadimplente {
-  id: string;
-  alunoNome: string;
-  responsavelNome: string | null;
-  valorDevido: number;
-  dataVencimento: string;
-  status: string;
-  alunoId: string;
-}
-
 const meses = generateMeses();
 
 const AdminDashboardPage = () => {
@@ -90,10 +107,10 @@ const AdminDashboardPage = () => {
   const [mesSelecionado, setMesSelecionado] = useState(meses[0].value);
   const [pagamentoToPay, setPagamentoToPay] = useState<string | null>(null);
 
-// Persistência do modo cards/tabela
+  // Persistência do modo cards/tabela
   const [viewMode, setViewMode] = useState<"cards" | "table">(() => {
     const saved = localStorage.getItem("dashboard-view-mode");
-    return (saved === "cards" || saved === "table") ? saved : "table";
+    return saved === "cards" || saved === "table" ? saved : "table";
   });
 
   useEffect(() => {
@@ -105,69 +122,76 @@ const AdminDashboardPage = () => {
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // Dashboard geral
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error } = useQuery<DashboardData>({
     queryKey: ["dashboard-tenant", mesSelecionado],
     queryFn: async () => {
-      const { data } = await api.get("/tenant/dashboard", {
+      const res = await api.get("/tenant/dashboard", {
         params: { mes: mesSelecionado },
       });
-      return data.data;
+      return res.data.data;
     },
   });
 
-  // Alunos inadimplentes (do mês selecionado)
-const { 
-  data: inadimplentes = [], 
-  isLoading: isLoadingInadimplentes 
-} = useQuery<Inadimplente[]>({
-  queryKey: ["inadimplentes", mesSelecionado],
-  queryFn: async () => {
-    const { data } = await api.get("/tenant/alunos-inadimplentes", {
-      params: { mes: mesSelecionado },
-    });
-    return data.data || [];
-  },
-});
-  // Mock temporário para seções que ainda não têm rota real
+  // Alunos inadimplentes
+  const { 
+    data: inadimplentes = [], 
+    isLoading: isLoadingInadimplentes 
+  } = useQuery<Inadimplente[]>({
+    queryKey: ["inadimplentes", mesSelecionado],
+    queryFn: async () => {
+      const res = await api.get("/tenant/alunos-inadimplentes", {
+        params: { mes: mesSelecionado },
+      });
+      return res.data.data || [];
+    },
+  });
+
+  // Aniversariantes da semana
+  const { 
+    data: aniversariantesSemana = [], 
+    isLoading: isLoadingAniversariantes 
+  } = useQuery<Aniversariante[]>({
+    queryKey: ["aniversariantes-semana"],
+    queryFn: async () => {
+      const res = await api.get("/tenant/aniversariantes-semana");
+      return res.data.data || [];
+    },
+  });
+
+  // Mock temporário para próximas aulas (substitua por rota real quando tiver)
   const proximasAulas = [
     { hora: "09:00", aula: "Musculação - Turma A", professor: "Mariana Costa", alunos: 12 },
     { hora: "10:00", aula: "Cross Training", professor: "Rafael Lima", alunos: 15 },
     { hora: "18:00", aula: "Natação Infantil", professor: "Beatriz Souza", alunos: 8 },
   ];
 
-  // Aniversariantes da semana (do servidor)
-  const { 
-    data: aniversariantesSemana = [], 
-    isLoading: isLoadingAniversariantes 
-  } = useQuery({
-    queryKey: ["aniversariantes-semana"],
-    queryFn: async () => {
-      const { data } = await api.get("/tenant/aniversariantes-semana");
-      return data.data || [];
-    },
-  });
-
   // Mutation para marcar pagamento como pago
-  const marcarPagoMutation = useMutation({
-    mutationFn: async (pagamentoId: string) => {
-      await api.put(`/tenant/pagamentos/${pagamentoId}/marcar-pago`, {
-        metodo: "DINHEIRO", // ou PIX, CARTAO, etc. — pode virar select depois
-      });
-    },
-    onSuccess: () => {
-      toast.success("Pagamento marcado como pago!", {
-        description: "O status foi atualizado.",
-      });
-      queryClient.invalidateQueries({ queryKey: ["dashboard-tenant"] });
-      queryClient.invalidateQueries({ queryKey: ["inadimplentes"] });
-      setPagamentoToPay(null);
-    },
-    onError: (err: any) => {
-      toast.error("Erro ao marcar como pago", {
-        description: err.response?.data?.error || "Tente novamente",
-      });
-    },
-  });
+ const marcarPagoMutation = useMutation({
+  mutationFn: async (pagamentoId: string) => {
+    await api.put(`/tenant/pagamentos/${pagamentoId}/marcar-pago`, {
+      metodo: "DINHEIRO", // pode virar select no futuro
+    });
+  },
+  onSuccess: () => {
+    toast.success("Pagamento marcado como pago!");
+   queryClient.refetchQueries({
+  queryKey: ["inadimplentes", mesSelecionado],
+  exact: true,
+  type: 'active',
+});
+queryClient.refetchQueries({
+  queryKey: ["dashboard-tenant", mesSelecionado],
+  exact: true,
+  type: 'active',
+});
+    setPagamentoToPay(null);
+  },
+  onError: (err: any) => {
+    toast.error("Erro ao marcar como pago", {
+      description: err.response?.data?.error || "Tente novamente",
+    });
+  },
+});
 
   // Paginação local
   const totalInadimplentes = inadimplentes.length;
@@ -247,7 +271,7 @@ const {
             <Calendar className="h-4 w-4 text-gray-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data.aulasHoje}</div>
+            <div className="text-2xl font-bold">{data?.aulasHoje ?? 0}</div>
             <p className="text-xs text-gray-500 mt-1">programadas</p>
           </CardContent>
         </Card>
@@ -272,19 +296,19 @@ const {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-            R$ {(data?.receitaMensalEstimada ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+              R$ {(data?.receitaMensalEstimada ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
             </div>
             <div className="flex items-center gap-1 text-xs text-green-600 mt-1">
               <TrendingUp className="h-3 w-3" />
-              {data.crescimentoMensal || "+0%"}
+              {data?.crescimentoMensal || "+0%"}
             </div>
           </CardContent>
         </Card>
 
-        <Card className={data.pagamentosPendentes > 0 ? "border-red-200 bg-red-50" : ""}>
+        <Card className={(data?.pagamentosPendentes ?? 0) > 0 ? "border-red-200 bg-red-50" : ""}>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Pagamentos Pendentes</CardTitle>
-            {data.pagamentosPendentes > 0 ? (
+            {(data?.pagamentosPendentes ?? 0) > 0 ? (
               <AlertCircle className="h-4 w-4 text-red-600" />
             ) : (
               <Activity className="h-4 w-4 text-green-600" />
@@ -324,7 +348,7 @@ const {
           </CardContent>
         </Card>
 
-        {/* Aniversariantes do Dia */}
+        {/* Aniversariantes da Semana */}
         <Card>
           <CardHeader>
             <CardTitle>Aniversariantes da Semana 🎉</CardTitle>
@@ -332,9 +356,9 @@ const {
           <CardContent>
             {aniversariantesSemana.length > 0 ? (
               <div className="space-y-4">
-                {aniversariantesSemana.map((a: any, i: number) => (
-                  <div key={i} className="flex items-center gap-4 p-3 bg-gradient-to-r from-purple-100 to-pink-100 rounded-lg">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center text-white font-bold">
+                {aniversariantesSemana.map((a, i) => (
+                  <div key={i} className="flex items-center gap-4 p-3 bg-linear-to-r from-purple-100 to-pink-100 rounded-lg">
+                    <div className="w-12 h-12 rounded-full bg-linear-to-br from-purple-600 to-pink-600 flex items-center justify-center text-white font-bold">
                       {a.idade}
                     </div>
                     <div>
@@ -358,7 +382,7 @@ const {
             <CardTitle>Ações Rápidas</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <Button asChild className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+            <Button asChild className="w-full bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
               <Link href="/alunos/novo">
                 <Users className="mr-2 h-4 w-4" />
                 Novo Aluno
@@ -378,8 +402,7 @@ const {
         </Card>
       </div>
 
-      <div>
-           {/* Nova seção: Alunos Inadimplentes */}
+      {/* Nova seção: Alunos Inadimplentes */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
@@ -387,7 +410,7 @@ const {
               <AlertCircle className="h-5 w-5 text-red-600" />
               Alunos Inadimplentes ({totalInadimplentes})
             </div>
-            <Badge variant="destructive" className="text-sm">
+            <Badge variant="destructive" className="bg-red-600 text-sm text-white">
               R$ {inadimplentes.reduce((acc: number, a: Inadimplente) => acc + (a.valorDevido || 0), 0)
                 .toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
             </Badge>
@@ -404,6 +427,7 @@ const {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Aluno</TableHead>
+                    <TableHead>Modalidade</TableHead>
                     <TableHead className="hidden md:table-cell">Responsável</TableHead>
                     <TableHead className="hidden md:table-cell">Valor Devido</TableHead>
                     <TableHead className="hidden md:table-cell">Vencimento</TableHead>
@@ -412,7 +436,7 @@ const {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {paginatedInadimplentes.map((pagamento) => (
+                  {paginatedInadimplentes.map((pagamento: Inadimplente) => (
                     <TableRow key={pagamento.id}>
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-3">
@@ -429,27 +453,34 @@ const {
                           </div>
                         </div>
                       </TableCell>
-
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={
+                            pagamento.modalidade === 'futebol'
+                              ? "bg-blue-50 text-blue-700 border-blue-200"
+                              : "bg-purple-50 text-purple-700 border-purple-200"
+                          }
+                        >
+                          {pagamento.modalidade === 'futebol' ? '⚽' : '🏋️ '}
+                        </Badge>
+                      </TableCell>
                       <TableCell className="hidden md:table-cell">
                         {pagamento.responsavelNome || "—"}
                       </TableCell>
-
                       <TableCell className="hidden md:table-cell font-medium text-red-600">
                         R$ {(pagamento.valorDevido || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                       </TableCell>
-
                       <TableCell className="hidden md:table-cell">
                         {pagamento.dataVencimento && isValid(new Date(pagamento.dataVencimento))
                           ? format(new Date(pagamento.dataVencimento), "dd/MM/yyyy", { locale: ptBR })
                           : "—"}
                       </TableCell>
-
                       <TableCell>
-                        <Badge variant="destructive">
+                        <Badge className="bg-red-600 text-xs text-white" variant="destructive">
                           {pagamento.status || "Atrasado"}
                         </Badge>
                       </TableCell>
-
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -515,8 +546,7 @@ const {
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
-      </AlertDialog> 
-      </div>
+      </AlertDialog>
     </div>
   );
 };

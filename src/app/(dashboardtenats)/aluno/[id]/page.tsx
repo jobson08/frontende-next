@@ -136,6 +136,8 @@ const AlunoDetalhePage = () => {
   const [metodoPagamento, setMetodoPagamento] = useState("DINHEIRO");
   const [observacaoPagamento, setObservacaoPagamento] = useState("");
   const [gerarProximo, setGerarProximo] = useState(true);
+  const [mesReferenciaInput, setMesReferenciaInput] = useState(format(new Date(), 'yyyy-MM')); // ex: "2026-02"
+
 
 // Paginação da tabela de pagamentos
   const [currentPage, setCurrentPage] = useState(1);
@@ -151,23 +153,25 @@ const AlunoDetalhePage = () => {
     enabled: !!id,
   });
 
+
   // Mutation para criar pagamento
 const criarPagamentoMutation = useMutation({
   mutationFn: async () => {
-    // Pega o mês atual como referência (ou adicione um campo no modal se quiser escolher)
-    const mesReferencia = format(new Date(), 'yyyy-MM-dd'); // ex: "2026-02-10"
+    // Primeiro dia do mês escolhido no input type="month"
+    const [year, month] = mesReferenciaInput.split('-');
+    const mesReferenciaPrimeiroDia = `${year}-${month}-01`; // ex: "2026-02-01"
 
     const payload = {
-      mesReferencia,               // ← OBRIGATÓRIO! adicionado aqui
-      dataVencimento: mesReferencia, // pode ser o mesmo ou +10 dias (ajuste)
+      mesReferencia: mesReferenciaPrimeiroDia,
+      dataVencimento: dataPagamento, // dia exato escolhido no input date
       valor: valorPagamento,
-      dataPagamento: format(new Date(dataPagamento), 'yyyy-MM-dd'), // formato correto
+      dataPagamento: dataPagamento ? dataPagamento : null,
       metodo: metodoPagamento,
       observacao: observacaoPagamento.trim() || undefined,
-      gerarProximo: gerarProximo,
+      gerarProximo,
     };
 
-    console.log("Payload ENVIADO (corrigido):", payload);
+    console.log("Payload enviado:", payload);
 
     await api.post(`/tenant/alunos/${id}/pagamentos`, payload);
   },
@@ -182,9 +186,10 @@ const criarPagamentoMutation = useMutation({
     setMetodoPagamento("DINHEIRO");
     setObservacaoPagamento("");
     setGerarProximo(true);
+    setMesReferenciaInput(format(new Date(), 'yyyy-MM')); // reset
   },
   onError: (err: any) => {
-    console.error("Erro completo:", err.response?.data); // ← para debug
+    console.error("Erro completo:", err.response?.data);
     toast.error("Erro ao registrar pagamento", {
       description: err.response?.data?.error || err.message || "Verifique os dados",
     });
@@ -515,99 +520,113 @@ if (isLoading || isLoadingPagamentos) {
         </CardContent>
       </Card>
 
-      {/* Modal de Gerar Pagamento */}
-      <AlertDialog open={pagamentoModalOpen} onOpenChange={setPagamentoModalOpen}>
-        <AlertDialogContent className="max-w-md">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <DollarSign className="h-5 w-5 text-green-600" />
-              Gerar Pagamento Manual
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Registre o pagamento de <strong>{aluno.nome}</strong>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
+{/* Modal de Gerar Pagamento */}
+        <AlertDialog open={pagamentoModalOpen} onOpenChange={setPagamentoModalOpen}>
+          <AlertDialogContent className="max-w-md">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <DollarSign className="h-5 w-5 text-green-600" />
+                Gerar Pagamento Manual
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                Registre o pagamento de <strong>{aluno.nome}</strong>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
 
-          <div className="space-y-6 py-6">
-            <div className="grid gap-2">
-              <Label htmlFor="valor">Valor do Pagamento</Label>
-              <Input
-                id="valor"
-                type="number"
-                step="0.01"
-                value={valorPagamento}
-                onChange={(e) => setValorPagamento(Number(e.target.value))}
-                className="text-lg font-medium"
-              />
+            <div className="space-y-6 py-6">
+              <div className="grid gap-2">
+                <Label htmlFor="valor">Valor do Pagamento</Label>
+                <Input
+                  id="valor"
+                  type="number"
+                  step="0.01"
+                  value={valorPagamento}
+                  onChange={(e) => setValorPagamento(Number(e.target.value))}
+                  className="text-lg font-medium"
+                />
+              </div>
+
+              {/* Novo campo: Mês de Referência */}
+              <div className="grid gap-2">
+                <Label htmlFor="mesReferencia">Mês de Referência</Label>
+                <Input
+                  id="mesReferencia"
+                  type="month"
+                  value={mesReferenciaInput}
+                  onChange={(e) => setMesReferenciaInput(e.target.value)}
+                />
+                <p className="text-xs text-gray-500">
+                  Será usado como referência do mês (salvo como dia 01)
+                </p>
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="dataVencimento">Data de Vencimento</Label>
+                <Input
+                  id="dataVencimento"
+                  type="date"
+                  value={dataPagamento}
+                  onChange={(e) => setDataPagamento(e.target.value)}
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="metodo">Método de Pagamento</Label>
+                <Select value={metodoPagamento} onValueChange={setMetodoPagamento}>
+                  <SelectTrigger id="metodo">
+                    <SelectValue placeholder="Selecione o método" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="DINHEIRO">Dinheiro</SelectItem>
+                    <SelectItem value="PIX">PIX</SelectItem>
+                    <SelectItem value="CARTAO">Cartão</SelectItem>
+                    <SelectItem value="TRANSFERENCIA">Transferência</SelectItem>
+                    <SelectItem value="OUTRO">Outro</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="observacao">Observação (opcional)</Label>
+                <Input
+                  id="observacao"
+                  value={observacaoPagamento}
+                  onChange={(e) => setObservacaoPagamento(e.target.value)}
+                  placeholder="Ex: Pagamento em dinheiro na secretaria"
+                />
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="gerar-proximo"
+                  checked={gerarProximo}
+                  onCheckedChange={(checked) => setGerarProximo(!!checked)}
+                />
+                <Label htmlFor="gerar-proximo" className="cursor-pointer">
+                  Gerar próxima mensalidade automaticamente (pendente)
+                </Label>
+              </div>
             </div>
 
-            <div className="grid gap-2">
-              <Label htmlFor="data">Data do Pagamento</Label>
-              <Input
-                id="data"
-                type="date"
-                value={dataPagamento}
-                onChange={(e) => setDataPagamento(e.target.value)}
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="metodo">Método de Pagamento</Label>
-              <Select value={metodoPagamento} onValueChange={setMetodoPagamento}>
-                <SelectTrigger id="metodo">
-                  <SelectValue placeholder="Selecione o método" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="DINHEIRO">Dinheiro</SelectItem>
-                  <SelectItem value="PIX">PIX</SelectItem>
-                  <SelectItem value="CARTAO">Cartão</SelectItem>
-                  <SelectItem value="TRANSFERENCIA">Transferência</SelectItem>
-                  <SelectItem value="OUTRO">Outro</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="observacao">Observação (opcional)</Label>
-              <Input
-                id="observacao"
-                value={observacaoPagamento}
-                onChange={(e) => setObservacaoPagamento(e.target.value)}
-                placeholder="Ex: Pagamento em dinheiro na secretaria"
-              />
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="gerar-proximo"
-                checked={gerarProximo}
-                onCheckedChange={(checked) => setGerarProximo(!!checked)}
-              />
-              <Label htmlFor="gerar-proximo" className="cursor-pointer">
-                Gerar próxima mensalidade automaticamente (pendente)
-              </Label>
-            </div>
-          </div>
-
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-green-600 hover:bg-green-700"
-              onClick={() => criarPagamentoMutation.mutate()}
-              disabled={criarPagamentoMutation.isPending}
-            >
-              {criarPagamentoMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Registrando...
-                </>
-              ) : (
-                "Confirmar Pagamento"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-green-600 hover:bg-green-700"
+                onClick={() => criarPagamentoMutation.mutate()}
+                disabled={criarPagamentoMutation.isPending}
+              >
+                {criarPagamentoMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Registrando...
+                  </>
+                ) : (
+                  "Confirmar Pagamento"
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
     </div>
   );
 };
