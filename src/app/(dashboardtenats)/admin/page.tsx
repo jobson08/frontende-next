@@ -87,6 +87,7 @@ interface Aniversariante {
   nome: string;
   idade: number;
   dataAniversario: string;
+  modalidade: 'futebol' | 'crossfit';  // ← adicione isso aqui
 }
 
 // Meses dinâmicos
@@ -107,6 +108,21 @@ const AdminDashboardPage = () => {
   const [mesSelecionado, setMesSelecionado] = useState(meses[0].value);
   const [pagamentoToPay, setPagamentoToPay] = useState<string | null>(null);
 
+// Formata data ISO ou string YYYY-MM-DD para DD/MM/YYYY (sem fuso)
+const formatDateBR = (dateStr: string | Date | null | undefined): string => {
+  if (!dateStr) return "—";
+
+  let str = typeof dateStr === 'string' ? dateStr : dateStr.toISOString();
+
+  // Pega apenas a parte YYYY-MM-DD
+  const match = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (match) {
+    const [, year, month, day] = match;
+    return `${day}/${month}/${year}`;
+  }
+
+  return "—";
+};
   // Persistência do modo cards/tabela
   const [viewMode, setViewMode] = useState<"cards" | "table">(() => {
     const saved = localStorage.getItem("dashboard-view-mode");
@@ -132,6 +148,53 @@ const AdminDashboardPage = () => {
     },
   });
 
+  // Busca quantidade de aulas de HOJE
+const hoje = new Date().toISOString().split('T')[0]; // "YYYY-MM-DD"
+
+const { 
+  data: aulasHoje = 0, 
+  isLoading: isLoadingAulasHoje, 
+  error: aulasHojeError 
+} = useQuery<number>({
+  queryKey: ["aulas-hoje"],
+  queryFn: async () => {
+    const res = await api.get("/tenant/treinos-futebol", {
+      params: {
+        dataInicio: hoje,
+        dataFim: hoje,
+      },
+    });
+    return res.data.data?.length || 0; // conta quantos treinos retornaram
+  },
+  staleTime: 5 * 60 * 1000, // cache 5 min
+});
+
+ // Busca de próximos treinos (hoje ou próximos dias)
+const { 
+  data: proximasAulas = [], 
+  isLoading: isLoadingTreinos 
+} = useQuery<Treino[]>({
+  queryKey: ["proximas-aulas"],
+  queryFn: async () => {
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0); // zera hora local para evitar offset
+
+    // Envia data em formato ISO sem hora (UTC)
+    const hojeStr = hoje.toISOString().split('T')[0]; // "2026-02-20"
+
+    const res = await api.get("/tenant/treinos-futebol", {
+      params: {
+        dataInicio: hojeStr,
+        dataFim: hojeStr, // ou ajuste para próximos 7 dias
+      },
+    });
+
+    // O backend já deve retornar data como string "YYYY-MM-DD"
+    return res.data.data || [];
+  },
+  staleTime: 5 * 60 * 1000, // cache 5 minutos
+});
+
   // Alunos inadimplentes
   const { 
     data: inadimplentes = [], 
@@ -147,24 +210,28 @@ const AdminDashboardPage = () => {
   });
 
   // Aniversariantes da semana
-  const { 
-    data: aniversariantesSemana = [], 
-    isLoading: isLoadingAniversariantes 
-  } = useQuery<Aniversariante[]>({
-    queryKey: ["aniversariantes-semana"],
-    queryFn: async () => {
-      const res = await api.get("/tenant/aniversariantes-semana");
-      return res.data.data || [];
-    },
-  });
+const { 
+  data: aniversariantesSemana = [], 
+  isLoading: isLoadingAniversariantes 
+} = useQuery<Aniversariante[]>({
+  queryKey: ["aniversariantes-semana", mesSelecionado],  // chave muda com o mês → refetch automático
+  queryFn: async () => {
+    const res = await api.get("/tenant/aniversariantes-semana", {
+      params: { mes: mesSelecionado }  // ← ESSA LINHA RESOLVE TUDO
+    });
+    console.log("[DEBUG ANIVERSARIANTES] Dados recebidos para mês", mesSelecionado, ":", res.data.data);
+    return res.data.data || [];
+  },
+  staleTime: 0,  // força sempre buscar dados frescos ao mudar o mês (opcional, mas ajuda)
+});
 
   // Mock temporário para próximas aulas (substitua por rota real quando tiver)
-  const proximasAulas = [
+ /* const proximasAulas = [
     { hora: "09:00", aula: "Musculação - Turma A", professor: "Mariana Costa", alunos: 12 },
     { hora: "10:00", aula: "Cross Training", professor: "Rafael Lima", alunos: 15 },
     { hora: "18:00", aula: "Natação Infantil", professor: "Beatriz Souza", alunos: 8 },
   ];
-
+*/
   // Mutation para marcar pagamento como pago
  const marcarPagoMutation = useMutation({
   mutationFn: async (pagamentoId: string) => {
@@ -191,6 +258,26 @@ queryClient.refetchQueries({
       description: err.response?.data?.error || "Tente novamente",
     });
   },
+});
+
+// Na query de inadimplentes
+useQuery<Inadimplente[]>({
+  queryKey: ["inadimplentes", mesSelecionado],
+  queryFn: async () => {
+    const res = await api.get("/tenant/alunos-inadimplentes", { params: { mes: mesSelecionado } });
+    return res.data.data || [];
+  },
+  staleTime: 0, // ← força sempre buscar dados frescos
+});
+
+// Na query de dashboard
+useQuery<DashboardData>({
+  queryKey: ["dashboard-tenant", mesSelecionado],
+  queryFn: async () => {
+    const res = await api.get("/tenant/dashboard", { params: { mes: mesSelecionado } });
+    return res.data.data;
+  },
+  staleTime: 0,
 });
 
   // Paginação local
@@ -271,8 +358,20 @@ queryClient.refetchQueries({
             <Calendar className="h-4 w-4 text-gray-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data?.aulasHoje ?? 0}</div>
-            <p className="text-xs text-gray-500 mt-1">programadas</p>
+            {isLoadingAulasHoje ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+              </div>
+            ) : aulasHojeError ? (
+              <div className="text-center text-red-600 text-sm">
+                Erro ao carregar aulas
+              </div>
+            ) : (
+              <>
+                <div className="text-2xl font-bold">{aulasHoje ?? 0}</div>
+                <p className="text-xs text-gray-500 mt-1">programadas para hoje</p>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -298,10 +397,19 @@ queryClient.refetchQueries({
             <div className="text-2xl font-bold text-green-600">
               R$ {(data?.receitaMensalEstimada ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
             </div>
-            <div className="flex items-center gap-1 text-xs text-green-600 mt-1">
-              <TrendingUp className="h-3 w-3" />
-              {data?.crescimentoMensal || "+0%"}
-            </div>
+            {/*porcentagem mes */}
+              <div className="flex items-center gap-1 text-xs mt-1">
+                <TrendingUp className="h-3 w-3" />
+                <span className={
+                  data?.crescimentoMensal?.startsWith('+') 
+                    ? "text-green-600 font-medium" 
+                    : data?.crescimentoMensal?.startsWith('-') 
+                      ? "text-red-600 font-medium" 
+                      : "text-gray-600"
+                }>
+                  {data?.crescimentoMensal || "0%"}
+                </span>
+              </div>
           </CardContent>
         </Card>
 
@@ -325,25 +433,58 @@ queryClient.refetchQueries({
 
       {/* Seção Rápida */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+
         {/* Próximas Aulas */}
         <Card>
           <CardHeader>
             <CardTitle>Próximas Aulas Hoje</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {proximasAulas.map((aula, i) => (
-                <div key={i} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div>
-                    <p className="font-medium text-sm">{aula.aula}</p>
-                    <p className="text-xs text-gray-600">{aula.hora} - {aula.professor}</p>
-                  </div>
-                  <Badge variant="secondary">{aula.alunos} alunos</Badge>
+            <div className="space-y-2">
+              {isLoadingTreinos ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
+                  <span className="ml-3 text-sm text-gray-500">Carregando aulas...</span>
                 </div>
-              ))}
+              ) : proximasAulas.length === 0 ? (
+                <p className="text-center text-gray-500 py-8">
+                  Nenhuma aula programada para hoje
+                </p>
+              ) : (
+                proximasAulas.map((aula, i) => (
+                  <div key={i} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-2">
+                    {/*
+                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center text-white font-bold text-sm">
+                        {aula.horaInicio.split(':')[0]}
+                      </div>
+                      */}
+                      <div>
+                        <p className="font-medium text-sm">{aula.nome}</p>
+                        <p className="text-xs text-gray-600">
+                          {aula.funcionarioTreinador?.nome || "—"} • {aula.categoria}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Data + horário usando formatDateBR */}
+                    <div className="text-right">
+                      <Badge variant="secondary" className="mb-1">
+                        {formatDateBR(aula.data)}
+                      </Badge>
+                      <p className="text-xs text-gray-500">
+                        {aula.horaInicio} - {aula.horaFim}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
+
             <Button variant="outline" className="w-full mt-4" asChild>
-              <Link href="/aulas">Ver agenda completa</Link>
+              <Link href="/aulas">
+                Ver agenda completa
+              </Link>
             </Button>
           </CardContent>
         </Card>
@@ -351,31 +492,44 @@ queryClient.refetchQueries({
         {/* Aniversariantes da Semana */}
         <Card>
           <CardHeader>
-            <CardTitle>Aniversariantes da Semana 🎉</CardTitle>
+            <CardTitle>Aniversariantes do mês 🎉</CardTitle> {/* ← adicionado "Atual" */}
           </CardHeader>
           <CardContent>
             {aniversariantesSemana.length > 0 ? (
-              <div className="space-y-4">
+              <div className="space-y-2">
                 {aniversariantesSemana.map((a, i) => (
-                  <div key={i} className="flex items-center gap-4 p-3 bg-linear-to-r from-purple-100 to-pink-100 rounded-lg">
-                    <div className="w-12 h-12 rounded-full bg-linear-to-br from-purple-600 to-pink-600 flex items-center justify-center text-white font-bold">
+                  <div key={i} className="flex items-center gap-4 p-1 bg-gradient-to-r from-purple-100 to-pink-100 rounded-lg">
+                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center text-white font-bold">
                       {a.idade}
                     </div>
-                    <div>
-                      <p className="font-medium">{a.nome}</p>
-                      <p className="text-xs text-gray-600">
-                        Faz {a.idade} anos em {format(new Date(a.dataAniversario), "dd/MM", { locale: ptBR })}
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium">{a.nome}</p>
+                        <Badge
+                          variant="outline"
+                          className={
+                            a.modalidade === 'futebol'
+                              ? "bg-blue-50 text-blue-700 border-blue-200 text-xs"
+                              : "bg-purple-50 text-purple-700 border-purple-200 text-xs"
+                          }
+                        >
+                          {a.modalidade === 'futebol' ? '⚽' : '🏋️'}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-gray-700">
+                        Faz {a.idade} anos em {a.dataAniversario}
                       </p>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-center text-gray-500 py-8">Nenhum aniversariante esta semana</p>
+              <p className="text-center text-gray-500 py-8">
+                Nenhum aniversariante do mês
+              </p>
             )}
           </CardContent>
         </Card>
-
         {/* Ações Rápidas */}
         <Card>
           <CardHeader>

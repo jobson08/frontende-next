@@ -1,11 +1,12 @@
-
-// src/app/(dashboard)/treinos/[id]/editar/page.tsx
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useParams, useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 
 import { Button } from "@/src/components/ui/button";
 import { Input } from "@/src/components/ui/input";
@@ -15,42 +16,27 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/src/components/ui/textarea";
 import { toast } from "sonner";
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { ChevronLeft, Save, Loader2 } from "lucide-react";
+import { ChevronLeft, Save, Loader2, AlertCircle } from "lucide-react";
+import api from "@/src/lib/api";
 
-// Schema (mesmo do novo treino)
+// Schema Zod (igual ao de criação)
 const editTreinoSchema = z.object({
   nome: z.string().min(3, "Nome do treino obrigatório"),
-  categoria: z.string(),
-  diaSemana: z.enum(["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"]),
-  hora: z.string(),
-  treinador: z.string(),
-  alunosMax: z.number().min(1).max(30),
+  categoria: z.string().min(1, "Categoria obrigatória"),
+  data: z.string().min(1, "Data obrigatória"),
+  horaInicio: z.string().regex(/^\d{2}:\d{2}$/, "Formato inválido (HH:mm)"),
+  horaFim: z.string().regex(/^\d{2}:\d{2}$/, "Formato inválido (HH:mm)"),
+  funcionarioTreinadorId: z.string().min(1, "Funcionário treinador obrigatório"),
+  local: z.string().min(1, "Local obrigatório"),
   descricao: z.string().optional(),
 });
 
 type EditTreinoFormData = z.infer<typeof editTreinoSchema>;
 
-// Mock do treino atual
-const treinosMock = [
-  {
-  id: "1",
-    nome: "Técnica Individual Sub-11",
-    categoria: "Sub-11",
-    diaSemana: "Segunda",
-    hora: "18:00",
-    treinador: "Rafael Lima",
-    alunosMax: 20,
-    descricao: "Treino focado em drible, passe e controle de bola.",
-  }
-  // outros...
-];
+const EditarTreinoPage = () => {
+  const { id } = useParams();
+  const router = useRouter();
 
-
-const EditarTreinoPage = () => {       //Inicioda função
-const { id } = useParams();
-
-  // HOOKS NO TOPO — SEMPRE!
   const {
     register,
     handleSubmit,
@@ -61,49 +47,101 @@ const { id } = useParams();
     resolver: zodResolver(editTreinoSchema),
   });
 
-  const treino = treinosMock.find(t => t.id === id);
+  // Busca o treino por ID
+  const { 
+    data: treino, 
+    isLoading: isLoadingTreino, 
+    error: treinoError 
+  } = useQuery<EditTreinoFormData & { id: string }>({
+    queryKey: ["treinos-futebol", id],
+    queryFn: async () => {
+      const res = await api.get(`/tenant/treinos-futebol/${id}`);
+      const raw = res.data.data;
 
-  // PREENCHE OS CAMPOS
-useEffect(() => {
-  if (treino) {
-    reset({
-      nome: treino.nome,
-      categoria: treino.categoria,
-      diaSemana: treino.diaSemana as "Segunda" | "Terça" | "Quarta" | "Quinta" | "Sexta" | "Sábado" | "Domingo",
-      hora: treino.hora,
-      treinador: treino.treinador,
-      alunosMax: treino.alunosMax,
-      descricao: treino.descricao,
-    });
-  }
-}, [treino, reset]);
+      // Formata para o form (data como string YYYY-MM-DD)
+      return {
+        ...raw,
+        data: raw.data.split('T')[0], // remove hora/fuso
+        funcionarioTreinadorId: raw.funcionarioTreinadorId,
+      };
+    },
+    enabled: !!id,
+  });
 
-  // SE NÃO ENCONTRAR → MOSTRA ERRO (DEPOIS DOS HOOKS!)
-  if (!treino) {
+  // Busca dinâmica de funcionários treinadores
+  const { 
+    data: treinadores = [], 
+    isLoading: isLoadingTreinadores 
+  } = useQuery({
+    queryKey: ["funcionarios-treinadores"],
+    queryFn: async () => {
+      const res = await api.get("/tenant/funcionarios-treinadores");
+      return res.data.data || [];
+    },
+  });
+
+  // Preenche o form quando o treino carregar
+  useEffect(() => {
+    if (treino) {
+      reset({
+        nome: treino.nome,
+        categoria: treino.categoria,
+        data: treino.data,
+        horaInicio: treino.horaInicio,
+        horaFim: treino.horaFim,
+        funcionarioTreinadorId: treino.funcionarioTreinadorId,
+        local: treino.local,
+        descricao: treino.descricao || "",
+      });
+    }
+  }, [treino, reset]);
+
+  const onSubmit = async (data: EditTreinoFormData) => {
+    try {
+      await api.put(`/tenant/treinos-futebol/${id}`, data);
+      toast.success("Treino atualizado com sucesso!");
+      router.push(`/treinos/${id}`);
+    } catch (err: any) {
+      const errorResponse = err.response?.data;
+      let errorMsg = "Erro ao atualizar treino";
+
+      if (errorResponse?.details) {
+        errorMsg += `: ${errorResponse.details.map((d: any) => d.message).join(', ')}`;
+      } else if (errorResponse?.error) {
+        errorMsg += `: ${errorResponse.error}`;
+      }
+
+      toast.error(errorMsg);
+    }
+  };
+
+  if (isLoadingTreino || isLoadingTreinadores) {
     return (
-      <div className="p-8 text-center">
-        <h1 className="text-2xl font-bold">Treino não encontrado</h1>
-        <Button asChild className="mt-4">
-          <Link href="/treinos">Voltar</Link>
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
+        <span className="ml-4 text-xl">Carregando dados do treino...</span>
+      </div>
+    );
+  }
+
+  if (treinoError || !treino) {
+    return (
+      <div className="p-8 text-center text-red-600">
+        <AlertCircle className="h-12 w-12 mx-auto mb-4" />
+        <h2 className="text-2xl font-bold">Erro ao carregar treino</h2>
+        <p className="mt-2">{(treinoError as Error)?.message || "Treino não encontrado ou acesso negado"}</p>
+        <Button asChild className="mt-6">
+          <Link href="/treinos">Voltar para lista</Link>
         </Button>
       </div>
     );
   }
 
-  const onSubmit = async (data: EditTreinoFormData) => {
-    try {
-      console.log("Treino atualizado:", data);
-      await new Promise(r => setTimeout(r, 1200));
-      toast.success("Treino atualizado com sucesso!");
-    } catch {
-      toast.error("Erro ao salvar");
-    }
-  };
-    return ( 
-        <div className="p-4 lg:p-8 max-w-4xl mx-auto">
+  return (
+    <div className="p-4 lg:p-8 max-w-4xl mx-auto">
       <div className="flex items-center gap-4 mb-8">
         <Button variant="ghost" size="icon" asChild>
-          <Link href={`/treinos/${treino.id}`}>
+          <Link href={`/treinos/${id}`}>
             <ChevronLeft className="h-5 w-5" />
           </Link>
         </Button>
@@ -119,100 +157,104 @@ useEffect(() => {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            {/* Nome */}
             <div className="space-y-2">
               <Label>Nome do Treino *</Label>
               <Input {...register("nome")} />
               {errors.nome && <p className="text-sm text-red-600">{errors.nome.message}</p>}
             </div>
 
+            {/* Categoria */}
+            <div className="space-y-2">
+              <Label>Categoria *</Label>
+              <Controller
+                name="categoria"
+                control={control}
+                render={({ field }) => (
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a categoria" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Sub-9">Sub-9</SelectItem>
+                      <SelectItem value="Sub-11">Sub-11</SelectItem>
+                      <SelectItem value="Sub-13">Sub-13</SelectItem>
+                      <SelectItem value="Sub-15">Sub-15</SelectItem>
+                      <SelectItem value="Sub-17">Sub-17</SelectItem>
+                      <SelectItem value="Adulto">Adulto</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {errors.categoria && <p className="text-sm text-red-600">{errors.categoria.message}</p>}
+            </div>
+
+            {/* Data */}
+            <div className="space-y-2">
+              <Label>Data do Treino *</Label>
+              <Input type="date" {...register("data")} />
+              {errors.data && <p className="text-sm text-red-600">{errors.data.message}</p>}
+            </div>
+
+            {/* Horários */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label>Categoria *</Label>
-                <Controller
-                  name="categoria"
-                  control={control}
-                  render={({ field }) => (
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Sub-9">Sub-9</SelectItem>
-                        <SelectItem value="Sub-11">Sub-11</SelectItem>
-                        <SelectItem value="Sub-13">Sub-13</SelectItem>
-                        <SelectItem value="Sub-15">Sub-15</SelectItem>
-                        <SelectItem value="Sub-17">Sub-17</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-                {errors.categoria && <p className="text-sm text-red-600">Categoria obrigatória</p>}
+                <Label>Hora Início *</Label>
+                <Input type="time" {...register("horaInicio")} />
+                {errors.horaInicio && <p className="text-sm text-red-600">{errors.horaInicio.message}</p>}
               </div>
 
               <div className="space-y-2">
-                <Label>Dia da Semana *</Label>
-                <Controller
-                  name="diaSemana"
-                  control={control}
-                  render={({ field }) => (
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Segunda">Segunda</SelectItem>
-                        <SelectItem value="Terça">Terça</SelectItem>
-                        <SelectItem value="Quarta">Quarta</SelectItem>
-                        <SelectItem value="Quinta">Quinta</SelectItem>
-                        <SelectItem value="Sexta">Sexta</SelectItem>
-                        <SelectItem value="Sábado">Sábado</SelectItem>
-                        <SelectItem value="Domingo">Domingo</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-                {errors.diaSemana && <p className="text-sm text-red-600">Dia obrigatório</p>}
+                <Label>Hora Fim *</Label>
+                <Input type="time" {...register("horaFim")} />
+                {errors.horaFim && <p className="text-sm text-red-600">{errors.horaFim.message}</p>}
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label>Horário *</Label>
-                <Input type="time" {...register("hora")} />
-                {errors.hora && <p className="text-sm text-red-600">Horário obrigatório</p>}
-              </div>
-
-              <div className="space-y-2">
-                <Label>Treinador *</Label>
-                <Controller
-                  name="treinador"
-                  control={control}
-                  render={({ field }) => (
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Rafael Lima">Rafael Lima</SelectItem>
-                        <SelectItem value="Mariana Costa">Mariana Costa</SelectItem>
-                        <SelectItem value="Carlos Souza">Carlos Souza</SelectItem>
-                        <SelectItem value="Beatriz Oliveira">Beatriz Oliveira</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-                {errors.treinador && <p className="text-sm text-red-600">Treinador obrigatório</p>}
-              </div>
-            </div>
-
+            {/* Funcionário Treinador - carregado dinamicamente */}
             <div className="space-y-2">
-              <Label>Máximo de Alunos *</Label>
-              <Input type="number" min="1" max="30" {...register("alunosMax", { valueAsNumber: true })} />
-              {errors.alunosMax && <p className="text-sm text-red-600">{errors.alunosMax.message}</p>}
+              <Label>Funcionário Treinador *</Label>
+              <Controller
+                name="funcionarioTreinadorId"
+                control={control}
+                render={({ field }) => (
+                  <Select 
+                    onValueChange={field.onChange} 
+                    value={field.value}
+                    disabled={treinadores.length === 0}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={
+                        treinadores.length === 0 
+                          ? "Nenhum treinador cadastrado" 
+                          : "Selecione o funcionário treinador"
+                      } />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {treinadores.map((t: { id: string; nome: string }) => (
+                        <SelectItem key={t.id} value={t.id}>
+                          {t.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {errors.funcionarioTreinadorId && (
+                <p className="text-sm text-red-600">{errors.funcionarioTreinadorId.message}</p>
+              )}
             </div>
 
+            {/* Local */}
             <div className="space-y-2">
-              <Label>Descrição do Treino (opcional)</Label>
+              <Label>Local *</Label>
+              <Input placeholder="Quadra Principal" {...register("local")} />
+              {errors.local && <p className="text-sm text-red-600">{errors.local.message}</p>}
+            </div>
+
+            {/* Descrição */}
+            <div className="space-y-2">
+              <Label>Descrição (opcional)</Label>
               <Textarea
                 className="resize-none"
                 rows={5}
@@ -221,7 +263,11 @@ useEffect(() => {
             </div>
 
             <div className="flex gap-4 pt-6">
-              <Button type="submit" disabled={isSubmitting} className="flex-1 bg-linear-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700">
+              <Button 
+                type="submit" 
+                disabled={isSubmitting} 
+                className="flex-1 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700"
+              >
                 {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -242,7 +288,7 @@ useEffect(() => {
         </CardContent>
       </Card>
     </div>
-     );
-}
- 
+  );
+};
+
 export default EditarTreinoPage;

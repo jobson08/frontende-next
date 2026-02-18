@@ -429,8 +429,6 @@ const ClientesCrossFitPage = () => {
         </>
       ) : (
       <Card>
-          <CardHeader>
-          </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
