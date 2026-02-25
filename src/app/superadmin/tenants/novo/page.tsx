@@ -316,7 +316,30 @@ const NovoTenantPage = () => {
                         <SelectContent className="max-h-60 overflow-auto">
                           <SelectItem value="AC">Acre</SelectItem>
                           <SelectItem value="AL">Alagoas</SelectItem>
-                          {/* ... todos os estados ... */}
+                          <SelectItem value="AP">Amapá</SelectItem>
+                          <SelectItem value="AM">amazonas</SelectItem>
+                          <SelectItem value="BA">Bahia</SelectItem>
+                          <SelectItem value="CE">Ceará</SelectItem>
+                          <SelectItem value="DF">Distrito Federal</SelectItem>
+                          <SelectItem value="ES">Espirito Santo</SelectItem>
+                          <SelectItem value="GO">Goiás</SelectItem>
+                          <SelectItem value="MA">Maranhão</SelectItem>
+                          <SelectItem value="MS">Mato Grosso</SelectItem>
+                          <SelectItem value="MT">Mato Grosso Sul</SelectItem>
+                          <SelectItem value="MG">Minas Gerais</SelectItem>
+                          <SelectItem value="PA">Pará</SelectItem>
+                          <SelectItem value="PB">Paraiba</SelectItem>
+                          <SelectItem value="PR">Paraná</SelectItem>
+                          <SelectItem value="PE">Pernambuco</SelectItem>
+                          <SelectItem value="PI">Piaui</SelectItem>
+                          <SelectItem value="RJ">Rio de Janeiro</SelectItem>
+                          <SelectItem value="RN">Rio Grande do Norte</SelectItem>
+                          <SelectItem value="RS">Rio grande do Sul</SelectItem>
+                          <SelectItem value="RO">Rondônia</SelectItem>
+                          <SelectItem value="RR">Roraima</SelectItem>
+                          <SelectItem value="SC">Santa Catarina</SelectItem>
+                          <SelectItem value="SP">São Paulo</SelectItem>
+                          <SelectItem value="SE">Segipe</SelectItem>
                           <SelectItem value="TO">Tocantins</SelectItem>
                         </SelectContent>
                       </Select>

@@ -90,6 +90,21 @@ interface Aniversariante {
   modalidade: 'futebol' | 'crossfit';  // ← adicione isso aqui
 }
 
+// Definição mínima necessária (ajuste conforme seu model real)
+interface Treino {
+  id: string;
+  nome: string;
+  categoria: string;
+  data: string;           // "YYYY-MM-DD"
+  horaInicio: string;
+  horaFim: string;
+  funcionarioTreinador?: {
+    nome: string;
+  } | null;
+  local: string;
+  // outros campos que você usa...
+}
+
 // Meses dinâmicos
 const generateMeses = () => {
   return Array.from({ length: 13 }, (_, i) => {
@@ -112,7 +127,8 @@ const AdminDashboardPage = () => {
 const formatDateBR = (dateStr: string | Date | null | undefined): string => {
   if (!dateStr) return "—";
 
-  let str = typeof dateStr === 'string' ? dateStr : dateStr.toISOString();
+  // Use const aqui
+  const str = typeof dateStr === 'string' ? dateStr : dateStr.toISOString();
 
   // Pega apenas a parte YYYY-MM-DD
   const match = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
@@ -148,52 +164,22 @@ const formatDateBR = (dateStr: string | Date | null | undefined): string => {
     },
   });
 
-  // Busca quantidade de aulas de HOJE
-const hoje = new Date().toISOString().split('T')[0]; // "YYYY-MM-DD"
-
+// Query específica para próximas aulas da semana
 const { 
-  data: aulasHoje = 0, 
-  isLoading: isLoadingAulasHoje, 
-  error: aulasHojeError 
-} = useQuery<number>({
-  queryKey: ["aulas-hoje"],
+  data: proximasAulasData, 
+  isLoading: isLoadingTreinos ,
+  error: treinos 
+} = useQuery<{ data: Treino[]; total: number }>({
+  queryKey: ["proximas-aulas-semana"],
   queryFn: async () => {
-    const res = await api.get("/tenant/treinos-futebol", {
-      params: {
-        dataInicio: hoje,
-        dataFim: hoje,
-      },
-    });
-    return res.data.data?.length || 0; // conta quantos treinos retornaram
+    const res = await api.get("/tenant/proximas-aulas-semana");
+    return res.data;
   },
-  staleTime: 5 * 60 * 1000, // cache 5 min
+  staleTime: 5 * 60 * 1000,
 });
 
- // Busca de próximos treinos (hoje ou próximos dias)
-const { 
-  data: proximasAulas = [], 
-  isLoading: isLoadingTreinos 
-} = useQuery<Treino[]>({
-  queryKey: ["proximas-aulas"],
-  queryFn: async () => {
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0); // zera hora local para evitar offset
-
-    // Envia data em formato ISO sem hora (UTC)
-    const hojeStr = hoje.toISOString().split('T')[0]; // "2026-02-20"
-
-    const res = await api.get("/tenant/treinos-futebol", {
-      params: {
-        dataInicio: hojeStr,
-        dataFim: hojeStr, // ou ajuste para próximos 7 dias
-      },
-    });
-
-    // O backend já deve retornar data como string "YYYY-MM-DD"
-    return res.data.data || [];
-  },
-  staleTime: 5 * 60 * 1000, // cache 5 minutos
-});
+const proximasAulas = proximasAulasData?.data || [];
+const totalAulasSemana = proximasAulasData?.total || 0;
 
   // Alunos inadimplentes
   const { 
@@ -219,7 +205,7 @@ const {
     const res = await api.get("/tenant/aniversariantes-semana", {
       params: { mes: mesSelecionado }  // ← ESSA LINHA RESOLVE TUDO
     });
-    console.log("[DEBUG ANIVERSARIANTES] Dados recebidos para mês", mesSelecionado, ":", res.data.data);
+   // console.log("[DEBUG ANIVERSARIANTES] Dados recebidos para mês", mesSelecionado, ":", res.data.data);
     return res.data.data || [];
   },
   staleTime: 0,  // força sempre buscar dados frescos ao mudar o mês (opcional, mas ajuda)
@@ -242,12 +228,12 @@ const {
   onSuccess: () => {
     toast.success("Pagamento marcado como pago!");
    queryClient.refetchQueries({
-  queryKey: ["inadimplentes", mesSelecionado],
+//  queryKey: ["inadimplentes", mesSelecionado],
   exact: true,
   type: 'active',
 });
 queryClient.refetchQueries({
-  queryKey: ["dashboard-tenant", mesSelecionado],
+ // queryKey: ["dashboard-tenant", mesSelecionado],
   exact: true,
   type: 'active',
 });
@@ -358,17 +344,17 @@ useQuery<DashboardData>({
             <Calendar className="h-4 w-4 text-gray-500" />
           </CardHeader>
           <CardContent>
-            {isLoadingAulasHoje ? (
+            {isLoadingTreinos ? (
               <div className="flex items-center justify-center py-4">
                 <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
               </div>
-            ) : aulasHojeError ? (
+            ) : treinos ? (
               <div className="text-center text-red-600 text-sm">
                 Erro ao carregar aulas
               </div>
             ) : (
               <>
-                <div className="text-2xl font-bold">{aulasHoje ?? 0}</div>
+                <div className="text-center text-2xl font-bold ">{totalAulasSemana ?? 0}</div>
                 <p className="text-xs text-gray-500 mt-1">programadas para hoje</p>
               </>
             )}
@@ -381,9 +367,9 @@ useQuery<DashboardData>({
             <Users className="h-4 w-4 text-gray-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data?.totalAlunos ?? 0}</div>
+            <div className="text-center text-2xl font-bold ">{data?.totalAlunos ?? 0}</div>
             <p className="text-xs text-gray-500 mt-1">
-              <span className="text-green-600 font-medium">{data?.alunosAtivos ?? 0} ativos</span> este mês
+              <span className="text-green-600 font-medium ">{data?.alunosAtivos ?? 0} ativos</span> este mês
             </p>
           </CardContent>
         </Card>
@@ -394,7 +380,7 @@ useQuery<DashboardData>({
             <DollarSign className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">
+            <div className="text-center text-2xl font-bold text-green-600">
               R$ {(data?.receitaMensalEstimada ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
             </div>
             {/*porcentagem mes */}
@@ -423,7 +409,7 @@ useQuery<DashboardData>({
             )}
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">
+            <div className="text-center text-2xl font-bold text-red-600">
               {data?.pagamentosPendentes ?? 0}
             </div>
             <p className="text-xs text-gray-500 mt-1">mensalidades em aberto</p>
@@ -434,52 +420,62 @@ useQuery<DashboardData>({
       {/* Seção Rápida */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
 
-        {/* Próximas Aulas */}
+        {/* PROXIMAS AULAS DA SEMANA*/}
         <Card>
-          <CardHeader>
-            <CardTitle>Próximas Aulas Hoje</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle>Próximas Aulas da Semana</CardTitle>
+            <div className="text-sm text-gray-500">
+              {totalAulasSemana} aula{totalAulasSemana !== 1 ? 's' : ''}
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
+            <div className="space-y-3">
               {isLoadingTreinos ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
-                  <span className="ml-3 text-sm text-gray-500">Carregando aulas...</span>
+                  <span className="ml-3 text-sm text-gray-500">Carregando...</span>
                 </div>
               ) : proximasAulas.length === 0 ? (
                 <p className="text-center text-gray-500 py-8">
-                  Nenhuma aula programada para hoje
+                  Nenhuma aula programada esta semana
                 </p>
               ) : (
-                proximasAulas.map((aula, i) => (
-                  <div key={i} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center gap-2">
-                    {/*
-                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center text-white font-bold text-sm">
-                        {aula.horaInicio.split(':')[0]}
-                      </div>
-                      */}
-                      <div>
-                        <p className="font-medium text-sm">{aula.nome}</p>
-                        <p className="text-xs text-gray-600">
-                          {aula.funcionarioTreinador?.nome || "—"} • {aula.categoria}
+                proximasAulas.slice(0, 4).map((aula) => (  // limita a 4 aulas visíveis
+                  <div 
+                    key={aula.id} 
+                    className="flex items-center justify-between p-1 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg border border-gray-200 hover:shadow-sm transition"
+                  >
+                    <div className="flex items-center gap-4 flex-1">
+                     {/*} <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 flex flex-col items-center justify-center text-white font-bold text-xs shrink-0">
+                        <span>{aula.horaInicio.split(':')[0]}</span>
+                        <span className="text-[10px] opacity-80">h</span>
+                      </div>*/}
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm truncate">{aula.nome}</p>
+                         <p className="text-sm font-medium text-gray-700">
+                          Prof: {aula.funcionarioTreinador?.nome || "—"} - h: {aula.horaInicio} - {aula.horaFim} </p>
+                        <p className="text-xs text-gray-700">
+                         Catg: {aula.categoria} data {formatDateBR(aula.data)}
                         </p>
                       </div>
                     </div>
 
-                    {/* Data + horário usando formatDateBR */}
-                    <div className="text-right">
-                      <Badge variant="secondary" className="mb-1">
-                        {formatDateBR(aula.data)}
-                      </Badge>
-                      <p className="text-xs text-gray-500">
-                        {aula.horaInicio} - {aula.horaFim}
+                    <div className="text-right shrink-0 ml-4">
+                      
+                      <p className="text-sm font-medium text-gray-700">
+                       
                       </p>
                     </div>
                   </div>
                 ))
               )}
             </div>
+
+            {totalAulasSemana > 4 && (
+              <p className="text-center text-sm text-gray-500 mt-4">
+                + {totalAulasSemana - 4} aula{totalAulasSemana - 4 !== 1 ? 's' : ''} esta semana
+              </p>
+            )}
 
             <Button variant="outline" className="w-full mt-4" asChild>
               <Link href="/aulas">
@@ -489,7 +485,7 @@ useQuery<DashboardData>({
           </CardContent>
         </Card>
 
-        {/* Aniversariantes da Semana */}
+        {/* ANIVERSARIANTE DA SEMANA */}
         <Card>
           <CardHeader>
             <CardTitle>Aniversariantes do mês 🎉</CardTitle> {/* ← adicionado "Atual" */}
@@ -537,7 +533,7 @@ useQuery<DashboardData>({
           </CardHeader>
           <CardContent className="space-y-3">
             <Button asChild className="w-full bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-              <Link href="/alunos/novo">
+              <Link href="/aluno/novo">
                 <Users className="mr-2 h-4 w-4" />
                 Novo Aluno
               </Link>

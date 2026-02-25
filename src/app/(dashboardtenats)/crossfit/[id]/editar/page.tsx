@@ -4,13 +4,13 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { toast, Toaster } from "sonner";
 import Link from "next/link";
-import { ChevronLeft, Loader2, Save, Camera, Trash2, UserPlus } from "lucide-react";
+import { ChevronLeft, Loader2, Camera, Trash2, UserPlus } from "lucide-react";
 
 import { Button } from "@/src/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/card";
@@ -18,13 +18,13 @@ import { Input } from "@/src/components/ui/input";
 import { Label } from "@/src/components/ui/label";
 import { Textarea } from "@/src/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/src/components/ui/avatar";
-import { Controller } from "react-hook-form";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/src/components/ui/select";
 import api from "@/src/lib/api";
 import InputCPFEdit from "@/src/components/common/inputsEdit/InputCPFEdit";
 import InputTelefoneEdit from "@/src/components/common/inputsEdit/InputTelefoneEdit";
 import InputDataEdit from "@/src/components/common/inputsEdit/InputDataEdit";
 
-// Schema Zod (alinhado com o DTO de atualização)
+// Schema Zod completo e corrigido
 const formSchema = z.object({
   nome: z.string().min(3, "Nome completo obrigatório"),
   email: z.string().email("E-mail inválido").optional(),
@@ -37,10 +37,25 @@ const formSchema = z.object({
     .min(0, "Mínimo 0")
     .max(7, "Máximo 7")
     .optional(),
-  status: z.enum(["ativo", "inativo", "trancado"]).optional(),
+  status: z.enum(["ATIVO", "INATIVO", "TRANCADO"]).optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
+
+// Interface do aluno (ajustada)
+interface AlunoDetalhe {
+  id: string;
+  nome: string;
+  dataNascimento: string;
+  telefone: string | null;
+  cpf: string | null;
+  email: string | null;
+  status: "ATIVO" | "INATIVO" | "TRANCADO";
+  frequencia: number | null;
+  observacoes: string | null;
+  userId: string | null;
+  fotoUrl?: string | null;
+}
 
 const EditarAlunoCrossfitPage = () => {
   const { id } = useParams();
@@ -55,7 +70,7 @@ const EditarAlunoCrossfitPage = () => {
     setValue,
     watch,
     control,
-    formState: { errors, isSubmitting },
+    formState: { errors, isValid },
   } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     mode: "onChange",
@@ -64,7 +79,7 @@ const EditarAlunoCrossfitPage = () => {
   const watchedName = watch("nome");
 
   // Busca dados do aluno
-  const { data: aluno, isLoading, error } = useQuery({
+  const { data: aluno, isLoading, error } = useQuery<AlunoDetalhe>({
     queryKey: ["aluno-crossfit", id],
     queryFn: async () => {
       const res = await api.get(`/tenant/alunos-crossfit/${id}`);
@@ -73,13 +88,13 @@ const EditarAlunoCrossfitPage = () => {
     enabled: !!id,
   });
 
-  // Pré-preenche o form quando os dados chegam
+  // Pré-preenche o form
   useEffect(() => {
-    if (aluno && aluno.dataNascimento) {
-    // Separa a data ISO ou string
-    const [ano, mes, dia] = aluno.dataNascimento.split("T")[0].split("-");
-    const dataFormatada = `${dia}/${mes}/${ano}`;
+    if (aluno) {
+      const [ano, mes, dia] = aluno.dataNascimento.split("T")[0].split("-");
+      const dataFormatada = `${dia}/${mes}/${ano}`;
 
+      setPhotoPreview(aluno.fotoUrl || null);
 
       setValue("nome", aluno.nome || "");
       setValue("email", aluno.email || "");
@@ -87,10 +102,102 @@ const EditarAlunoCrossfitPage = () => {
       setValue("telefone", aluno.telefone || "");
       setValue("dataNascimento", dataFormatada);
       setValue("observacoes", aluno.observacoes || "");
-      setValue("frequencia", aluno.frequencia || 0);
-      setValue("status", aluno.status || "ativo");
+      setValue("frequencia", aluno.frequencia ?? 0);
+      setValue("status", aluno.status || "ATIVO");
     }
   }, [aluno, setValue]);
+
+  // Mutation para atualizar
+  const updateMutation = useMutation({
+    mutationFn: async (data: FormData) => {
+      console.log("=== [UPDATE ALUNO CROSSFIT] Iniciando salvamento ===");
+      console.log("ID do aluno:", id);
+      console.log("Dados do form:", data);
+
+      const payload = {
+        nome: data.nome?.trim(),
+        email: data.email?.toLowerCase().trim(),
+        cpf: data.cpf ? data.cpf.replace(/\D/g, "") : null,
+        telefone: data.telefone ? data.telefone.replace(/\D/g, "") : null,
+        dataNascimento: data.dataNascimento
+          ? data.dataNascimento.split("/").reverse().join("-")
+          : null,
+        observacoes: data.observacoes?.trim() || null,
+        frequencia: data.frequencia,
+        status: data.status,
+      };
+
+      console.log("=== PAYLOAD ENVIADO ===");
+      console.log("URL:", `/tenant/alunos-crossfit/${id}`);
+      console.log("Payload:", JSON.stringify(payload, null, 2));
+
+      const res = await api.patch(`/tenant/alunos-crossfit/${id}`, payload);
+      return res.data;
+    },
+
+    onSuccess: () => {
+      toast.success("Aluno CrossFit atualizado com sucesso!");
+      queryClient.invalidateQueries({ queryKey: ["aluno-crossfit", id] });
+      queryClient.invalidateQueries({ queryKey: ["alunos-crossfit"] });
+
+      setTimeout(() => {
+        router.push("/crossfit");
+      }, 1500);
+    },
+
+    onError: (err: any) => {
+      console.error("=== [UPDATE ALUNO CROSSFIT] Erro ===", err);
+      toast.error("Erro ao atualizar aluno", {
+        description: err.response?.data?.error || err.message || "Tente novamente",
+      });
+    },
+  });
+
+  // Mutation para redefinir senha
+  const redefinirSenhaMutation = useMutation({
+    mutationFn: async () => {
+      const res = await api.post(`/tenant/alunos-crossfit/${id}/redefinir-senha`);
+      return res.data;
+    },
+    onSuccess: (result) => {
+      toast.success("Senha redefinida com sucesso!", {
+        description: (
+          <div className="space-y-2">
+            <p>Nova senha temporária gerada:</p>
+            <div className="bg-gray-100 p-3 rounded-md font-mono text-center">
+              {result.senhaTemporaria}
+            </div>
+            <p className="text-xs text-gray-500">
+              Copie e envie ao responsável ou ao aluno.
+            </p>
+          </div>
+        ),
+        duration: 30000,
+        action: {
+          label: "Copiar senha",
+          onClick: () => {
+            navigator.clipboard.writeText(result.senhaTemporaria || "");
+            toast("Senha copiada!");
+          },
+        },
+      });
+    },
+    onError: (err: any) => {
+      toast.error("Erro ao redefinir senha", {
+        description: err.response?.data?.error || err.message,
+      });
+    },
+  });
+
+  const onSubmit = (data: FormData) => {
+    updateMutation.mutate(data);
+  };
+
+  const redefinirSenha = () => {
+    if (confirm("Tem certeza que deseja gerar uma nova senha temporária?")) {
+      redefinirSenhaMutation.mutate();
+    }
+  };
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -104,53 +211,6 @@ const EditarAlunoCrossfitPage = () => {
   const removePhoto = () => {
     setPhotoPreview(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
-  };
-
-  // Mutation para atualizar
-  const updateMutation = useMutation({
-    mutationFn: async (data: FormData) => {
-      const payload = {
-        nome: data.nome?.trim(),
-        email: data.email?.toLowerCase().trim(),
-        cpf: data.cpf ? data.cpf.replace(/\D/g, "") : null,
-        telefone: data.telefone ? data.telefone.replace(/\D/g, "") : null,
-        dataNascimento: data.dataNascimento
-        ? data.dataNascimento.split("/").reverse().join("-")
-        : null,
-        observacoes: data.observacoes?.trim(),
-        frequencia: data.frequencia,
-        status: data.status,
-      };
-
-      console.log("=== PAYLOAD ENVIADO AO BACKEND ===");
-      console.log("URL chamada:", `/tenant/alunos-crossfit/${id}`);
-      console.log("Payload completo:", JSON.stringify(payload, null, 2));
-
-      const res = await api.patch(`/tenant/alunos-crossfit/${id}`, payload);
-      console.log("Resposta do backend:", res.data);
-      return res.data;
-    },
-
-    onSuccess: () => {
-      toast.success("Aluno CrossFit atualizado com sucesso!");
-      queryClient.invalidateQueries({ queryKey: ["aluno-crossfit", id] });
-      queryClient.invalidateQueries({ queryKey: ["alunos-crossfit"] });
-
-      setTimeout(() => {
-        router.push("/crossfit");
-      }, 2000);
-    },
-
-    onError: (err: any) => {
-      console.error("Erro ao atualizar aluno CrossFit:", err);
-      toast.error("Erro ao atualizar aluno", {
-        description: err.response?.data?.error || err.message || "Tente novamente",
-      });
-    },
-  });
-
-  const onSubmit = (data: FormData) => {
-    updateMutation.mutate(data);
   };
 
   if (isLoading) {
@@ -195,11 +255,12 @@ const EditarAlunoCrossfitPage = () => {
             Dados do Aluno
           </CardTitle>
         </CardHeader>
+
         <CardContent>
           {updateMutation.isPending && (
-            <div className="bg-blue-50 border border-blue-200 rounded-md p-4 text-center mb-6">
+            <div className="bg-red-50 border border-red-200 rounded-md p-4 text-center mb-6">
               <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
-              <p className="text-blue-800">Salvando alterações... Aguarde</p>
+              <p className="text-red-800">Salvando alterações... Aguarde</p>
             </div>
           )}
 
@@ -250,7 +311,7 @@ const EditarAlunoCrossfitPage = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="cpf">CPF (opcional)</Label>
+                <Label htmlFor="cpf">CPF *</Label>
                 <Controller
                   name="cpf"
                   control={control}
@@ -267,7 +328,7 @@ const EditarAlunoCrossfitPage = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="telefone">Telefone (opcional)</Label>
+                <Label htmlFor="telefone">Telefone *</Label>
                 <Controller
                   name="telefone"
                   control={control}
@@ -292,6 +353,7 @@ const EditarAlunoCrossfitPage = () => {
                     <InputDataEdit
                       id="dataNascimento"
                       placeholder="dd/mm/aaaa"
+                      maxLength={10}
                       value={field.value || ""}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) => field.onChange(e.target.value)}
                     />
@@ -301,25 +363,89 @@ const EditarAlunoCrossfitPage = () => {
               </div>
             </div>
 
-            {/* Observações */}
-            <div className="space-y-2">
-              <Label htmlFor="observacoes">Observações (opcional)</Label>
-              <Textarea
-                id="observacoes"
-                placeholder="Alergias, restrições, preferências de turma..."
-                rows={4}
-                {...register("observacoes")}
-              />
+            {/* Status e Observações */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select
+                  defaultValue={aluno.status}
+                  onValueChange={(value) => setValue("status", value as "ATIVO" | "INATIVO" | "TRANCADO")}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ATIVO">Ativo</SelectItem>
+                    <SelectItem value="INATIVO">Inativo</SelectItem>
+                    <SelectItem value="TRANCADO">Trancado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="observacoes">Observações (opcional)</Label>
+                <Textarea
+                  id="observacoes"
+                  placeholder="Alergias, restrições, preferências de turma..."
+                  rows={4}
+                  {...register("observacoes")}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="frequencia">Frequência semanal (opcional)</Label>
+                <Input
+                  id="frequencia"
+                  type="number"
+                  min="0"
+                  max="7"
+                  placeholder="Ex: 3"
+                  {...register("frequencia", { valueAsNumber: true })}
+                />
+                {errors.frequencia && <p className="text-sm text-red-600">{errors.frequencia.message}</p>}
+              </div>
+            </div>
+
+            {/* Acesso do Aluno + Redefinir Senha */}
+            <div className="space-y-6 pt-6 border-t">
+              <h3 className="text-lg font-semibold text-gray-800">Acesso do Aluno</h3>
+              <div className="flex flex-col sm:flex-row items-center gap-6">
+                <div className="flex-1 space-y-2">
+                  <Label>E-mail (usuário)</Label>
+                  <Input value={aluno.email || "Não criado"} disabled />
+                </div>
+
+                <div className="self-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={redefinirSenha}
+                    disabled={redefinirSenhaMutation.isPending || !aluno.userId}
+                  >
+                    {redefinirSenhaMutation.isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Redefinindo...
+                      </>
+                    ) : (
+                      "Redefinir Senha"
+                    )}
+                  </Button>
+                </div>
+              </div>
+              <p className="text-xs text-gray-500">
+                Ao redefinir, uma nova senha temporária será gerada automaticamente e exibida abaixo. Envie ao responsável ou aluno.
+              </p>
             </div>
 
             {/* Botões */}
             <div className="flex flex-col sm:flex-row gap-4 pt-8 border-t">
               <Button
                 type="submit"
-                disabled={isSubmitting || updateMutation.isPending}
+                disabled={updateMutation.isPending || !isValid}
                 className="flex-1 bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700"
               >
-                {isSubmitting || updateMutation.isPending ? (
+                {updateMutation.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Salvando...
@@ -336,6 +462,8 @@ const EditarAlunoCrossfitPage = () => {
           </form>
         </CardContent>
       </Card>
+
+      <Toaster position="top-right" richColors closeButton />
     </div>
   );
 };

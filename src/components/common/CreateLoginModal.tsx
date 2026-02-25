@@ -1,73 +1,82 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { Dialog, DialogContent, DialogHeader, DialogOverlay, DialogPortal, DialogTitle } from "@/src/components/ui/dialog";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Mail, Lock  } from "lucide-react";
-import { useState } from "react";
+import { Loader2, Mail, Lock } from "lucide-react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import z from "zod";
 import { Button } from "@/src/components/ui/button";
-import { Label } from "../ui/label";
-import { Input } from "../ui/input";
+import { Label } from "@/src/components/ui/label";
+import { Input } from "@/src/components/ui/input";
 
-
-const schema = z.object({
+// Schema para edição (senha opcional)
+const editSchema = z.object({
   email: z.string().email("E-mail inválido"),
-  password: z.string().min(6, "Senha deve ter no mínimo 6 caracteres"),
+  password: z.string().optional(), // não exige senha na edição
 });
 
-type FormData = z.infer<typeof schema>;
+type FormData = z.infer<typeof editSchema>;
 
-interface CreateLoginModalProps {
+interface EditLoginModalProps {
   name: string;
-  currentEmail?: string | null;
+  currentEmail: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave?: (email: string, password: string) => void; // ← ADICIONE ESSA PROP
+  onSave: (email: string, password: string) => Promise<void> | void;
 }
 
-const CreateLoginModal= ({ 
- name,
-  currentEmail = null,
+const EditarLoginModal = ({
+  name,
+  currentEmail,
   open,
   onOpenChange,
   onSave,
-}: CreateLoginModalProps) => {
+}: EditLoginModalProps) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-const [isSubmitting, setIsSubmitting] = useState(false);
-const isEdit = !!currentEmail;
-
-const {
+  const {
     register,
     handleSubmit,
     reset,
     formState: { errors },
   } = useForm<FormData>({
-    resolver: zodResolver(schema),
-    defaultValues: { email: currentEmail || "" },
+    resolver: zodResolver(editSchema),
+    defaultValues: {
+      email: currentEmail || "",
+      password: "",
+    },
   });
 
-const onSubmit = async (data: FormData) => {
-    setIsSubmitting(true);
-    try {
-      if (onSave) {
-        await onSave(data.email, data.password);
-      }
-      toast.success(isEdit ? "Login atualizado!" : "Login criado com sucesso!", {
-        description: `${name} agora pode acessar o sistema`,
+  // Resetar form sempre que o modal abrir
+  useEffect(() => {
+    if (open) {
+      reset({
+        email: currentEmail || "",
+        password: "",
       });
-      reset();
-      onOpenChange(false);
-    } catch {
-      toast.error("Erro ao salvar login");
-    } finally {
-      setIsSubmitting(false);
     }
-  };
+  }, [open, currentEmail, reset]);
 
-    return ( 
-      <Dialog open={open} onOpenChange={onOpenChange}>
+const onSubmit = async (data: FormData) => {
+  setIsSubmitting(true);
+
+  try {
+    await onSave(data.email, data.password || ""); // senha vazia = não altera
+    toast.success("Login atualizado com sucesso!");
+    reset();
+    onOpenChange(false);
+  } catch (err: any) {
+    toast.error(err.message || "Erro ao atualizar login");
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogPortal>
         <DialogOverlay className="fixed inset-0 bg-black/70 z-50" />
         <DialogContent className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[95vw] max-w-md rounded-2xl bg-white p-8 shadow-2xl">
@@ -76,10 +85,10 @@ const onSubmit = async (data: FormData) => {
               <Lock className="h-10 w-10 text-white" />
             </div>
             <DialogTitle className="text-2xl font-bold">
-              {isEdit ? "Editar Acesso" : "Criar Acesso"}
+              Editar Acesso
             </DialogTitle>
             <p className="text-gray-600 mt-2">
-              {isEdit ? "Atualize" : "Crie"} o login de
+              Atualize o login de
               <br />
               <span className="font-bold text-xl text-orange-600">{name}</span>
             </p>
@@ -102,17 +111,15 @@ const onSubmit = async (data: FormData) => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">
-                Senha {isEdit && <span className="text-gray-500 text-sm">(opcional na edição)</span>}
-              </Label>
+              <Label htmlFor="password">Nova Senha (opcional)</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
                 <Input
                   id="password"
                   type="password"
-                  placeholder={isEdit ? "••••••••" : "Mínimo 6 caracteres"}
+                  placeholder="Deixe em branco para manter a senha atual"
                   className="pl-12 h-12"
-                  {...register("password", { required: !isEdit ? "Senha obrigatória" : false })}
+                  {...register("password")}
                 />
               </div>
               {errors.password && <p className="text-sm text-red-600">{errors.password.message}</p>}
@@ -139,7 +146,7 @@ const onSubmit = async (data: FormData) => {
                     Processando...
                   </>
                 ) : (
-                  <>{isEdit ? "Atualizar" : "Criar"} Login</>
+                  <>Atualizar Login</>
                 )}
               </Button>
             </div>
@@ -147,7 +154,7 @@ const onSubmit = async (data: FormData) => {
         </DialogContent>
       </DialogPortal>
     </Dialog>
-     );
-}
- 
-export default CreateLoginModal;
+  );
+};
+
+export default EditarLoginModal;

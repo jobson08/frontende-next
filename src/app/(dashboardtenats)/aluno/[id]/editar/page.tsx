@@ -17,13 +17,8 @@ import { Label } from "@/src/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/src/components/ui/select";
 import { Textarea } from "@/src/components/ui/textarea";
-import { Popover, PopoverContent, PopoverTrigger } from "@/src/components/ui/popover";
-import { Calendar } from "@/src/components/ui/calendar";
-import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/src/components/ui/avatar";
 import api from "@/src/lib/api";
-import { format } from "date-fns";
-
 import InputDataEdit from "@/src/components/common/inputsEdit/InputDataEdit";
 import InputTelefoneEdit from "@/src/components/common/inputsEdit/InputTelefoneEdit";
 import InputCPFEdit from "@/src/components/common/inputsEdit/InputCPFEdit";
@@ -198,7 +193,7 @@ const updateMutation = useMutation({
   },
 });
 
-  // Mutation para redefinir senha
+// Mutation para redefinir senha (já está correta)
   const redefinirSenhaMutation = useMutation({
     mutationFn: async () => {
       const res = await api.post(`/tenant/alunos/${id}/redefinir-senha`);
@@ -486,7 +481,7 @@ const updateMutation = useMutation({
               </div>
             </div>
 
-            {/* Acesso do Aluno + Redefinir Senha */}
+          {/* Acesso do Aluno + Redefinir Senha */}
             <div className="space-y-6 pt-6 border-t">
               <h3 className="text-lg font-semibold text-gray-800">Acesso do Aluno</h3>
               <div className="flex flex-col sm:flex-row items-center gap-6">
@@ -514,7 +509,7 @@ const updateMutation = useMutation({
                 </div>
               </div>
               <p className="text-xs text-gray-500">
-                Ao redefinir, uma nova senha temporária será gerada e exibida abaixo. Envie ao responsável ou aluno.
+                Ao redefinir, uma nova senha temporária será gerada automaticamente e exibida abaixo. Envie ao responsável ou aluno.
               </p>
             </div>
 
@@ -522,7 +517,7 @@ const updateMutation = useMutation({
             <div className="flex flex-col sm:flex-row gap-4 pt-8">
               <Button
                 type="submit"
-                disabled={!isValid || updateMutation.isPending}
+                disabled={updateMutation.isPending}
                 className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
               >
                 {updateMutation.isPending ? (

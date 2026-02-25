@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import api from "@/src/lib/api";
 import { useParams } from "next/navigation";
 import { useState } from "react";
-import CreateLoginModal from "@/src/components/common/CreateLoginModal";
+
 import { Avatar, AvatarFallback } from "@/src/components/ui/avatar";
 import { Badge } from "@/src/components/ui/badge";
 import { Button } from "@/src/components/ui/button";
@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/ca
 import { Calendar, ChevronLeft, DollarSign, Edit, Mail, MapPin, Phone, Shield, Users, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { Loader2 } from "lucide-react";
+import CreateLoginModal from "@/src/components/common/CreateLoginModal";
 
 // Interface para tipagem segura
 interface EscolinhaDetails {

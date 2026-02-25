@@ -1,7 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
+
 // src/app/login/page.tsx
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -11,89 +13,86 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/src
 import { Button } from "@/src/components/ui/button";
 import { Input } from "@/src/components/ui/input";
 import { Label } from "@/src/components/ui/label";
+import { Checkbox } from "@/src/components/ui/checkbox";
 import { toast } from "sonner";
-import { Mail, Lock, Loader2 } from "lucide-react";
+import { Mail, Lock, Loader2, Eye, EyeOff } from "lucide-react";
 
 // Schema de login
 const loginSchema = z.object({
   email: z.string().email("E-mail inválido"),
   password: z.string().min(6, "Senha deve ter no mínimo 6 caracteres"),
+  rememberMe: z.boolean().optional(),
 });
 
 type LoginFormData = z.infer<typeof loginSchema>;
 
-// Tipo da resposta do backend
-interface LoginResponse {
-  success: boolean;
-  message: string;
-  token: string;
-  user: {
-    id: string;
-    name: string | null;
-    email: string;
-    role: string;
-    tenantId: string | null;
-    img: string | null;
-    escolinha: {
-      id: string;
-      nome: string;
-      logoUrl: string | null;
-    } | null;
-  };
-}
-
 const LoginPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const {
     register,
     handleSubmit,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
+    defaultValues: {
+      rememberMe: false,
+    },
   });
 
-const onSubmit = async (data: LoginFormData) => {
-  setIsSubmitting(true);
-  try {
-    const res = await fetch("http://localhost:4000/api/v1/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-
-    if (!res.ok) {
-      const errorData = await res.json();
-      throw new Error(errorData.error || "Erro ao fazer login");
+  // Carrega email salvo do localStorage (se existir)
+  useEffect(() => {
+    const savedEmail = localStorage.getItem("savedEmail");
+    if (savedEmail) {
+      setValue("email", savedEmail);
+      setValue("rememberMe", true); // marca o checkbox se tiver salvo
     }
+  }, [setValue]);
 
-    const result = await res.json();
+  const onSubmit = async (data: LoginFormData) => {
+    setIsSubmitting(true);
 
-    // Salva token no COOKIE - versão mais simples e compatível com localhost
-   document.cookie = `token=${result.token}; path=/; max-age=${7*24*60*60}; SameSite=Lax`;
+    try {
+      // Salva email se "Lembrar de mim" estiver marcado
+      if (data.rememberMe) {
+        localStorage.setItem("savedEmail", data.email.trim());
+      } else {
+        localStorage.removeItem("savedEmail");
+      }
 
-   // Salva token NO LOCALSTORAGE (para useAuth enviar no header)
-    localStorage.setItem("token", result.token);
+      const res = await fetch("http://localhost:4000/api/v1/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: data.email.trim(),
+          password: data.password,
+        }),
+      });
 
-    // Debug máximo
-    console.log("Token do backend:", result.token);
-    console.log("Cookie após set:", document.cookie);
-    console.log("Token salvo no localStorage:", localStorage.getItem("token"));
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Erro ao fazer login");
+      }
 
-    setTimeout(() => {
-      console.log("Cookie após 1s:", document.cookie);
-    }, 1000);
+      const result = await res.json();
 
-    // Salva user
-    localStorage.setItem("user", JSON.stringify(result.user));
+      // Salva token no cookie e localStorage
+      document.cookie = `token=${result.token}; path=/; max-age=${7*24*60*60}; SameSite=Lax`;
+      localStorage.setItem("token", result.token);
+      localStorage.setItem("user", JSON.stringify(result.user));
 
-    toast.success("Login realizado!", { description: `Bem-vindo, ${result.user.name || result.user.email}!` });
+      toast.success("Login realizado!", {
+        description: `Bem-vindo, ${result.user.name || result.user.email}!`,
+      });
 
-    // Redireciona por role
-    const from = searchParams.get("from");
-    let redirectTo = from ? decodeURIComponent(from) : "/superadmin/tenants";
+      // Redireciona por role
+      const from = searchParams.get("from");
+      let redirectTo = from ? decodeURIComponent(from) : "/superadmin/tenants";
 
       switch (result.user.role) {
         case "SUPERADMIN":
@@ -121,17 +120,18 @@ const onSubmit = async (data: LoginFormData) => {
           redirectTo = "/dashboard";
       }
 
-// Força reload completo (resolve delay do cookie)
-    setTimeout(() => {
-      window.location.href = redirectTo;
-    }, 1500); // delay de 2 segundos para cookie ser processado
-    
-  } catch (error) {
-    toast.error("Erro no login", { description: (error as Error).message });
-  } finally {
-    setIsSubmitting(false);
-  }
+      // Força reload completo para cookie ser processado
+      setTimeout(() => {
+        window.location.href = redirectTo;
+      }, 1500);
 
+    } catch (error) {
+      toast.error("Erro no login", {
+        description: (error as Error).message,
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -148,6 +148,7 @@ const onSubmit = async (data: LoginFormData) => {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            {/* E-mail */}
             <div className="space-y-2">
               <Label htmlFor="email">E-mail</Label>
               <div className="relative">
@@ -163,21 +164,44 @@ const onSubmit = async (data: LoginFormData) => {
               {errors.email && <p className="text-sm text-red-600">{errors.email.message}</p>}
             </div>
 
+            {/* Senha com opção de mostrar/esconder */}
             <div className="space-y-2">
               <Label htmlFor="password">Senha</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
                 <Input
                   id="password"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
-                  className="pl-12 h-12"
+                  className="pl-12 pr-12 h-12"
                   {...register("password")}
                 />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 p-0"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-5 w-5" />
+                  ) : (
+                    <Eye className="h-5 w-5" />
+                  )}
+                </Button>
               </div>
               {errors.password && <p className="text-sm text-red-600">{errors.password.message}</p>}
             </div>
 
+            {/* Checkbox "Lembrar de mim" */}
+            <div className="flex items-center space-x-2">
+              <Checkbox id="rememberMe" {...register("rememberMe")} />
+              <Label htmlFor="rememberMe" className="text-sm cursor-pointer">
+                Lembrar de mim
+              </Label>
+            </div>
+
+            {/* Botão de login */}
             <Button
               type="submit"
               disabled={isSubmitting}

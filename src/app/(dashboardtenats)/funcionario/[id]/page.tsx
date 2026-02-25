@@ -23,7 +23,7 @@ interface Funcionario {
   observacoes: string | null;
   createdAt: string;
   updatedAt: string;
-  // userId: string | null; // se quiser usar para verificar login
+  userId?: string | null; // ← opcional, para verificar se tem login
 }
 
 const FuncionarioDetalhePage = () => {
@@ -32,32 +32,8 @@ const FuncionarioDetalhePage = () => {
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  // Estado para controlar o modal de criar/editar login
+  // Estado para controlar o modal
   const [openModalId, setOpenModalId] = useState<string | null>(null);
-
-  const createLoginMutation = useMutation({
-    mutationFn: async ({ email, password }: { email: string; password: string }) => {
-      const response = await api.post(`/tenant/funcionarios/${id}/login`, {
-        email,
-        password,
-      });
-      return response.data;
-    },
-    onSuccess: () => {
-      toast.success("Login criado com sucesso!");
-      queryClient.invalidateQueries({ queryKey: ["funcionario", id] });
-      setOpenModalId(null);
-    },
-    onError: (err: any) => {
-      toast.error("Erro ao criar login", {
-        description: err.response?.data?.error || "Tente novamente",
-      });
-    },
-  });
-
-  const handleCreateLogin = (email: string, password: string) => {
-    createLoginMutation.mutate({ email, password });
-  };
 
   const { data: funcionario, isLoading, error } = useQuery<Funcionario>({
     queryKey: ["funcionario", id],
@@ -67,6 +43,29 @@ const FuncionarioDetalhePage = () => {
     },
     enabled: !!id,
   });
+
+  const temLogin = !!funcionario?.email || !!funcionario?.userId;
+
+const handleCreateOrUpdateLogin = async (email: string, password: string) => {
+  try {
+    const payload: any = { email: email.toLowerCase() };
+    if (password.trim()) payload.password = password;
+
+    if (Object.keys(payload).length === 0) {
+      toast.error("Preencha pelo menos um campo para atualizar");
+      return;
+    }
+
+    await api.post(`/tenant/funcionarios/${id}/login`, payload);  // ← sem const response
+
+    toast.success("Login atualizado com sucesso!");
+    queryClient.invalidateQueries({ queryKey: ["funcionario", id] });
+    setOpenModalId(null);
+  } catch (err: any) {
+    const errorMsg = err.response?.data?.error || "Erro ao atualizar login";
+    toast.error(errorMsg);
+  }
+};
 
   if (isLoading) {
     return (
@@ -84,20 +83,18 @@ const FuncionarioDetalhePage = () => {
         <AlertCircle className="h-12 w-12 mx-auto mb-4" />
         <h2 className="text-2xl font-bold">Funcionário não encontrado</h2>
         <Button asChild className="mt-4">
-          <Link href="/funcionarios">Voltar para lista</Link>
+          <Link href="/funcionario">Voltar para lista</Link>
         </Button>
       </div>
     );
   }
-
-  const temLogin = !!funcionario.email; // ou use funcionario.userId se tiver no response
 
   return (
     <div className="p-4 lg:p-8 max-w-5xl mx-auto space-y-8">
       {/* Cabeçalho */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild>
-          <Link href="/funcionarios">
+          <Link href="/funcionario">
             <ChevronLeft className="h-5 w-5" />
           </Link>
         </Button>
@@ -109,11 +106,11 @@ const FuncionarioDetalhePage = () => {
 
       {/* Perfil Principal */}
       <Card className="overflow-hidden">
-        <div className="bg-linear-to-r from-orange-600 to-red-600 h-32" />
+        <div className="bg-gradient-to-r from-orange-600 to-red-600 h-32" />
         <CardContent className="relative pt-0">
           <div className="flex flex-col sm:flex-row items-center sm:items-end gap-6 -mt-16">
             <Avatar className="h-32 w-32 ring-8 ring-white shadow-2xl">
-              <AvatarFallback className="bg-linear-to-r from-orange-600 to-red-600 text-white text-4xl font-bold">
+              <AvatarFallback className="bg-gradient-to-r from-orange-600 to-red-600 text-white text-4xl font-bold">
                 {funcionario.nome.split(" ").map(n => n[0]).join("")}
               </AvatarFallback>
             </Avatar>
@@ -128,7 +125,7 @@ const FuncionarioDetalhePage = () => {
               </div>
             </div>
             <div className="ml-auto">
-              <Button size="lg" asChild className="bg-linear-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700">
+              <Button size="lg" asChild className="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700">
                 <Link href={`/funcionario/${funcionario.id}/editar`}>
                   <Edit className="mr-2 h-5 w-5" />
                   Editar Funcionário
@@ -178,7 +175,7 @@ const FuncionarioDetalhePage = () => {
               {temLogin ? (
                 <div>
                   <Badge className="bg-green-600 text-lg px-6 py-3">ACESSO LIBERADO</Badge>
-                  <p className="text-sm text-gray-600 mt-2">Pode logar no painel</p>
+                  <p className="text-sm text-gray-600 mt-2">Email: {funcionario.email}</p>
                   <Button
                     variant="outline"
                     className="mt-4 border-green-600 text-green-600 hover:bg-green-50"
@@ -194,7 +191,7 @@ const FuncionarioDetalhePage = () => {
                   </Badge>
                   <p className="text-sm text-gray-600 mt-2">Crie o login para acessar o sistema</p>
                   <Button
-                    className="mt-4 bg-linear-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+                    className="mt-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
                     onClick={() => setOpenModalId(funcionario.id)}
                   >
                     Criar Login
@@ -219,14 +216,14 @@ const FuncionarioDetalhePage = () => {
       </Card>
 
       {/* Modal de criar/editar login */}
-     {openModalId && (
-    <CreateLoginModal
-      name={funcionario.nome}
-      currentEmail={funcionario.email || null}
-      open={!!openModalId}
-      onOpenChange={(open) => !open && setOpenModalId(null)}
-      onSave={handleCreateLogin} // ← PASSA A FUNÇÃO QUE CHAMA O BACKEND
-    />
+      {openModalId && (
+        <CreateLoginModal
+          name={funcionario.nome}
+          currentEmail={funcionario.email || null}
+          open={!!openModalId}
+          onOpenChange={(open) => !open && setOpenModalId(null)}
+          onSave={handleCreateOrUpdateLogin}
+        />
       )}
     </div>
   );

@@ -39,7 +39,7 @@ export default function NovoPagamentoCrossfit() {
     defaultValues: {
       mesReferencia: format(new Date(), "yyyy-MM"),
       dataVencimento: format(new Date(new Date().setDate(10)), "yyyy-MM-dd"),
-      valor: "149.00",
+      valor: "90.00",
     },
   });
 

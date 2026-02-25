@@ -1,223 +1,281 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useMutation } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { Button } from "@/src/components/ui/button";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
-import { ChevronLeft, Loader2, Save, UserPlus, Lock } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/card";
-import { Label } from "@/src/components/ui/label";
+import { ChevronLeft, Loader2, Mail, Save, UserPlus } from "lucide-react";
+import { toast, Toaster } from "sonner";
+
+import { Button } from "@/src/components/ui/button";
 import { Input } from "@/src/components/ui/input";
+import { Label } from "@/src/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/src/components/ui/select";
 import { Textarea } from "@/src/components/ui/textarea";
 import api from "@/src/lib/api";
 import InputTelefone from "@/src/components/common/InputTelefone";
+import { useRouter } from "next/navigation";
 
-// Schema combinado: Funcionário + Login (obrigatório)
+// Função para gerar senha aleatória forte
+function gerarSenhaAleatoria(tamanho = 12) {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?";
+  let senha = "";
+  for (let i = 0; i < tamanho; i++) {
+    senha += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return senha;
+}
+
+// Schema Zod (sem password no input do usuário)
 const novoFuncionarioSchema = z.object({
-  // Dados do Funcionário
-  nome: z.string().min(3, "Nome deve ter pelo menos 3 caracteres"),
-  telefone: z.string().min(10, "Telefone inválido").optional(),
-  cargo: z.enum(["PROFESSOR", "RECEPCAO", "ADMINISTRATIVO", "TREINADOR", "GERENTE"]),
+  nome: z.string().min(3, { message: "Nome completo é obrigatório" }),
+  telefone: z.string().min(10, { message: "Telefone inválido" }).optional(),
+  cargo: z.enum([
+    "PROFESSOR",
+    "RECEPCAO",
+    "ADMINISTRATIVO",
+    "TREINADOR",
+    "GERENTE",
+  ], { message: "Cargo inválido" }),
+  salario: z.number().positive({ message: "Salário deve ser positivo" }).optional(),
   observacoes: z.string().optional(),
+  fotoUrl: z.string().url({ message: "URL da foto inválida" }).optional(),
 
-  // Dados do Login (obrigatórios para criar usuário)
-  email: z.string().email("E-mail inválido"),
-  password: z.string().min(6, "Senha deve ter no mínimo 6 caracteres"),
+  // Email obrigatório (login será criado com senha gerada automaticamente)
+  email: z.string().email({ message: "E-mail inválido" }).min(1, { message: "E-mail é obrigatório para criar o login" }),
 });
 
-type NovoFuncionarioFormData = z.infer<typeof novoFuncionarioSchema>;
+type FormData = z.infer<typeof novoFuncionarioSchema>;
 
 const NovoFuncionarioPage = () => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
-  const params = useParams();
-  const tenantId = params.id as string; // ID da escolinha (vem da URL /tenants/[id]/funcionario/novo)
 
   const {
     register,
     handleSubmit,
+    setValue,
     control,
-    formState: { errors, isSubmitting },
-  } = useForm<NovoFuncionarioFormData>({
+    formState: { errors },
+  } = useForm<FormData>({
     resolver: zodResolver(novoFuncionarioSchema),
-  });
-
-const createMutation = useMutation({
-    mutationFn: async (data: NovoFuncionarioFormData) => {
-      // Normaliza o email para minúsculo antes de enviar
-      data.email = data.email.toLowerCase();
-
-      console.log("[Criar Funcionário + Login] Enviando para escolinha:", tenantId, data);
-      const response = await api.post('/tenant/funcionarios', data);
-      return response.data;
-    },
-    onSuccess: () => {
-      toast.success("Funcionário e login cadastrados com sucesso!", {
-        description: "Ele já está na equipe e pode acessar o sistema.",
-      });
-      router.push(`/tenants/${tenantId}/funcionario`); // redireciona para lista
-    },
-    onError: (err: any) => {
-      console.error("[Criar Funcionário + Login] Erro:", err);
-      toast.error("Erro ao cadastrar funcionário e login", {
-        description: err.response?.data?.error || "Tente novamente",
-      });
+    defaultValues: {
+      cargo: "TREINADOR", // valor padrão útil
     },
   });
 
-  const onSubmit = async (data: NovoFuncionarioFormData) => {
-    createMutation.mutate(data);
+  const onSubmit = async (data: FormData) => {
+    setIsSubmitting(true);
+
+    try {
+      // Normaliza email
+      data.email = data.email.toLowerCase().trim();
+
+      // Gera senha aleatória automaticamente
+      const senhaGerada = gerarSenhaAleatoria(12);
+
+      // Payload enviado ao backend
+      const payload = {
+        nome: data.nome,
+        telefone: data.telefone,
+        cargo: data.cargo,
+        salario: data.salario,
+        observacoes: data.observacoes,
+        fotoUrl: data.fotoUrl,
+        email: data.email,
+        password: senhaGerada, // senha gerada automaticamente
+      };
+
+      console.log("[Criar Funcionário + Login Auto] Enviando:", payload);
+
+      const response = await api.post('/tenant/funcionarios', payload);
+
+      toast.success("Funcionário criado com sucesso!", {
+        description: (
+          <div className="space-y-3 text-sm">
+            <p className="font-medium">Funcionário adicionado com login gerado automaticamente.</p>
+            
+            <div className="bg-gray-100 p-3 rounded-md border border-gray-300">
+              <p className="font-semibold mb-1">Dados do login criado:</p>
+              <div className="space-y-1">
+                <p><span className="font-medium">Nome:</span> {data.nome || "Não informado"}</p>
+                <p><span className="font-medium">E-mail (usuário):</span> {data.email || "Não gerado"}</p>
+                <p className="font-bold text-blue-700">
+                  <span className="font-medium">Senha temporária:</span> {senhaGerada}
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-gray-600 mt-2">
+              Copie a senha e envie ao funcionário imediatamente. Ele deve trocar no primeiro acesso.
+            </p>
+          </div>
+        ),
+        duration: 30000, // tempo suficiente para copiar
+        action: {
+          label: "Copiar senha",
+          onClick: () => {
+            navigator.clipboard.writeText(senhaGerada);
+            toast("Senha copiada para a área de transferência!");
+          },
+        },
+      });
+
+      // Redireciona automaticamente após 2 segundos
+      setTimeout(() => {
+        router.push("/funcionario");
+      }, 2000);
+
+    } catch (error: any) {
+      console.error("[Criar Funcionário + Login Auto] Erro:", error);
+      toast.error("Erro ao criar funcionário", {
+        description: error.response?.data?.error ||
+                      error.response?.data?.details?.[0]?.message ||
+                      error.message ||
+                      "Verifique os dados e tente novamente",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <div className="p-4 lg:p-8 max-w-4xl mx-auto">
+    <div className="p-4 lg:p-8 max-w-4xl mx-auto space-y-8">
+      {/* Cabeçalho */}
       <div className="flex items-center gap-4 mb-8">
         <Button variant="ghost" size="icon" asChild>
-          <Link href={`/funcionario`}>
+          <Link href="/funcionario">
             <ChevronLeft className="h-5 w-5" />
           </Link>
         </Button>
         <div>
           <h1 className="text-3xl font-bold">Novo Funcionário</h1>
-          <p className="text-gray-600">Adicione um novo membro à equipe + crie seu login</p>
+          <p className="text-gray-600">Preencha os dados do funcionário</p>
         </div>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <UserPlus className="h-6 w-6 text-orange-600" />
-            Dados do Funcionário e Login
-          </CardTitle>
+          <CardTitle className="text-2xl">Dados do Funcionário</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            {/* Dados do Funcionário */}
-            <div className="space-y-4 border-b pb-4">
-              <h3 className="text-lg font-semibold">Informações Pessoais</h3>
-
-              <div className="space-y-2">
-                <Label htmlFor="nome">Nome completo *</Label>
-                <Input id="nome" placeholder="Mariana Costa" {...register("nome")} />
-                {errors.nome && <p className="text-sm text-red-600">{errors.nome.message}</p>}
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="telefone">Telefone</Label>
-                  <InputTelefone id="telefone" placeholder="(81) 99999-8888" {...register("telefone")} />
-                  {errors.telefone && <p className="text-sm text-red-600">{errors.telefone.message}</p>}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="cargo">Cargo *</Label>
-                  <Controller
-                    name="cargo"
-                    control={control}
-                    render={({ field }) => (
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o cargo" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="PROFESSOR">Professor</SelectItem>
-                          <SelectItem value="RECEPCAO">Recepção</SelectItem>
-                          <SelectItem value="ADMINISTRATIVO">Administrativo</SelectItem>
-                          <SelectItem value="TREINADOR">Treinador</SelectItem>
-                          <SelectItem value="GERENTE">Gerente</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    )}
-                  />
-                  {errors.cargo && <p className="text-sm text-red-600">{errors.cargo.message}</p>}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="observacoes">Observações</Label>
-                <Textarea
-                  id="observacoes"
-                  placeholder="Horário de trabalho, especialidade, etc..."
-                  className="resize-none"
-                  rows={4}
-                  {...register("observacoes")}
-                />
-              </div>
+            {/* Nome Completo */}
+            <div className="space-y-2">
+              <Label htmlFor="nome">Nome completo *</Label>
+              <Input id="nome" placeholder="Lucas Silva Santos" {...register("nome")} />
+              {errors.nome && <p className="text-sm text-red-600">{errors.nome.message}</p>}
             </div>
 
-            {/* Dados do Login */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold flex items-center gap-2">
-                <Lock className="h-5 w-5 text-green-600" />
-                Acesso ao Sistema (Login)
-              </h3>
+            {/* Cargo */}
+            <div className="space-y-2">
+              <Label htmlFor="cargo">Cargo *</Label>
+              <Controller
+                name="cargo"
+                control={control}
+                render={({ field }) => (
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o cargo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="PROFESSOR">Professor</SelectItem>
+                      <SelectItem value="RECEPCAO">Recepção</SelectItem>
+                      <SelectItem value="ADMINISTRATIVO">Administrativo</SelectItem>
+                      <SelectItem value="TREINADOR">Treinador</SelectItem>
+                      <SelectItem value="GERENTE">Gerente</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {errors.cargo && <p className="text-sm text-red-600">{errors.cargo.message}</p>}
+            </div>
 
-             <div className="space-y-2">
-                <Label htmlFor="email">E-mail *</Label>
+            {/* Salário */}
+            <div className="space-y-2">
+              <Label htmlFor="salario">Salário (opcional)</Label>
+              <Input
+                id="salario"
+                type="number"
+                step="0.01"
+                placeholder="R$ 3.500,00"
+                {...register("salario", { valueAsNumber: true })}
+              />
+              {errors.salario && <p className="text-sm text-red-600">{errors.salario.message}</p>}
+            </div>
+
+            {/* Telefone */}
+            <div className="space-y-2">
+              <Label htmlFor="telefone">Telefone</Label>
+              <InputTelefone id="telefone" placeholder="(81) 99999-8888" {...register("telefone")} />
+              {errors.telefone && <p className="text-sm text-red-600">{errors.telefone.message}</p>}
+            </div>
+
+            {/* E-mail (obrigatório para login) */}
+            <div className="space-y-2">
+              <Label htmlFor="email">E-mail *</Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
                 <Input
                   id="email"
                   type="email"
                   placeholder="funcionario@escolinha.com"
+                  className="pl-12 h-12"
                   {...register("email", {
-                    // Transforma em minúsculo AO DIGITAR (melhor UX)
                     onChange: (e) => {
-                      e.target.value = e.target.value.toLowerCase();
-                      setValue("email", e.target.value); // atualiza o valor no form
+                      const lower = e.target.value.toLowerCase();
+                      e.target.value = lower;
+                      setValue("email", lower);
                     },
                   })}
                 />
-                {errors.email && <p className="text-sm text-red-600">{errors.email.message}</p>}
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="password">Senha *</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Mínimo 6 caracteres"
-                  {...register("password")}
-                />
-                {errors.password && <p className="text-sm text-red-600">{errors.password.message}</p>}
-              </div>
+              {errors.email && <p className="text-sm text-red-600">{errors.email.message}</p>}
+              <p className="text-xs text-gray-500">O login será criado automaticamente e a senha gerada será exibida após o cadastro</p>
             </div>
 
-            <div className="flex gap-4 pt-6">
-              <Button
-                type="submit"
-                disabled={isSubmitting || createMutation.isPending}
-                className="flex-1 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700"
+            {/* Observações */}
+            <div className="space-y-2">
+              <Label htmlFor="observacoes">Observações</Label>
+              <Textarea
+                id="observacoes"
+                placeholder="Horário de trabalho, especialidade, etc..."
+                className="resize-none"
+                rows={4}
+                {...register("observacoes")}
+              />
+            </div>
+
+            {/* Botões */}
+            <div className="flex flex-col sm:flex-row gap-4 pt-6">
+              <Button 
+                type="submit" 
+                disabled={isSubmitting} 
+                className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
               >
-                {isSubmitting || createMutation.isPending ? (
+                {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Cadastrando...
+                    Criando funcionário...
                   </>
                 ) : (
-                  <>
-                    <Save className="mr-2 h-4 w-4" />
-                    Cadastrar Funcionário + Login
-                  </>
+                  "Criar Funcionário"
                 )}
               </Button>
-
-              <Button type="button" variant="outline" asChild>
-                <Link href={`/funcionario`}>Cancelar</Link>
+              <Button type="button" variant="outline" asChild className="flex-1">
+                <Link href="/funcionario">Cancelar</Link>
               </Button>
             </div>
           </form>
         </CardContent>
       </Card>
+
+      <Toaster position="top-right" richColors closeButton />
     </div>
   );
 };
 
 export default NovoFuncionarioPage;
-
-function setValue(arg0: string, value: any) {
-  throw new Error("Function not implemented.");
-}

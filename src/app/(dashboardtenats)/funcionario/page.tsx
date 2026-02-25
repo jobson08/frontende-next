@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/ca
 import { Badge } from "@/src/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/src/components/ui/avatar";
 import { toast } from "sonner";
-import CreateLoginModal from "@/src/components/common/CreateLoginModal";
+
 
 interface Funcionario {
   id: string;
@@ -135,40 +135,12 @@ const FuncionariosPage = () => {
                       Ver detalhes
                     </Link>
                   </Button>
-                  {!f.email ? (
-                    <Button
-                      size="sm"
-                      className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-medium shadow-lg"
-                      onClick={() => setOpenModalId(f.id)}
-                    >
-                      Criar login
-                    </Button>
-                  ) : (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="border-orange-500 text-orange-600 hover:bg-orange-50"
-                      onClick={() => setOpenModalId(f.id)}
-                    >
-                      Editar login
-                    </Button>
-                  )}
                 </div>
               </CardContent>
             </Card>
           ))
         )}
       </div>
-
-      {/* Modal */}
-      {openModalId && (
-        <CreateLoginModal
-          name={filtered.find(f => f.id === openModalId)?.nome || ""}
-          currentEmail={filtered.find(f => f.id === openModalId)?.email || null}
-          open={!!openModalId}
-          onOpenChange={(open) => !open && setOpenModalId(null)}
-        />
-      )}
     </div>
   );
 };
