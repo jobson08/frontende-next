@@ -491,8 +491,8 @@ const ClientesCrossFitPage = () => {
 
                     {/* Status (sempre visível) */}
                     <TableCell>
-                      <Badge variant={aluno.status === "ativo" ? "default" : "destructive"}>
-                        {aluno.status === "ativo" ? "Ativo" : "Inativo"}
+                      <Badge variant={aluno.status === "ATIVO" ? "default" : "destructive"}>
+                        {aluno.status === "ATIVO" ? "ATIVO" : "Inativo"}
                       </Badge>
                     </TableCell>
 

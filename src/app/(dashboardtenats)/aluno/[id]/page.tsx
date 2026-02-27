@@ -302,13 +302,11 @@ if (isLoading || isLoadingPagamentos) {
 
               {/* Botão Gerar Pagamento - só aparece se ATIVO */}
               {podeGerarPagamento && (
-                <Button
-                  size="lg"
-                  className="bg-green-600 hover:bg-green-700"
-                  onClick={() => setPagamentoModalOpen(true)}
-                >
-                  <DollarSign className="mr-2 h-5 w-5" />
-                  Gerar Pagamento
+                <Button size="lg" asChild className="bg-gradient-to-r lg from-green-600 to-emerald-600">
+                  <Link href={`/aluno/${aluno.id}/pagamentos`}>
+                  <DollarSign className="mr-2 h-2 w-2" />
+                      Gerar Mensalidade
+                  </Link>
                 </Button>
               )}
             </div>
@@ -321,7 +319,7 @@ if (isLoading || isLoadingPagamentos) {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <UserCheck className="h-5 w-5" />
+              <UserCheck className="h-2 w-2" />
               Dados Pessoais
             </CardTitle>
           </CardHeader>

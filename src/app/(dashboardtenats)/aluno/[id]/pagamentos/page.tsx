@@ -30,7 +30,7 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
-export default function NovoPagamentoCrossfit() {
+export default function NovoPagamentoAlunoFutebol() {
   const { id } = useParams();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -60,11 +60,11 @@ export default function NovoPagamentoCrossfit() {
 
       console.log("Payload enviado (mês calculado automaticamente):", payload);
 
-      return api.post(`/tenant/alunos-crossfit/${id}/mensalidades/manual`, payload);
+      return api.post(`/tenant/alunos/${id}/pagamentos`, payload);
     },
     onSuccess: () => {
       toast.success("Mensalidade manual criada com sucesso!");
-      queryClient.invalidateQueries({ queryKey: ["aluno-crossfit-pagamentos", id] });
+      queryClient.invalidateQueries({ queryKey: ["pagamentos-aluno", id] });
       setTimeout(() => router.back(), 1500);
     },
     onError: (err: any) => {
@@ -79,7 +79,7 @@ export default function NovoPagamentoCrossfit() {
 <div className="p-4 lg:p-8 max-w-4xl mx-auto space-y-8">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild>
-          <Link href={`/crossfit/${id}/pagamentos`}>
+          <Link href={`/aluno/${id}/pagamentos`}>
             <ChevronLeft className="h-5 w-5" />
           </Link>
         </Button>
