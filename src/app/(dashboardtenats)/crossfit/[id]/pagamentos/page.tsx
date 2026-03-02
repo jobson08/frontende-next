@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/app/(dashboard)/crossfit/[id]/pagamentos/page.tsx
 "use client";
 
@@ -10,8 +11,10 @@ import {
   AlertCircle,
   ArrowLeft,
   Loader2,
+  Trash2,
+  MoreVertical,
 } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   Card,
@@ -29,8 +32,25 @@ import {
   TableHeader,
   TableRow,
 } from "@/src/components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/src/components/ui/dropdown-menu";
 import Link from "next/link";
 import api from "@/src/lib/api";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/src/components/ui/alert-dialog";
+import { useState } from "react";
 
 interface Mensalidade {
   id: string;
@@ -53,6 +73,11 @@ interface AlunoCrossfit {
 const VerPagamentosCrossFitPage = () => {
   const { id } = useParams();
   const alunoId = id as string;
+  const queryClient = useQueryClient();
+
+  // Estados para exclusão
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [pagamentoToDelete, setPagamentoToDelete] = useState<string | null>(null);
 
   // Busca aluno + mensalidades
   const { data: aluno, isLoading, error } = useQuery<AlunoCrossfit>({
@@ -63,6 +88,37 @@ const VerPagamentosCrossFitPage = () => {
     },
     enabled: !!alunoId,
   });
+
+// Mutation para deletar pagamento
+  const deletarPagamentoMutation = useMutation({
+    mutationFn: async (pagamentoId: string) => {
+      await api.delete(`/tenant/alunos-crossfit/${alunoId}/pagamentos/${pagamentoId}`);
+    },
+    onSuccess: () => {
+      toast.success("Pagamento excluído com sucesso!");
+      queryClient.invalidateQueries({ queryKey: ["aluno-crossfit-pagamentos", alunoId] });
+    },
+    onError: (err: any) => {
+      toast.error("Erro ao excluir pagamento", {
+        description: err.response?.data?.error || "Tente novamente",
+      });
+    },
+  });
+
+  // Função para abrir confirmação de exclusão
+  const handleDeleteClick = (pagamentoId: string) => {
+    setPagamentoToDelete(pagamentoId);
+    setDeleteDialogOpen(true);
+  };
+
+  // Função para confirmar exclusão
+  const confirmDelete = () => {
+    if (pagamentoToDelete) {
+      deletarPagamentoMutation.mutate(pagamentoToDelete);
+    }
+    setDeleteDialogOpen(false);
+    setPagamentoToDelete(null);
+  };
 
   // Calcula resumo
   const mensalidades = aluno?.mensalidades || [];
@@ -183,18 +239,18 @@ const VerPagamentosCrossFitPage = () => {
         </Card>
       </div>
 
-      {/* Tabela de Histórico */}
+    {/* Tabela de Histórico */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
+            <CardTitle>Histórico de Mensalidades</CardTitle>
             <Button asChild className="bg-gradient-to-r from-green-600 to-emerald-600">
-            <Link href={`/crossfit/${aluno.id}/pagamentos/novo`}>
-              <DollarSign className="mr-2 h-4 w-4" />
-              Gerar Mensalidade Manual
-            </Link>
-          </Button>
+              <Link href={`/crossfit/${aluno.id}/pagamentos/novo`}>
+                <DollarSign className="mr-2 h-4 w-4" />
+                Gerar Mensalidade Manual
+              </Link>
+            </Button>
           </div>
-          <CardTitle>Histórico de Mensalidades</CardTitle>
         </CardHeader>
         <CardContent>
           {mensalidades.length === 0 ? (
@@ -211,6 +267,7 @@ const VerPagamentosCrossFitPage = () => {
                   <TableHead>Valor</TableHead>
                   <TableHead>Método</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -227,6 +284,27 @@ const VerPagamentosCrossFitPage = () => {
                     </TableCell>
                     <TableCell>{m.metodoPagamento || "-"}</TableCell>
                     <TableCell>{getStatusBadge(m.status)}</TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {/* Botão Excluir - só para pendente */}
+                          {m.status === "pendente" && (
+                            <DropdownMenuItem 
+                              className="text-red-600 hover:text-red-700 cursor-pointer"
+                              onClick={() => handleDeleteClick(m.id)}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Excluir
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -234,6 +312,35 @@ const VerPagamentosCrossFitPage = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* AlertDialog de confirmação de exclusão */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Pagamento</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir este pagamento? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              className="bg-red-600 hover:bg-red-700"
+              onClick={confirmDelete}
+              disabled={deletarPagamentoMutation.isPending}
+            >
+              {deletarPagamentoMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Excluindo...
+                </>
+              ) : (
+                "Excluir"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

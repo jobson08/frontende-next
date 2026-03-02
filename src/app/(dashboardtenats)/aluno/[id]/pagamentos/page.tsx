@@ -79,7 +79,7 @@ export default function NovoPagamentoAlunoFutebol() {
 <div className="p-4 lg:p-8 max-w-4xl mx-auto space-y-8">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild>
-          <Link href={`/aluno/${id}/pagamentos`}>
+          <Link href={`/aluno/${id}`}>
             <ChevronLeft className="h-5 w-5" />
           </Link>
         </Button>
@@ -125,14 +125,14 @@ export default function NovoPagamentoAlunoFutebol() {
             </div>
 
             {/* Mostra o mês calculado para o usuário confirmar */}
-            <div className="bg-gray-100 p-4 rounded-md">
+          {/*  <div className="bg-gray-100 p-4 rounded-md">
               <p className="text-sm font-medium">
                 Mês de referência calculado automaticamente: <br/>
                 <span className="text-lg font-bold">
                   {format(new Date(mesReferenciaCalculado), "MMMM 'de' yyyy", { locale: ptBR })}
                 </span>
               </p>
-            </div>
+            </div> */}
 
             <div className="flex gap-4 pt-6">
               <Button
@@ -151,7 +151,7 @@ export default function NovoPagamentoAlunoFutebol() {
               </Button>
 
               <Button type="button" variant="outline" asChild className="flex-1">
-                <Link href={`/crossfit/${id}/pagamentos`}>Cancelar</Link>
+                <Link href={`/aluno/${id}/pagamentos`}>Cancelar</Link>
               </Button>
             </div>
           </form>

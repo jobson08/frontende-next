@@ -54,6 +54,7 @@ import {
   DollarSign,
   CheckCircle,
   MoreVertical,
+  Trash2,
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -138,10 +139,13 @@ const AlunoDetalhePage = () => {
   const [gerarProximo, setGerarProximo] = useState(true);
   const [mesReferenciaInput, setMesReferenciaInput] = useState(format(new Date(), 'yyyy-MM')); // ex: "2026-02"
 
-
 // Paginação da tabela de pagamentos
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  // Estados para exclusão
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [pagamentoToDelete, setPagamentoToDelete] = useState<string | null>(null);
 
   // Busca detalhes do aluno
   const { data: aluno, isLoading, error } = useQuery<AlunoDetalhe>({
@@ -153,6 +157,18 @@ const AlunoDetalhePage = () => {
     enabled: !!id,
   });
 
+  // Busca histórico de pagamentos do aluno ← ESSA É A LINHA QUE DEFINE "pagamentos"
+const { 
+  data: pagamentos = [], 
+  isLoading: isLoadingPagamentos 
+} = useQuery<PagamentoAluno[]>({
+  queryKey: ["pagamentos-aluno", id],
+  queryFn: async () => {
+    const res = await api.get(`/tenant/alunos/${id}/pagamentos`);
+    return res.data.data || [];
+  },
+  enabled: !!id,
+});
 
   // Mutation para criar pagamento
 const criarPagamentoMutation = useMutation({
@@ -196,18 +212,38 @@ const criarPagamentoMutation = useMutation({
   },
 });
 
-// Busca histórico de pagamentos do aluno ← ESSA É A LINHA QUE DEFINE "pagamentos"
-const { 
-  data: pagamentos = [], 
-  isLoading: isLoadingPagamentos 
-} = useQuery<PagamentoAluno[]>({
-  queryKey: ["pagamentos-aluno", id],
-  queryFn: async () => {
-    const res = await api.get(`/tenant/alunos/${id}/pagamentos`);
-    return res.data.data || [];
+// Mutation para deletar pagamento
+const deletarPagamentoMutation = useMutation({
+ mutationFn: async (pagamentoId: string) => {
+    // Caminho correto baseado no seu padrão: /alunos/:alunoId/pagamentos/:pagamentoId
+    await api.delete(`/tenant/alunos/${id}/pagamentos/${pagamentoId}`);
   },
-  enabled: !!id,
+  onSuccess: () => {
+    toast.success("Pagamento excluído com sucesso!");
+    queryClient.invalidateQueries({ queryKey: ["pagamentos-aluno", id] });
+  },
+  onError: (err: any) => {
+    console.error("Erro ao excluir:", err);
+    toast.error("Erro ao excluir pagamento", {
+      description: err.response?.data?.error || err.message || "Verifique se o pagamento existe e está pendente",
+    });
+  },
 });
+
+  // Função para abrir diálogo de exclusão
+  const handleDeleteClick = (pagamentoId: string) => {
+    setPagamentoToDelete(pagamentoId);
+    setDeleteDialogOpen(true);
+  };
+
+  // Função para confirmar exclusão
+ const confirmDelete = () => {
+if (pagamentoToDelete) {
+    deletarPagamentoMutation.mutate(pagamentoToDelete);  // só passa o pagamentoId
+  }
+  setDeleteDialogOpen(false);
+  setPagamentoToDelete(null);
+};
 
   // Agora sim: lógica de paginação DEPOIS da query
   const totalPagamentos = pagamentos.length;
@@ -299,16 +335,6 @@ if (isLoading || isLoadingPagamentos) {
                   Editar Aluno
                 </Link>
               </Button>
-
-              {/* Botão Gerar Pagamento - só aparece se ATIVO */}
-              {podeGerarPagamento && (
-                <Button size="lg" asChild className="bg-gradient-to-r lg from-green-600 to-emerald-600">
-                  <Link href={`/aluno/${aluno.id}/pagamentos`}>
-                  <DollarSign className="mr-2 h-2 w-2" />
-                      Gerar Mensalidade
-                  </Link>
-                </Button>
-              )}
             </div>
           </div>
         </CardContent>
@@ -410,6 +436,17 @@ if (isLoading || isLoadingPagamentos) {
 {/* Histórico de Pagamentos - agora usa a variável correta */}
       <Card>
         <CardHeader>
+          {/* Botão Gerar Pagamento - só aparece se ATIVO */}
+            <div className="ml-auto flex gap-3">
+              {podeGerarPagamento && (
+                <Button size="lg" asChild className="bg-gradient-to-r lg from-green-600 to-emerald-600">
+                  <Link href={`/aluno/${aluno.id}/pagamentos`}>
+                  <DollarSign className="mr-2 h-2 w-2" />
+                      Gerar Mensalidade
+                  </Link>
+                </Button>
+              )}
+            </div>
           <CardTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <DollarSign className="h-5 w-5 text-green-600" />
@@ -476,29 +513,41 @@ if (isLoading || isLoadingPagamentos) {
                           {p.status}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem asChild>
-                              <Link href={`/pagamento/${p.id}`}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                Ver detalhes
-                              </Link>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem asChild>
+                            <Link href={`/pagamento/${p.id}`}>
+                              <Edit className="mr-2 h-4 w-4" />
+                              Ver detalhes
+                            </Link>
+                          </DropdownMenuItem>
+
+                          {p.status !== "PAGO" && (
+                            <DropdownMenuItem className="text-green-600 focus:text-green-600">
+                              <CheckCircle className="mr-2 h-4 w-4" />
+                              Marcar como pago
                             </DropdownMenuItem>
-                            {p.status !== "PAGO" && (
-                              <DropdownMenuItem className="text-green-600 focus:text-green-600">
-                                <CheckCircle className="mr-2 h-4 w-4" />
-                                Marcar como pago
-                              </DropdownMenuItem>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
+                          )}
+
+                          {/* Botão Excluir - só aparece se status PENDENTE */}
+                          {p.status !== "PAGO" && (
+                            <DropdownMenuItem 
+                              className="text-red-600 focus:text-red-600 cursor-pointer"
+                              onClick={() => handleDeleteClick(p.id)}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" /> {/* Ícone de lixeira */}
+                              Excluir
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -625,6 +674,35 @@ if (isLoading || isLoadingPagamentos) {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/*Modal Confirmação de Exclusão */}
+          <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Excluir Pagamento</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Tem certeza que deseja excluir este pagamento? Esta ação não pode ser desfeita.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction 
+                  className="bg-red-600 hover:bg-red-700"
+                  onClick={confirmDelete}
+                  disabled={deletarPagamentoMutation.isPending}
+                >
+                  {deletarPagamentoMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Excluindo...
+                    </>
+                  ) : (
+                    "Excluir"
+                  )}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
     </div>
   );
 };
