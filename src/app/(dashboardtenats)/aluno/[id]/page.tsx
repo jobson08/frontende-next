@@ -212,6 +212,22 @@ const criarPagamentoMutation = useMutation({
   },
 });
 
+// Mutation para marcar pagamento como pago (reutiliza o endpoint existente)
+const marcarComoPagoMutation = useMutation({
+  mutationFn: async ({ pagamentoId, metodo }: { pagamentoId: string; metodo: string }) => {
+    await api.put(`/tenant/pagamentos/${pagamentoId}/marcar-pago`, { metodo });
+  },
+  onSuccess: () => {
+    toast.success("Pagamento lançado/marcado como pago com sucesso!");
+    queryClient.invalidateQueries({ queryKey: ["pagamentos-aluno", id] });
+  },
+  onError: (err: any) => {
+    toast.error("Erro ao lançar pagamento", {
+      description: err.response?.data?.error || "Tente novamente",
+    });
+  },
+});
+
 // Mutation para deletar pagamento
 const deletarPagamentoMutation = useMutation({
  mutationFn: async (pagamentoId: string) => {
@@ -256,6 +272,28 @@ if (pagamentoToDelete) {
     setItemsPerPage(value);
     setCurrentPage(1);
   };
+
+  // Estado para o modal de escolha de método
+const [markPaidOpen, setMarkPaidOpen] = useState(false);
+const [pagamentoToMark, setPagamentoToMark] = useState<string | null>(null);
+const [metodoSelecionado, setMetodoSelecionado] = useState("DINHEIRO");
+
+const handleMarkAsPaidClick = (pagamentoId: string) => {
+  setPagamentoToMark(pagamentoId);
+  setMetodoSelecionado("DINHEIRO"); // valor padrão
+  setMarkPaidOpen(true);
+};
+
+const confirmMarkAsPaid = () => {
+  if (pagamentoToMark) {
+    marcarComoPagoMutation.mutate({
+      pagamentoId: pagamentoToMark,
+      metodo: metodoSelecionado,
+    });
+  }
+  setMarkPaidOpen(false);
+  setPagamentoToMark(null);
+};
 
 if (isLoading || isLoadingPagamentos) {
     return (
@@ -528,15 +566,19 @@ if (isLoading || isLoadingPagamentos) {
                             </Link>
                           </DropdownMenuItem>
 
-                          {p.status !== "PAGO" && (
-                            <DropdownMenuItem className="text-green-600 focus:text-green-600">
-                              <CheckCircle className="mr-2 h-4 w-4" />
-                              Marcar como pago
-                            </DropdownMenuItem>
-                          )}
+                           {/* Botão Marcar como pago - aparece para PENDENTE ou ATRASADO */}
+                              {(p.status === "PENDENTE" || p.status === "ATRASADO") && (
+                                <DropdownMenuItem 
+                                  className="text-green-600 focus:text-green-600 cursor-pointer"
+                                  onClick={() => handleMarkAsPaidClick(p.id)}
+                                >
+                                  <CheckCircle className="mr-2 h-4 w-4" />
+                                  Lançar/Marcar como pago
+                                </DropdownMenuItem>
+                              )}
 
                           {/* Botão Excluir - só aparece se status PENDENTE */}
-                          {p.status !== "PAGO" && (
+                          {p.status === "PENDENTE" && (
                             <DropdownMenuItem 
                               className="text-red-600 focus:text-red-600 cursor-pointer"
                               onClick={() => handleDeleteClick(p.id)}
@@ -674,6 +716,57 @@ if (isLoading || isLoadingPagamentos) {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/*Modal lançar pagamento */}   
+
+        <AlertDialog open={markPaidOpen} onOpenChange={setMarkPaidOpen}>
+          <AlertDialogContent className="max-w-md">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5 text-green-600" />
+                Lançar Pagamento
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                Marcar este pagamento como pago. Escolha o método utilizado.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+
+            <div className="py-6">
+              <Label htmlFor="metodo">Método de Pagamento</Label>
+              <Select value={metodoSelecionado} onValueChange={setMetodoSelecionado}>
+                <SelectTrigger id="metodo" className="mt-2">
+                  <SelectValue placeholder="Selecione o método" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="DINHEIRO">Dinheiro</SelectItem>
+                  <SelectItem value="PIX">PIX</SelectItem>
+                  <SelectItem value="CARTAO">Cartão</SelectItem>
+                  <SelectItem value="TRANSFERENCIA">Transferência</SelectItem>
+                  <SelectItem value="BOLETO">Boleto</SelectItem>
+                  <SelectItem value="OUTRO">Outro</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-green-600 hover:bg-green-700"
+                onClick={confirmMarkAsPaid}
+                disabled={marcarComoPagoMutation.isPending}
+              >
+                {marcarComoPagoMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Marcando...
+                  </>
+                ) : (
+                  "Confirmar"
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>     
 
         {/*Modal Confirmação de Exclusão */}
           <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

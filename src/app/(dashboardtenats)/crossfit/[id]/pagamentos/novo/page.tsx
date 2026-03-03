@@ -125,7 +125,7 @@ export default function NovoPagamentoCrossfit() {
             </div>
 
             {/* Mostra o mês calculado para o usuário confirmar */}
-            <div className="bg-gray-100 p-4 rounded-md">
+          {/*  <div className="bg-gray-100 p-4 rounded-md">
               <p className="text-sm font-medium">
                 Mês de referência calculado automaticamente: <br/>
                 <span className="text-lg font-bold">
@@ -133,7 +133,7 @@ export default function NovoPagamentoCrossfit() {
                 </span>
               </p>
             </div>
-
+            */}
             <div className="flex gap-4 pt-6">
               <Button
                 type="submit"

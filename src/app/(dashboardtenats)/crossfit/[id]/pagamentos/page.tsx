@@ -38,6 +38,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/src/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/src/components/ui/select";
 import Link from "next/link";
 import api from "@/src/lib/api";
 import {
@@ -51,13 +58,14 @@ import {
   AlertDialogTitle,
 } from "@/src/components/ui/alert-dialog";
 import { useState } from "react";
+import { Label } from "@radix-ui/react-label";
 
 interface Mensalidade {
   id: string;
   dataVencimento: string;
   dataPagamento: string | null;
   valor: number;
-  status: "pago" | "atrasado" | "pendente";
+  status: "PAGO" | "ATRASADO" | "PENDENTE";
   metodoPagamento: string | null;
 }
 
@@ -66,8 +74,8 @@ interface AlunoCrossfit {
   nome: string;
   email: string;
   mensalidades: Mensalidade[];
-  valorMensalAtual?: number; // opcional, se você tiver esse campo no backend
-  planoAtual?: string;       // opcional
+  valorMensalAtual?: number;
+  planoAtual?: string;
 }
 
 const VerPagamentosCrossFitPage = () => {
@@ -79,6 +87,11 @@ const VerPagamentosCrossFitPage = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [pagamentoToDelete, setPagamentoToDelete] = useState<string | null>(null);
 
+  // Estados para lançar/marcar como pago
+  const [markPaidOpen, setMarkPaidOpen] = useState(false);
+  const [pagamentoToMark, setPagamentoToMark] = useState<string | null>(null);
+  const [metodoSelecionado, setMetodoSelecionado] = useState("DINHEIRO");
+
   // Busca aluno + mensalidades
   const { data: aluno, isLoading, error } = useQuery<AlunoCrossfit>({
     queryKey: ["aluno-crossfit-pagamentos", alunoId],
@@ -89,23 +102,39 @@ const VerPagamentosCrossFitPage = () => {
     enabled: !!alunoId,
   });
 
-// Mutation para deletar pagamento
-const deletarPagamentoMutation = useMutation({
-  mutationFn: async (pagamentoId: string) => {
-    await api.delete(`/tenant/alunos-crossfit/${id}/mensalidades/${pagamentoId}`);
-  },
-  onSuccess: () => {
-    toast.success("Pagamento excluído com sucesso!");
-    queryClient.invalidateQueries({ queryKey: ["aluno-crossfit-pagamentos", id] });
-  },
-  onError: (err: any) => {
-    toast.error("Erro ao excluir pagamento", {
-      description: err.response?.data?.error || "Tente novamente",
-    });
-  },
-});
+  // Mutation para marcar como pago (reutiliza o endpoint que já existe)
+  const marcarComoPagoMutation = useMutation({
+    mutationFn: async ({ pagamentoId, metodo }: { pagamentoId: string; metodo: string }) => {
+      await api.put(`/tenant/pagamentos/${pagamentoId}/marcar-pago`, { metodo });
+    },
+    onSuccess: () => {
+      toast.success("Pagamento lançado/marcado como pago com sucesso!");
+      queryClient.invalidateQueries({ queryKey: ["aluno-crossfit-pagamentos", alunoId] });
+    },
+    onError: (err: any) => {
+      toast.error("Erro ao lançar pagamento", {
+        description: err.response?.data?.error || "Tente novamente",
+      });
+    },
+  });
 
-  // Função para abrir confirmação de exclusão
+  // Mutation para deletar pagamento
+  const deletarPagamentoMutation = useMutation({
+    mutationFn: async (pagamentoId: string) => {
+      await api.delete(`/alunos-crossfit/${alunoId}/mensalidades/${pagamentoId}`);
+    },
+    onSuccess: () => {
+      toast.success("Pagamento excluído com sucesso!");
+      queryClient.invalidateQueries({ queryKey: ["aluno-crossfit-pagamentos", alunoId] });
+    },
+    onError: (err: any) => {
+      toast.error("Erro ao excluir pagamento", {
+        description: err.response?.data?.error || "Tente novamente",
+      });
+    },
+  });
+
+  // Função para abrir modal de exclusão
   const handleDeleteClick = (pagamentoId: string) => {
     setPagamentoToDelete(pagamentoId);
     setDeleteDialogOpen(true);
@@ -120,36 +149,43 @@ const deletarPagamentoMutation = useMutation({
     setPagamentoToDelete(null);
   };
 
+  // Função para abrir modal de marcar como pago
+  const handleMarkAsPaidClick = (pagamentoId: string) => {
+    setPagamentoToMark(pagamentoId);
+    setMetodoSelecionado("DINHEIRO"); // padrão
+    setMarkPaidOpen(true);
+  };
+
+  // Função para confirmar marcar como pago
+  const confirmMarkAsPaid = () => {
+    if (pagamentoToMark) {
+      marcarComoPagoMutation.mutate({
+        pagamentoId: pagamentoToMark,
+        metodo: metodoSelecionado,
+      });
+    }
+    setMarkPaidOpen(false);
+    setPagamentoToMark(null);
+  };
+
   // Calcula resumo
   const mensalidades = aluno?.mensalidades || [];
   const totalPago = mensalidades
-    .filter((m) => m.status === "pago")
+    .filter((m) => m.status === "PAGO")
     .reduce((acc, m) => acc + m.valor, 0);
 
   const totalAtrasado = mensalidades
-    .filter((m) => m.status === "atrasado" || m.status === "pendente")
+    .filter((m) => m.status === "ATRASADO" || m.status === "PENDENTE")
     .reduce((acc, m) => acc + m.valor, 0);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "pago":
-        return (
-          <Badge className="bg-green-600 flex items-center gap-1">
-            <CheckCircle className="h-3 w-3" /> Pago
-          </Badge>
-        );
-      case "atrasado":
-        return (
-          <Badge className="bg-red-600 flex items-center gap-1">
-            <AlertCircle className="h-3 w-3" /> Atrasado
-          </Badge>
-        );
-      case "pendente":
-        return (
-          <Badge className="bg-orange-600 flex items-center gap-1">
-            <Calendar className="h-3 w-3" /> Pendente
-          </Badge>
-        );
+      case "PAGO":
+        return <Badge className="bg-green-600 flex items-center gap-1"><CheckCircle className="h-3 w-3" /> Pago</Badge>;
+      case "ATRASADO":
+        return <Badge className="bg-red-600 flex items-center gap-1"><AlertCircle className="h-3 w-3" /> Atrasado</Badge>;
+      case "PENDENTE":
+        return <Badge className="bg-orange-600 flex items-center gap-1"><Calendar className="h-3 w-3" /> Pendente</Badge>;
       default:
         return <Badge variant="secondary">{status}</Badge>;
     }
@@ -239,7 +275,7 @@ const deletarPagamentoMutation = useMutation({
         </Card>
       </div>
 
-    {/* Tabela de Histórico */}
+      {/* Tabela de Histórico */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -292,8 +328,19 @@ const deletarPagamentoMutation = useMutation({
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          {/* Botão Lançar/Marcar como pago */}
+                          {(m.status === "PENDENTE" || m.status === "ATRASADO") && (
+                            <DropdownMenuItem 
+                              className="text-green-600 hover:text-green-700 cursor-pointer"
+                              onClick={() => handleMarkAsPaidClick(m.id)}
+                            >
+                              <CheckCircle className="mr-2 h-4 w-4" />
+                              Lançar/Marcar como pago
+                            </DropdownMenuItem>
+                          )}
+
                           {/* Botão Excluir - só para pendente */}
-                          {m.status === "pendente" && (
+                          {m.status === "PENDENTE" && (
                             <DropdownMenuItem 
                               className="text-red-600 hover:text-red-700 cursor-pointer"
                               onClick={() => handleDeleteClick(m.id)}
@@ -313,7 +360,7 @@ const deletarPagamentoMutation = useMutation({
         </CardContent>
       </Card>
 
-      {/* AlertDialog de confirmação de exclusão */}
+      {/* Modal Confirmação de Exclusão */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -336,6 +383,56 @@ const deletarPagamentoMutation = useMutation({
                 </>
               ) : (
                 "Excluir"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Modal Lançar/Marcar como Pago */}
+      <AlertDialog open={markPaidOpen} onOpenChange={setMarkPaidOpen}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <CheckCircle className="h-5 w-5 text-green-600" />
+              Lançar Pagamento
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Marcar esta mensalidade como paga. Escolha o método utilizado.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="py-6">
+            <Label htmlFor="metodo">Método de Pagamento</Label>
+            <Select value={metodoSelecionado} onValueChange={setMetodoSelecionado}>
+              <SelectTrigger id="metodo" className="mt-2">
+                <SelectValue placeholder="Selecione o método" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="DINHEIRO">Dinheiro</SelectItem>
+                <SelectItem value="PIX">PIX</SelectItem>
+                <SelectItem value="CARTAO">Cartão</SelectItem>
+                <SelectItem value="TRANSFERENCIA">Transferência</SelectItem>
+                <SelectItem value="BOLETO">Boleto</SelectItem>
+                <SelectItem value="OUTRO">Outro</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              className="bg-green-600 hover:bg-green-700"
+              onClick={confirmMarkAsPaid}
+              disabled={marcarComoPagoMutation.isPending}
+            >
+              {marcarComoPagoMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Marcando...
+                </>
+              ) : (
+                "Confirmar"
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
