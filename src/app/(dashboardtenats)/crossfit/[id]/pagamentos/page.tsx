@@ -90,20 +90,20 @@ const VerPagamentosCrossFitPage = () => {
   });
 
 // Mutation para deletar pagamento
-  const deletarPagamentoMutation = useMutation({
-    mutationFn: async (pagamentoId: string) => {
-      await api.delete(`/tenant/alunos-crossfit/${alunoId}/pagamentos/${pagamentoId}`);
-    },
-    onSuccess: () => {
-      toast.success("Pagamento excluído com sucesso!");
-      queryClient.invalidateQueries({ queryKey: ["aluno-crossfit-pagamentos", alunoId] });
-    },
-    onError: (err: any) => {
-      toast.error("Erro ao excluir pagamento", {
-        description: err.response?.data?.error || "Tente novamente",
-      });
-    },
-  });
+const deletarPagamentoMutation = useMutation({
+  mutationFn: async (pagamentoId: string) => {
+    await api.delete(`/tenant/alunos-crossfit/${id}/mensalidades/${pagamentoId}`);
+  },
+  onSuccess: () => {
+    toast.success("Pagamento excluído com sucesso!");
+    queryClient.invalidateQueries({ queryKey: ["aluno-crossfit-pagamentos", id] });
+  },
+  onError: (err: any) => {
+    toast.error("Erro ao excluir pagamento", {
+      description: err.response?.data?.error || "Tente novamente",
+    });
+  },
+});
 
   // Função para abrir confirmação de exclusão
   const handleDeleteClick = (pagamentoId: string) => {
