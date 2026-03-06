@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/app/(dashboard)/configuracoes/page.tsx
 "use client";
@@ -36,7 +37,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import api from "@/src/lib/api";
 import { useEscolinhaConfig } from "@/src/context/EscolinhaConfigContext";
 
-// Schemas Zod
+/// Schemas Zod
 const geralSchema = z.object({
   nomeEscolinha: z.string().min(3, "Nome da escolinha é obrigatório"),
   mensagemBoasVindas: z.string().optional(),
@@ -44,6 +45,14 @@ const geralSchema = z.object({
 
 const aulasExtrasSchema = z.object({
   ativarAulasExtras: z.boolean(),
+  aulas: z.array(
+    z.object({
+      nome: z.string().min(3),
+      valor: z.number().positive(),
+      duracao: z.string().min(1),
+      descricao: z.string().optional(),
+    })
+  ).optional().default([]),
 });
 
 const crossfitSchema = z.object({
@@ -86,14 +95,21 @@ export default function ConfiguracoesAdminPage() {
   const [isSaving, setIsSaving] = useState(false);
   const { refreshConfig } = useEscolinhaConfig();
 
+  const [novaAulaNome, setNovaAulaNome] = useState("");
+  const [novaAulaValor, setNovaAulaValor] = useState(0);
+  const [novaAulaDuracao, setNovaAulaDuracao] = useState("");
+  const [novaAulaDescricao, setNovaAulaDescricao] = useState("");
   // Formulários
   const geralForm = useForm<GeralFormData>({
     resolver: zodResolver(geralSchema),
   });
 
   const aulasExtrasForm = useForm<AulasExtrasForm>({
-    resolver: zodResolver(aulasExtrasSchema),
-    defaultValues: { ativarAulasExtras: false },
+    resolver: zodResolver(aulasExtrasSchema) as any, 
+    defaultValues: {
+      ativarAulasExtras: false,
+      aulas: [],
+    },
   });
 
   const crossfitForm = useForm<CrossfitForm>({
@@ -123,11 +139,12 @@ export default function ConfiguracoesAdminPage() {
 
         geralForm.reset({
           nomeEscolinha: config.nome || "Gol de Placa Academy",
-         
+          mensagemBoasVindas: config.mensagemBoasVindas || "",
         });
 
         aulasExtrasForm.reset({
           ativarAulasExtras: config.aulasExtrasAtivas ?? false,
+          aulas: config.aulasExtras || [], // ← supondo que o backend retorne a lista
         });
 
         crossfitForm.reset({
@@ -153,14 +170,7 @@ export default function ConfiguracoesAdminPage() {
         toast.success("Configurações carregadas!");
       } catch (err) {
         console.error("Erro ao carregar configs:", err);
-        toast.error("Falha ao carregar configurações", {
-          description: "Usando valores padrão",
-        });
-
-        geralForm.reset({ nomeEscolinha: "Gol de Placa Academy", mensagemBoasVindas: "" });
-        aulasExtrasForm.reset({ ativarAulasExtras: false });
-        crossfitForm.reset({ ativarCrossfit: false, mostrarNavbar: false, mostrarSidebar: false });
-        pagamentoForm.reset({ gateway: "nenhum" });
+        toast.error("Falha ao carregar configurações");
       } finally {
         setIsLoading(false);
       }
@@ -175,7 +185,7 @@ export default function ConfiguracoesAdminPage() {
     try {
       await api.put("/tenant/config/geral", data);
       toast.success("Geral salvo!");
-      window.location.reload(); // recarrega tudo forçado
+      await refreshConfig(); // atualiza navbar/sidebar
     } catch (err: any) {
       toast.error("Erro ao salvar geral", { description: err.response?.data?.error });
     } finally {
@@ -183,69 +193,59 @@ export default function ConfiguracoesAdminPage() {
     }
   };
 
-const salvarAulasExtras = async () => {  // ← sem parâmetro (data)
-  setIsSaving(true);
-  try {
-    // Sempre pega os valores ATUAIS do form no momento do clique
-    const currentData = aulasExtrasForm.getValues();
+  const salvarAulasExtras = async () => {
+    setIsSaving(true);
+    try {
+      const currentData = aulasExtrasForm.getValues();
 
-    // Log para debug (remova depois)
-    console.log('PAYLOAD ENVIADO PARA AULAS EXTRAS:', currentData);
+      console.log('PAYLOAD ENVIADO PARA AULAS EXTRAS:', currentData);
 
-    await api.put("/tenant/config/aulas-extras", currentData);
+      await api.put("/tenant/config/aulas-extras", currentData);
+      toast.success("Aulas extras salvas!");
 
-    toast.success("Aulas extras salvas!");
+      await refreshConfig();
 
-    // Atualiza o contexto global → navbar/sidebar reagem imediatamente
-    await refreshConfig();
+      aulasExtrasForm.reset(currentData);
+      aulasExtrasForm.trigger();
+    } catch (err: any) {
+      console.error('ERRO AO SALVAR AULAS EXTRAS:', err.response?.data || err.message);
+      toast.error("Erro ao salvar aulas extras", {
+        description: err.response?.data?.error || "Tente novamente",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
-    // Reseta o form com os valores que acabaram de ser enviados
-    aulasExtrasForm.reset(currentData);
+  const salvarCrossfit = async () => {
+    setIsSaving(true);
+    try {
+      const currentData = crossfitForm.getValues();
 
-    // Opcional: força validação visual do form
-    aulasExtrasForm.trigger();
-  } catch (err: any) {
-    console.error('ERRO AO SALVAR AULAS EXTRAS:', err.response?.data || err.message);
-    toast.error("Erro ao salvar aulas extras", {
-      description: err.response?.data?.error || "Tente novamente",
-    });
-  } finally {
-    setIsSaving(false);
-  }
-};
+      console.log('VALORES ENVIADOS PARA CROSSFIT:', currentData);
 
-const salvarCrossfit = async () => {  // ← SEM parâmetro (data)
-  setIsSaving(true);
-  try {
-    // Pega os valores ATUAIS do form no momento do clique
-    const currentData = crossfitForm.getValues();
+      const response = await api.put("/tenant/config/crossfit", currentData);
+      console.log('RESPOSTA DO BACKEND:', response.data);
 
-    console.log('VALORES ENVIADOS PARA O BACKEND:', currentData);
+      toast.success("CrossFit salvo!");
 
-    const response = await api.put("/tenant/config/crossfit", currentData);
-    console.log('RESPOSTA DO BACKEND:', response.data);
+      await refreshConfig();
 
-    toast.success("CrossFit salvo!");
-
-    // Atualiza o contexto global (Navbar/Sidebar vão reagir)
-    await refreshConfig();
-
-    // Atualiza o form local com os valores enviados (ou do backend, se preferir)
-    crossfitForm.reset(currentData);
-  } catch (err: any) {
-    console.error('ERRO NO PUT CROSSFIT:', err.response?.data || err.message);
-    toast.error("Erro ao salvar CrossFit", { description: err.response?.data?.error || err.message });
-  } finally {
-    setIsSaving(false);
-  }
-};
+      crossfitForm.reset(currentData);
+    } catch (err: any) {
+      console.error('ERRO NO PUT CROSSFIT:', err.response?.data || err.message);
+      toast.error("Erro ao salvar CrossFit", { description: err.response?.data?.error || err.message });
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const salvarPagamento = async (data: PagamentoForm) => {
     setIsSaving(true);
     try {
       await api.put("/tenant/config/pagamentos", data);
       toast.success("Pagamentos salvo!");
-      window.location.reload(); // recarrega tudo forçado
+      await refreshConfig();
     } catch (err: any) {
       toast.error("Erro ao salvar pagamentos");
     } finally {
@@ -265,6 +265,7 @@ const salvarCrossfit = async () => {  // ← SEM parâmetro (data)
       const res = await api.post("/tenant/config/logo", formData);
       setLogoPreview(res.data.data.logoUrl);
       toast.success("Logo atualizada!");
+      await refreshConfig();
     } catch (err: any) {
       toast.error("Erro no upload da logo");
     }
@@ -281,6 +282,7 @@ const salvarCrossfit = async () => {  // ← SEM parâmetro (data)
       const res = await api.post("/tenant/config/crossfit-banner", formData);
       setCrossfitBanner(res.data.data.crossfitBannerUrl);
       toast.success("Banner atualizado!");
+      await refreshConfig();
     } catch (err: any) {
       toast.error("Erro no upload do banner");
     }
@@ -325,7 +327,7 @@ const salvarCrossfit = async () => {  // ← SEM parâmetro (data)
                 <div className="flex flex-col items-center gap-4 py-6 border-b">
                   <Avatar className="h-40 w-40 ring-4 ring-blue-100">
                     <AvatarImage src={logoPreview || undefined} />
-                    <AvatarFallback className="bg-gradient-to-br from-blue-600 to-cyan-600 text-white text-4xl font-bold">
+                    <AvatarFallback className="bg-linear-to-br from-blue-600 to-cyan-600 text-white text-4xl font-bold">
                       {geralForm.watch("nomeEscolinha")?.slice(0, 2) || "GP"}
                     </AvatarFallback>
                   </Avatar>
@@ -402,79 +404,176 @@ const salvarCrossfit = async () => {  // ← SEM parâmetro (data)
           </Card>
         </TabsContent>
 
-        {/* ABA AULAS EXTRAS */}
-        <TabsContent value="aulasextras">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Trophy className="h-6 w-6 text-yellow-600" />
-                Aulas Extras
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex items-center justify-between p-4 border rounded-lg bg-yellow-50">
-                <div>
-                  <Label className="text-lg font-semibold">Ativar Aulas Extras</Label>
-                  <p className="text-sm text-gray-600">Permitir solicitação de aulas individuais</p>
-                </div>
-                <Switch
-                  checked={aulasExtrasForm.watch("ativarAulasExtras")}
-                  onCheckedChange={(checked) => aulasExtrasForm.setValue("ativarAulasExtras", checked)}
-                />
+      {/* ABA AULAS EXTRAS */}
+      <TabsContent value="aulasextras">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Trophy className="h-6 w-6 text-yellow-600" />
+              Aulas Extras
+            </CardTitle>
+            <CardDescription>Ative e gerencie aulas extras para alunos e pais</CardDescription>
+          </CardHeader>
+
+          <CardContent className="space-y-8">
+            {/* Switch de ativação */}
+            <div className="flex items-center justify-between p-4 border rounded-lg bg-yellow-50">
+              <div>
+                <Label className="text-lg font-semibold">Ativar Aulas Extras</Label>
+                <p className="text-sm text-gray-600">Permitir solicitação e cadastro de aulas individuais</p>
               </div>
+              <Switch
+                checked={aulasExtrasForm.watch("ativarAulasExtras")}
+                onCheckedChange={(checked) => aulasExtrasForm.setValue("ativarAulasExtras", checked)}
+              />
+            </div>
 
-              {aulasExtrasForm.watch("ativarAulasExtras") && (
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <Input placeholder="Nome da aula" />
-                    <Input type="number" placeholder="Valor (R$)" />
-                    <Select>
-                      <SelectTrigger><SelectValue placeholder="Duração" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="30">30 min</SelectItem>
-                        <SelectItem value="45">45 min</SelectItem>
-                        <SelectItem value="60">60 min</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <Button className="bg-yellow-600">Adicionar Aula Extra</Button>
+            {aulasExtrasForm.watch("ativarAulasExtras") && (
+              <div className="space-y-6">
+                {/* Formulário separado para nova aula */}
+                <Card className="bg-gray-50">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg">Adicionar Nova Aula Extra</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                      <div>
+                        <Label>Nome da aula</Label>
+                        <Input
+                          placeholder="ex: Condicionamento Físico"
+                          value={novaAulaNome}
+                          onChange={(e) => setNovaAulaNome(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <Label>Valor (R$)</Label>
+                        <Input
+                          type="number"
+                          placeholder="80"
+                          step="0.01"
+                          value={novaAulaValor}
+                          onChange={(e) => setNovaAulaValor(Number(e.target.value))}
+                        />
+                      </div>
+                      <div>
+                        <Label>Duração</Label>
+                        <Select value={novaAulaDuracao} onValueChange={setNovaAulaDuracao}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="30 min">30 min</SelectItem>
+                            <SelectItem value="45 min">45 min</SelectItem>
+                            <SelectItem value="60 min">60 min</SelectItem>
+                            <SelectItem value="90 min">90 min</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={() => {
+                          if (novaAulaNome && novaAulaValor && novaAulaDuracao) {
+                            const aulasAtuais = aulasExtrasForm.getValues("aulas") || [];
+                            aulasExtrasForm.setValue("aulas", [
+                              ...aulasAtuais,
+                              {
+                                nome: novaAulaNome,
+                                valor: novaAulaValor,
+                                duracao: novaAulaDuracao,
+                                descricao: novaAulaDescricao || "",
+                              },
+                            ]);
 
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Aula</TableHead>
-                        <TableHead>Valor</TableHead>
-                        <TableHead>Duração</TableHead>
-                        <TableHead className="text-right">Ações</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      <TableRow>
-                        <TableCell>Condicionamento</TableCell>
-                        <TableCell>R$ 80</TableCell>
-                        <TableCell>45 min</TableCell>
-                        <TableCell className="text-right">
-                          <Button size="sm" variant="ghost">Editar</Button>
-                          <Button size="sm" variant="ghost" className="text-red-600">Excluir</Button>
-                        </TableCell>
-                      </TableRow>
-                    </TableBody>
-                  </Table>
+                            // Limpa os campos
+                            setNovaAulaNome("");
+                            setNovaAulaValor(0);
+                            setNovaAulaDuracao("");
+                            setNovaAulaDescricao("");
+                          } else {
+                            toast.error("Preencha todos os campos obrigatórios");
+                          }
+                        }}
+                        className="bg-yellow-600 hover:bg-yellow-700"
+                      >
+                        Adicionar Aula
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Lista de aulas cadastradas */}
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg">Aulas Cadastradas</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Aula</TableHead>
+                          <TableHead>Valor (R$)</TableHead>
+                          <TableHead>Duração</TableHead>
+                          <TableHead className="text-right">Ações</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {aulasExtrasForm.watch("aulas")?.map((aula, index) => (
+                          <TableRow key={index}>
+                            <TableCell className="font-medium">{aula.nome}</TableCell>
+                            <TableCell>{aula.valor.toFixed(2)}</TableCell>
+                            <TableCell>{aula.duracao}</TableCell>
+                            <TableCell className="text-right space-x-2">
+                              <Button size="sm" variant="outline" onClick={() => toast.info("Edição em desenvolvimento")}>
+                                Editar
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => {
+                                  const aulas = aulasExtrasForm.getValues("aulas") || [];
+                                  aulasExtrasForm.setValue("aulas", aulas.filter((_, i) => i !== index));
+                                }}
+                              >
+                                Excluir
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+
+                        {aulasExtrasForm.watch("aulas")?.length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={4} className="text-center text-gray-500 py-8">
+                              Nenhuma aula extra cadastrada ainda
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+
+                {/* Botão salvar sempre visível */}
+                <div className="flex justify-end pt-4 border-t">
+                  <Button
+                    onClick={salvarAulasExtras}
+                    disabled={aulasExtrasForm.formState.isSubmitting || isSaving}
+                    className="bg-yellow-600 hover:bg-yellow-700"
+                  >
+                    {isSaving ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Salvando...
+                      </>
+                    ) : (
+                      "Salvar Aulas Extras"
+                    )}
+                  </Button>
                 </div>
-              )}
-
-              <div className="flex justify-end">
-                <Button
-                  onClick={aulasExtrasForm.handleSubmit(salvarAulasExtras)}
-                  disabled={aulasExtrasForm.formState.isDirty|| isSaving}
-                  className="bg-yellow-600"
-                >
-                 {isSaving ? "Salvando..." : "Salvar Aulas Extras"}
-                </Button>
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+            )}
+          </CardContent>
+        </Card>
+      </TabsContent>
 
         {/* ABA CROSSFIT */}
         <TabsContent value="crossfit">
