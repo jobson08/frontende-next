@@ -183,43 +183,62 @@ export default function ConfiguracoesAdminPage() {
     }
   };
 
-const salvarAulasExtras = async (data: AulasExtrasForm) => {
-    setIsSaving(true);
-    try {
-      await api.put("/tenant/config/aulas-extras", data);
-      toast.success("Aulas extras salvas!");
+const salvarAulasExtras = async () => {  // ← sem parâmetro (data)
+  setIsSaving(true);
+  try {
+    // Sempre pega os valores ATUAIS do form no momento do clique
+    const currentData = aulasExtrasForm.getValues();
 
-      await refreshConfig();  // ← agora pode usar normalmente
+    // Log para debug (remova depois)
+    console.log('PAYLOAD ENVIADO PARA AULAS EXTRAS:', currentData);
 
-      aulasExtrasForm.reset({
-        ativarAulasExtras: data.ativarAulasExtras,
-      });
-    } catch (err: any) {
-      toast.error("Erro ao salvar aulas extras");
-    } finally {
-      setIsSaving(false);
-    }
-  };
+    await api.put("/tenant/config/aulas-extras", currentData);
 
-const salvarCrossfit = async (data: CrossfitForm) => {
-    setIsSaving(true);
-    try {
-      await api.put("/tenant/config/crossfit", data);
-      toast.success("CrossFit salvo!");
+    toast.success("Aulas extras salvas!");
 
-      await refreshConfig();
+    // Atualiza o contexto global → navbar/sidebar reagem imediatamente
+    await refreshConfig();
 
-      crossfitForm.reset({
-        ativarCrossfit: data.ativarCrossfit,
-        mostrarNavbar: data.mostrarNavbar,
-        mostrarSidebar: data.mostrarSidebar,
-      });
-    } catch (err: any) {
-      toast.error("Erro ao salvar CrossFit");
-    } finally {
-      setIsSaving(false);
-    }
-  };
+    // Reseta o form com os valores que acabaram de ser enviados
+    aulasExtrasForm.reset(currentData);
+
+    // Opcional: força validação visual do form
+    aulasExtrasForm.trigger();
+  } catch (err: any) {
+    console.error('ERRO AO SALVAR AULAS EXTRAS:', err.response?.data || err.message);
+    toast.error("Erro ao salvar aulas extras", {
+      description: err.response?.data?.error || "Tente novamente",
+    });
+  } finally {
+    setIsSaving(false);
+  }
+};
+
+const salvarCrossfit = async () => {  // ← SEM parâmetro (data)
+  setIsSaving(true);
+  try {
+    // Pega os valores ATUAIS do form no momento do clique
+    const currentData = crossfitForm.getValues();
+
+    console.log('VALORES ENVIADOS PARA O BACKEND:', currentData);
+
+    const response = await api.put("/tenant/config/crossfit", currentData);
+    console.log('RESPOSTA DO BACKEND:', response.data);
+
+    toast.success("CrossFit salvo!");
+
+    // Atualiza o contexto global (Navbar/Sidebar vão reagir)
+    await refreshConfig();
+
+    // Atualiza o form local com os valores enviados (ou do backend, se preferir)
+    crossfitForm.reset(currentData);
+  } catch (err: any) {
+    console.error('ERRO NO PUT CROSSFIT:', err.response?.data || err.message);
+    toast.error("Erro ao salvar CrossFit", { description: err.response?.data?.error || err.message });
+  } finally {
+    setIsSaving(false);
+  }
+};
 
   const salvarPagamento = async (data: PagamentoForm) => {
     setIsSaving(true);
@@ -447,10 +466,10 @@ const salvarCrossfit = async (data: CrossfitForm) => {
               <div className="flex justify-end">
                 <Button
                   onClick={aulasExtrasForm.handleSubmit(salvarAulasExtras)}
-                  disabled={aulasExtrasForm.formState.isSubmitting || isSaving}
+                  disabled={aulasExtrasForm.formState.isDirty|| isSaving}
                   className="bg-yellow-600"
                 >
-                  Salvar Aulas Extras
+                 {isSaving ? "Salvando..." : "Salvar Aulas Extras"}
                 </Button>
               </div>
             </CardContent>
@@ -472,15 +491,14 @@ const salvarCrossfit = async (data: CrossfitForm) => {
                   <Label className="text-lg font-semibold">Ativar CrossFit</Label>
                   <p className="text-sm text-gray-600">Ofereça aulas para adultos</p>
                 </div>
-                <Switch
-                  checked={ativarCrossfit}
-                  onCheckedChange={(checked) => {
-                    crossfitForm.setValue("ativarCrossfit", checked);
-                    // Ativa visibilidade automaticamente
-                    crossfitForm.setValue("mostrarNavbar", checked);
-                    crossfitForm.setValue("mostrarSidebar", checked);
-                  }}
-                />
+                  <Switch
+                    checked={ativarCrossfit}
+                    onCheckedChange={(checked) => {
+                      crossfitForm.setValue("ativarCrossfit", checked, { shouldDirty: true, shouldValidate: true, shouldTouch: true });
+                      crossfitForm.setValue("mostrarNavbar", checked, { shouldDirty: true });
+                      crossfitForm.setValue("mostrarSidebar", checked, { shouldDirty: true });
+                    }}
+                  />
               </div>
 
               {ativarCrossfit && (
@@ -509,7 +527,7 @@ const salvarCrossfit = async (data: CrossfitForm) => {
                     <input type="file" accept="image/*" ref={crossfitInputRef} onChange={handleCrossfitBannerUpload} className="hidden" />
                   </div>
 
-                  <div className="space-y-6 p-6 bg-red-50 rounded-lg border border-red-200">
+                 {/* <div className="space-y-6 p-6 bg-red-50 rounded-lg border border-red-200">
                     <h3 className="text-xl font-bold text-red-800">Visibilidade</h3>
                     <div className="flex items-center justify-between">
                       <div>
@@ -526,7 +544,7 @@ const salvarCrossfit = async (data: CrossfitForm) => {
                       <Switch checked={crossfitForm.watch("mostrarSidebar")} onCheckedChange={(c) => crossfitForm.setValue("mostrarSidebar", c)} />
                     </div>
                   </div>
-
+                  */}
                   {/* Campos extras */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
@@ -546,18 +564,17 @@ const salvarCrossfit = async (data: CrossfitForm) => {
                       <Input type="number" placeholder="ex: 15" />
                     </div>
                   </div>
-
-                  <div className="flex justify-end">
-                    <Button
-                      onClick={crossfitForm.handleSubmit(salvarCrossfit)}
-                      disabled={crossfitForm.formState.isSubmitting || isSaving}
-                      className="bg-red-600"
-                    >
-                      Salvar CrossFit
-                    </Button>
-                  </div>
                 </div>
               )}
+                <div className="flex justify-end">
+                    <Button
+                      onClick={salvarCrossfit}
+                      disabled={!crossfitForm.formState.isDirty || isSaving}  // só habilita se mudou algo
+                      className="bg-green-600"
+                    >
+                      {isSaving ? "Salvando..." : "Salvar CrossFit"}
+                    </Button>
+                  </div>
             </CardContent>
           </Card>
         </TabsContent>
