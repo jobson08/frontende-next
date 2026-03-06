@@ -11,6 +11,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SidebarOutros } from "@/src/components/Layout/SidebarOutos";
 
 // Client criado fora
 const queryClient = new QueryClient({
@@ -89,7 +90,7 @@ function InnerSuperAdminLayout({ children }: { children: React.ReactNode }) {
       <Navbar userType="SUPERADMIN" user={{ name: user.name || user.email, email: user.email }} />
       <div className="flex">
         <div className="hidden lg:flex lg:w-64 lg:fixed lg:inset-y-0 lg:pt-16">
-          <Sidebar userType="SUPERADMIN" userName={user.name || user.email} />
+        <SidebarOutros userType="SUPERADMIN" userName={user.name || user.email} />
         </div>
         <main className="flex-1 pt-16 lg:ml-64">
           <div className="p-4 lg:p-8">

@@ -210,14 +210,6 @@ const {
   },
   staleTime: 0,  // força sempre buscar dados frescos ao mudar o mês (opcional, mas ajuda)
 });
-
-  // Mock temporário para próximas aulas (substitua por rota real quando tiver)
- /* const proximasAulas = [
-    { hora: "09:00", aula: "Musculação - Turma A", professor: "Mariana Costa", alunos: 12 },
-    { hora: "10:00", aula: "Cross Training", professor: "Rafael Lima", alunos: 15 },
-    { hora: "18:00", aula: "Natação Infantil", professor: "Beatriz Souza", alunos: 8 },
-  ];
-*/
   // Mutation para marcar pagamento como pago
  const marcarPagoMutation = useMutation({
   mutationFn: async (pagamentoId: string) => {

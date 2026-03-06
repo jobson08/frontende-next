@@ -1,4 +1,6 @@
 // src/app/layout.tsx (Server Component - versão mínima)
+
+
 import type { Metadata } from "next";
 import "./globals.css";
 

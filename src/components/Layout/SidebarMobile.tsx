@@ -43,12 +43,7 @@ export function SidebarMobile({
         className="p-0 w-64 bg-white border-r border-gray-200 overflow-hidden"
       >
         <div className="h-full flex flex-col">
-          <Sidebar 
-            userType={userType} 
-            userName={userName}
-            aulasExtrasAtivas={aulasExtrasAtivas}
-            crossfitAtivo={crossfitAtivo}
-          />
+        {/*  <Sidebar  />*/}
         </div>
       </SheetContent>
     </Sheet>

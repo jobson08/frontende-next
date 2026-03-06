@@ -1,7 +1,8 @@
-// src/components/layout/Navbar.tsx (final - com treinador)
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// src/components/layout/Navbar.tsx
 "use client";
 
-import { useRouter } from "next/navigation"; //alterado
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "../ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "../ui/sheet";
@@ -20,14 +21,10 @@ import { usePathname } from "next/navigation";
 import { 
   Calendar, DollarSign, Home, LogOut, Menu, Trophy, User, Users, 
   Bell, Activity, BookOpen, MessageSquare, 
-  Building2,
-  BarChart3,
-  Settings,
-  UserPlus,
-  CreditCard,
-  LifeBuoy
+  Building2, BarChart3, Settings, UserPlus, CreditCard, LifeBuoy
 } from "lucide-react";
 import { useAuth } from "@/src/hooks/useAuth";
+import { useEscolinhaConfig } from "@/src/context/EscolinhaConfigContext";
 
 interface NavbarProps {
   userType: "ADMIN" | "SUPERADMIN" | "ALUNO" | "RESPONSAVEL" | "FUNCIONARIO";
@@ -36,59 +33,63 @@ interface NavbarProps {
     email: string;
   };
   inadimplentesCount?: number;
-  aulasExtrasAtivas?: boolean;
-  crossfitAtivo?: boolean;
   role?: string; // "treinador", "admin", "administrativo"
 }
 
-const Header = ({ 
+const Navbar = ({ 
   userType, 
   user, 
   inadimplentesCount = 0,
-  aulasExtrasAtivas = false,
-  crossfitAtivo = false,
-  role = "treinador" // padrão pra teste
+  role = "treinador" 
 }: NavbarProps) => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
-  
-    // Usa o logout do hook (limpa cookie + localStorage + cache + redireciona)
-  const { logout } = useAuth();  //Alterado
+  const { logout } = useAuth();
+// HOOK SEMPRE NO TOPO - nunca condicional
+  const { config, isLoading } = useEscolinhaConfig();
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const menuKey = JSON.stringify(config); // ou use um contador se preferir
+
+  // Valores seguros com fallback
+  const aulasExtrasAtivas = config?.aulasExtrasAtivas ?? false;
+  const crossfitAtivo = config?.crossfitAtivo ?? false;
+
+  // Log para debug (opcional, remova depois)
+  console.log('SIDEBAR - Valores do contexto:', { aulasExtrasAtivas, crossfitAtivo });
+
+  // Itens base do menu
   let items: Array<{ icon: any; label: string; href: string }> = [];
 
   // ADMIN (DONO DA ESCOLINHA)
-  if (userType === "ADMIN" || role === "admin") {
-    items = [
-      { icon: Home, label: "Dashboard", href: "/admin" },
-      { icon: Users, label: "Alunos", href: "/aluno" },
-      { icon: User, label: "Responsáveis", href: "/responsavel" },
-      { icon: Users, label: "Funcionários", href: "/funcionario" },
-      { icon: Calendar, label: "Treinos", href: "/treinos" },
-      { icon: DollarSign, label: "Financeiro", href: "/financeiro" },
-      { icon: DollarSign, label: "Inadimplentes", href: "/inadimplentes" },
-      { icon: Settings, label: "Configurações", href: "/configuracoes" },
-    ];
+  if (userType === "ADMIN" || (userType === "FUNCIONARIO" && role === "admin")) {
+  const baseItems = [
+    { icon: Home, label: "Dashboard", href: "/admin" },
+    { icon: Users, label: "Alunos", href: "/aluno" },
+    { icon: User, label: "Responsáveis", href: "/responsavel" },
+    { icon: Users, label: "Funcionários", href: "/funcionario" },
+    { icon: Calendar, label: "Treinos", href: "/treinos" },
+    { icon: DollarSign, label: "Financeiro", href: "/financeiro" },
+    { icon: DollarSign, label: "Inadimplentes", href: "/inadimplentes" },
+  ];
 
-    // Itens extras
-    const itensExtras = [];
-    if (aulasExtrasAtivas) {
-      itensExtras.push({ icon: Trophy, label: "Aulas Extras", href: "/aulas-extras" });
-    }
-    if (crossfitAtivo) {
-      itensExtras.push({ icon: Activity, label: "CrossFit Adultos", href: "/crossfit" });
-    }
+  const extraItems = [];
 
-    const configIndex = items.findIndex(item => item.label === "Configurações");
-    if (configIndex !== -1 && itensExtras.length > 0) {
-      items = [
-        ...items.slice(0, configIndex),
-        ...itensExtras,
-        ...items.slice(configIndex),
-      ];
-    }
+  if (aulasExtrasAtivas) {
+    extraItems.push({ icon: Trophy, label: "Aulas Extras", href: "/aulasExtras" });
   }
+
+  if (crossfitAtivo) {
+    extraItems.push({ icon: Activity, label: "CrossFit Adultos", href: "/crossfit" });
+  }
+
+  items = [
+    ...baseItems,
+    ...extraItems,
+    { icon: Settings, label: "Configurações", href: "/configuracoes" },
+  ];
+
+  console.log('Sidebar ADMIN montada:', items.map(i => i.label));
+}
 
   // TREINADOR
   else if (userType === "FUNCIONARIO" && role === "treinador") {
@@ -96,17 +97,17 @@ const Header = ({
       { icon: Home, label: "Meu Dashboard", href: "/treinador" },
       { icon: Calendar, label: "Planos de Treinos", href: "/treinador/plano-treino" },
       { icon: Users, label: "Marcar Presença", href: "/treinador/marcar-presenca" },
-      //{ icon: Star, label: "Avaliar Alunos", href: "/treinador/avaliar-aluno" },
       { icon: Users, label: "Meus Alunos", href: "/treinador/meus-alunos" },
       { icon: MessageSquare, label: "Mensagens", href: "/treinador/mensagens" },
     ];
 
+    // Aulas Extras para treinador (se ativado)
     if (aulasExtrasAtivas) {
       items.splice(3, 0, { icon: Trophy, label: "Aulas Extras", href: "/treinador/aulas-extras" });
     }
   }
 
-  // ALUNO
+ /* // ALUNO
   else if (userType === "ALUNO") {
     items = [
       { icon: Home, label: "Meu Dashboard", href: "/dashboarduser/aluno-dashboard" },
@@ -126,7 +127,7 @@ const Header = ({
     ];
   }
 
-  // === SUPERADMIN ===
+  // SUPERADMIN
   else if (userType === "SUPERADMIN") {
     items = [
       { icon: Home, label: "Dashboard", href: "/superadmin" },
@@ -138,16 +139,14 @@ const Header = ({
       { icon: Settings, label: "Configurações SaaS", href: "/superadmin/configuracoes" },
       { icon: LifeBuoy, label: "Suporte", href: "/superadmin/suporte" },
     ];
-  }
+  }*/
 
-  // SINO DE INADIMPLENTES — SÓ PARA ADMIN
+  // Sino de inadimplentes (só ADMIN)
   const isAdmin = userType === "ADMIN" || role === "admin";
-
-  
 
   return (
     <header className="fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-200 shadow-sm">
-      <div className="flex items-center justify-between h-16 px-4 lg:px-8">
+      <div key={menuKey} className="flex items-center justify-between h-16 px-4 lg:px-8">
         {/* MOBILE MENU */}
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
           <SheetTrigger asChild>
@@ -160,7 +159,7 @@ const Header = ({
             <div className="flex flex-col h-full">
               {/* LOGO */}
               <div className="flex items-center justify-center h-16 border-b border-gray-200">
-                <h1 className="text-2xl font-bold bg-lineart-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                   EDUPAY
                 </h1>
               </div>
@@ -189,7 +188,7 @@ const Header = ({
               <div className="border-t border-gray-200 p-4">
                 <div className="flex items-center gap-3">
                   <Avatar className="h-10 w-10">
-                    <AvatarFallback className="bg-linear-to-br from-blue-600 to-purple-600 text-white">
+                    <AvatarFallback className="bg-gradient-to-br from-blue-600 to-purple-600 text-white">
                       {user.name.split(" ").map((n) => n[0]).join("")}
                     </AvatarFallback>
                   </Avatar>
@@ -199,14 +198,14 @@ const Header = ({
                       {role ? role.charAt(0).toUpperCase() + role.slice(1) : userType}
                     </p>
                   </div>
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      onClick={logout}  // ← CHAMA O LOGOUT DO HOOK (LIMPA TUDO!) alterado
-                      className="text-gray-400 hover:text-white hover:bg-slate-800"
-                    >
-                      <LogOut className="h-5 w-5" />
-                    </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    onClick={logout}
+                    className="text-gray-400 hover:text-white hover:bg-slate-800"
+                  >
+                    <LogOut className="h-5 w-5" />
+                  </Button>
                 </div>
               </div>
             </div>
@@ -215,7 +214,7 @@ const Header = ({
 
         {/* LOGO CENTRAL */}
         <div className="flex items-center">
-          <h1 className="text-2xl font-bold bg-linear-to-br from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
             EDUPAY
           </h1>
         </div>
@@ -224,7 +223,7 @@ const Header = ({
         <div className="flex items-center gap-4">
           {isAdmin && (
             <Button variant="ghost" size="icon" className="relative" asChild>
-              <Link href="/iadimplentes">
+              <Link href="/inadimplentes">
                 <Bell className="h-5 w-5 text-gray-700" />
                 {inadimplentesCount > 0 && (
                   <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs bg-red-600 text-white">
@@ -238,7 +237,7 @@ const Header = ({
           <DropdownMenu>
             <DropdownMenuTrigger className="flex items-center gap-3 rounded-full focus:outline-none">
               <Avatar className="h-9 w-9 ring-2 ring-offset-2 ring-purple-400">
-                <AvatarFallback className="bg-linear-to-br from-blue-600 to-purple-600 text-white text-sm font-medium">
+                <AvatarFallback className="bg-gradient-to-br from-blue-600 to-purple-600 text-white text-sm font-medium">
                   {user.name.split(" ").map((n) => n[0]).join("").toUpperCase()}
                 </AvatarFallback>
               </Avatar>
@@ -260,7 +259,7 @@ const Header = ({
                 Configurações
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-red-600">
+              <DropdownMenuItem className="text-red-600" onClick={logout}>
                 <LogOut className="mr-2 h-4 w-4" />
                 Sair
               </DropdownMenuItem>
@@ -272,4 +271,4 @@ const Header = ({
   );
 };
 
-export default Header;
+export default Navbar;

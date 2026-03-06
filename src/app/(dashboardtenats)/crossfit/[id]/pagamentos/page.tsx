@@ -266,7 +266,7 @@ const VerPagamentosCrossFitPage = () => {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-blue-600">
-              R$ {(aluno.valorMensalAtual || 149).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+              R$ {(aluno.valorMensalAtual || 90).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
             </div>
             <p className="text-sm text-gray-600 mt-1">
               Plano: {aluno.planoAtual || "Mensal"}

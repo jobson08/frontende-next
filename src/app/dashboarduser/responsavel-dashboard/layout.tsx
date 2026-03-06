@@ -11,6 +11,8 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import Header from "@/src/components/Layout/Header";
+import { SidebarOutros } from "@/src/components/Layout/SidebarOutos";
 
 const ResponsavelDashboardLayout = ({ children }: { children: React.ReactNode }) => {
   return (
@@ -75,11 +77,10 @@ function InnerResponsavelDashboardLayout({ children }: { children: React.ReactNo
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <EscolinhaConfigProvider config={configEscolinha}>
         <Navbar userType="RESPONSAVEL" user={safeUser} />
         <div className="flex">
           <div className="hidden lg:flex lg:w-64 lg:fixed lg:inset-y-0 lg:pt-16">
-            <Sidebar userType="RESPONSAVEL" userName={safeUser.name} />
+            <SidebarOutros userType="RESPONSAVEL" userName={safeUser.name} />
           </div>
           <main className="flex-1 pt-16 lg:ml-64">
             <div className="p-4 lg:p-8">
@@ -87,7 +88,6 @@ function InnerResponsavelDashboardLayout({ children }: { children: React.ReactNo
             </div>
           </main>
         </div>
-      </EscolinhaConfigProvider>
     </div>
   );
 }

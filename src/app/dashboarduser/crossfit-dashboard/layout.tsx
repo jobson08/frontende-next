@@ -10,6 +10,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SidebarOutros } from "@/src/components/Layout/SidebarOutos";
 
 const CrossfitDashboardLayout = ({ children }: { children: React.ReactNode }) => {
   return (
@@ -76,7 +77,7 @@ function InnerCrossfitDashboardLayout({ children }: { children: React.ReactNode 
       <div className="flex">
         {/* SIDEBAR DESKTOP — SÓ NO LG+ */}
         <div className="hidden lg:flex lg:w-64 lg:fixed lg:inset-y-0 lg:pt-16">
-          <Sidebar userType="CROSSFIT" userName={safeUser.name} />
+          <SidebarOutros userType="CROSSFIT" userName={safeUser.name} />
         </div>
 
         {/* CONTEÚDO PRINCIPAL */}

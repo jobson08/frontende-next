@@ -10,6 +10,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import Header from "@/src/components/Layout/Header";
 
 const FuncionarioDashboardLayout = ({ children }: { children: React.ReactNode }) => {
   return (
@@ -72,7 +73,7 @@ function InnerFuncionarioDashboardLayout({ children }: { children: React.ReactNo
   return (
     <div className="min-h-screen bg-gray-50">
       {/* NAVBAR COM MOBILE SIDEBAR */}
-      <Navbar userType="FUNCIONARIO" user={safeUser} />
+      <Header userType="FUNCIONARIO" user={safeUser} />
 
       <div className="flex">
         {/* SIDEBAR DESKTOP — SÓ NO LG+ */}

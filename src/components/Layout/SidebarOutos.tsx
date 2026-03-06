@@ -44,74 +44,30 @@ interface SidebarProps {
   role?: string; // "treinador", "admin", "administrativo", etc.
 }
 
-export function Sidebar({ userType, userName, role }: SidebarProps) {
+export function SidebarOutros({ userType, userName, role }: SidebarProps) {
   const pathname = usePathname();
   const { logout } = useAuth();
-  
 
-  // HOOK SEMPRE NO TOPO - nunca condicional
-  const { config, isLoading } = useEscolinhaConfig();
-
-  const menuKey = JSON.stringify(config);
-
-  // Valores seguros com fallback
-  const aulasExtrasAtivas = config?.aulasExtrasAtivas ?? false;
-  const crossfitAtivo = config?.crossfitAtivo ?? false;
-
-  // Log para debug (opcional, remova depois)
-  console.log('SIDEBAR - Valores do contexto:', { aulasExtrasAtivas, crossfitAtivo });
+  // Pega as configurações reais do contexto (vindas do backend)
+  //const { aulasExtrasAtivas, crossfitAtivo } = useEscolinhaConfig();
 
   let items: MenuItem[] = [];
-
-  // Agora usa os valores dentro do if (sem chamar hook aqui)
-  if (userType === "ADMIN" || (userType === "FUNCIONARIO" && role === "admin")) {
-    const baseItems = [
-      { icon: Home, label: "Dashboard", href: "/admin" },
-      { icon: Users, label: "Alunos", href: "/aluno" },
-      { icon: User, label: "Responsáveis", href: "/responsavel" },
-      { icon: Users, label: "Funcionários", href: "/funcionario" },
-      { icon: Calendar, label: "Treinos", href: "/treinos" },
-      { icon: DollarSign, label: "Financeiro", href: "/financeiro" },
-      { icon: DollarSign, label: "Inadimplentes", href: "/inadimplentes" },
-    ];
-
-    const extraItems = [];
-
-    if (aulasExtrasAtivas) {
-      extraItems.push({ icon: Trophy, label: "Aulas Extras", href: "/aulasExtras" });
-    }
-
-    if (crossfitAtivo) {
-      extraItems.push({ icon: Activity, label: "CrossFit Adultos", href: "/crossfit" });
-    }
-
+  // === SUPERADMIN ===
+  if (userType === "SUPERADMIN") {
     items = [
-      ...baseItems,
-      ...extraItems,
-      { icon: Settings, label: "Configurações", href: "/configuracoes" },
+      { icon: Home, label: "Dashboard", href: "/superadmin" },
+      { icon: Building2, label: "Escolinhas", href: "/superadmin/tenants" },
+      { icon: UserPlus, label: "Criar Nova Escolinha", href: "/superadmin/tenants/novo" },
+      { icon: DollarSign, label: "Pagamentos SaaS", href: "/superadmin/pagamentos" },
+      { icon: CreditCard, label: "Assinaturas", href: "/superadmin/assinaturas" },
+      { icon: BarChart3, label: "Relatórios Globais", href: "/superadmin/relatorios" },
+      { icon: Settings, label: "Configurações SaaS", href: "/superadmin/configuracoes" },
+      { icon: LifeBuoy, label: "Suporte", href: "/superadmin/suporte" },
     ];
-
-    console.log('Sidebar ADMIN montada:', items.map(i => i.label));
   }
 
-  // === TREINADOR ===
-  else if (userType === "FUNCIONARIO" && role === "treinador") {
-    items = [
-      { icon: Home, label: "Meu Dashboard", href: "/treinador" },
-      { icon: Calendar, label: "Planos de Treinos", href: "/treinador/plano-treino" },
-      { icon: Users, label: "Marcar Presença", href: "/treinador/marcar-presenca" },
-      { icon: Users, label: "Meus Alunos", href: "/treinador/meus-alunos" },
-      { icon: MessageSquare, label: "Mensagens", href: "/treinador/mensagens" },
-    ];
-
-    // Aulas Extras para treinador (se ativado)
-    if (aulasExtrasAtivas) {
-      items.splice(4, 0, { icon: Trophy, label: "Aulas Extras", href: "/treinador/aulas-extras" });
-    }
-  }
-/*
   // === ALUNO ===
-  else if (userType === "ALUNO") {
+ else if (userType === "ALUNO") {
     items = [
       { icon: Home, label: "Meu Dashboard", href: "/dashboarduser/aluno-dashboard" },
       { icon: Trophy, label: "Meu Progresso", href: "/dashboarduser/aluno-dashboard/progresso" },
@@ -138,22 +94,8 @@ export function Sidebar({ userType, userName, role }: SidebarProps) {
     ];
   }
 
-  // === SUPERADMIN ===
-  else if (userType === "SUPERADMIN") {
-    items = [
-      { icon: Home, label: "Dashboard", href: "/superadmin" },
-      { icon: Building2, label: "Escolinhas", href: "/superadmin/tenants" },
-      { icon: UserPlus, label: "Criar Nova Escolinha", href: "/superadmin/tenants/novo" },
-      { icon: DollarSign, label: "Pagamentos SaaS", href: "/superadmin/pagamentos" },
-      { icon: CreditCard, label: "Assinaturas", href: "/superadmin/assinaturas" },
-      { icon: BarChart3, label: "Relatórios Globais", href: "/superadmin/relatorios" },
-      { icon: Settings, label: "Configurações SaaS", href: "/superadmin/configuracoes" },
-      { icon: LifeBuoy, label: "Suporte", href: "/superadmin/suporte" },
-    ];
-  }
-*/
   return (
-    <div key={menuKey} className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 bg-slate-900 text-white lg:border-r lg:border-gray-200">
+    <div className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 bg-slate-900 text-white lg:border-r lg:border-gray-200">
       <div className="flex flex-col h-full">
         {/* Logo */}
         <div className="flex items-center justify-center h-16 border-b border-gray-700">
