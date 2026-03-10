@@ -17,12 +17,6 @@ import {
   Activity,
   Trophy,
   DollarSign,
-  CreditCard,
-  Key,
-  QrCode,
-  Wallet,
-  CheckCircle,
-  AlertCircle,
 } from "lucide-react";
 import { Button } from "@/src/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/src/components/ui/card";
@@ -36,6 +30,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/src/components/ui/table";
 import api from "@/src/lib/api";
 import { useEscolinhaConfig } from "@/src/context/EscolinhaConfigContext";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/src/components/ui/dialog";
 
 /// Schemas Zod
 const geralSchema = z.object({
@@ -47,13 +42,22 @@ const aulasExtrasSchema = z.object({
   ativarAulasExtras: z.boolean(),
   aulas: z.array(
     z.object({
+      id: z.string().optional(),
       nome: z.string().min(3),
       valor: z.number().positive(),
       duracao: z.string().min(1),
       descricao: z.string().optional(),
     })
   ).optional().default([]),
+  editNome: z.string().optional(),
+  editValor: z.number().optional(),
+  editDuracao: z.string().optional(),
+  editDescricao: z.string().optional(),
 });
+
+type AulasExtrasInput = z.infer<typeof aulasExtrasSchema>;
+
+
 
 const crossfitSchema = z.object({
   ativarCrossfit: z.boolean(),
@@ -95,22 +99,32 @@ export default function ConfiguracoesAdminPage() {
   const [isSaving, setIsSaving] = useState(false);
   const { refreshConfig } = useEscolinhaConfig();
 
-  const [novaAulaNome, setNovaAulaNome] = useState("");
-  const [novaAulaValor, setNovaAulaValor] = useState(0);
-  const [novaAulaDuracao, setNovaAulaDuracao] = useState("");
-  const [novaAulaDescricao, setNovaAulaDescricao] = useState("");
+// Novos estados para o formulário de nova aula extra
+const [novaAulaNome, setNovaAulaNome] = useState("");
+const [novaAulaValor, setNovaAulaValor] = useState(0);
+const [novaAulaDuracao, setNovaAulaDuracao] = useState("");
+const [novaAulaDescricao, setNovaAulaDescricao] = useState("");
+
+//Editar aula extra por Id
+const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+const [editingAula, setEditingAula] = useState<any | null>(null); // tipo da aula
+
   // Formulários
   const geralForm = useForm<GeralFormData>({
     resolver: zodResolver(geralSchema),
   });
 
-  const aulasExtrasForm = useForm<AulasExtrasForm>({
-    resolver: zodResolver(aulasExtrasSchema) as any, 
-    defaultValues: {
-      ativarAulasExtras: false,
-      aulas: [],
-    },
-  });
+const aulasExtrasForm = useForm<AulasExtrasForm>({
+  resolver: zodResolver(aulasExtrasSchema)as any,
+  defaultValues: {
+    ativarAulasExtras: false,
+    aulas: [],
+    editNome: "",
+    editValor: 0,
+    editDuracao: "",
+    editDescricao: "",
+  },
+});
 
   const crossfitForm = useForm<CrossfitForm>({
     resolver: zodResolver(crossfitSchema) as any,
@@ -130,54 +144,68 @@ export default function ConfiguracoesAdminPage() {
   const ativarCrossfit = crossfitForm.watch("ativarCrossfit");
 
   // Carrega dados reais do backend
-  useEffect(() => {
-    const loadConfig = async () => {
+useEffect(() => {
+  const loadConfig = async () => {
+    try {
+      setIsLoading(true);
+
+      // 1. Carrega as configurações gerais (como já fazia)
+      const resConfig = await api.get("/tenant/config/escolinha");
+      const config = resConfig.data.data || {};
+
+      geralForm.reset({
+        nomeEscolinha: config.nome || "Gol de Placa Academy",
+        mensagemBoasVindas: config.mensagemBoasVindas || "",
+      });
+
+      aulasExtrasForm.reset({
+        ativarAulasExtras: config.aulasExtrasAtivas ?? false,
+        // aulas: config.aulasExtras || [], // ← remova ou ignore se não vier aqui
+      });
+
+      crossfitForm.reset({
+        ativarCrossfit: config.crossfitAtivo ?? false,
+        mostrarNavbar: config.mostrarCrossfitNavbar ?? false,
+        mostrarSidebar: config.mostrarCrossfitSidebar ?? false,
+      });
+
+      pagamentoForm.reset({
+        gateway: config.gatewayPagamento || "nenhum",
+        stripePublishableKey: config.stripePublishableKey || "",
+        stripeSecretKey: config.stripeSecretKey || "",
+        pagseguroEmail: config.pagseguroEmail || "",
+        pagseguroToken: config.pagseguroToken || "",
+        pixChave: config.pixChave || "",
+        pixNomeTitular: config.pixNomeTitular || "",
+        pixBanco: config.pixBanco || "",
+      });
+
+      if (config.logoUrl) setLogoPreview(config.logoUrl);
+      if (config.crossfitBannerUrl) setCrossfitBanner(config.crossfitBannerUrl);
+
+      // 2. Carrega as aulas extras separadamente (GET específico)
       try {
-        setIsLoading(true);
-        const res = await api.get("/tenant/config/escolinha");
-        const config = res.data.data || {};
-
-        geralForm.reset({
-          nomeEscolinha: config.nome || "Gol de Placa Academy",
-          mensagemBoasVindas: config.mensagemBoasVindas || "",
-        });
-
-        aulasExtrasForm.reset({
-          ativarAulasExtras: config.aulasExtrasAtivas ?? false,
-          aulas: config.aulasExtras || [], // ← supondo que o backend retorne a lista
-        });
-
-        crossfitForm.reset({
-          ativarCrossfit: config.crossfitAtivo ?? false,
-          mostrarNavbar: config.mostrarCrossfitNavbar ?? false,
-          mostrarSidebar: config.mostrarCrossfitSidebar ?? false,
-        });
-
-        pagamentoForm.reset({
-          gateway: config.gatewayPagamento || "nenhum",
-          stripePublishableKey: config.stripePublishableKey || "",
-          stripeSecretKey: config.stripeSecretKey || "",
-          pagseguroEmail: config.pagseguroEmail || "",
-          pagseguroToken: config.pagseguroToken || "",
-          pixChave: config.pixChave || "",
-          pixNomeTitular: config.pixNomeTitular || "",
-          pixBanco: config.pixBanco || "",
-        });
-
-        if (config.logoUrl) setLogoPreview(config.logoUrl);
-        if (config.crossfitBannerUrl) setCrossfitBanner(config.crossfitBannerUrl);
-
-        toast.success("Configurações carregadas!");
-      } catch (err) {
-        console.error("Erro ao carregar configs:", err);
-        toast.error("Falha ao carregar configurações");
-      } finally {
-        setIsLoading(false);
+        const resAulas = await api.get("/tenant/config/aulas-extras");
+        const aulasData = resAulas.data.data || resAulas.data || []; // ajuste conforme o formato do retorno
+        aulasExtrasForm.setValue("aulas", aulasData);
+        console.log("Aulas extras carregadas:", aulasData);
+      } catch (errAulas) {
+        console.error("Erro ao carregar aulas extras:", errAulas);
+        toast.error("Falha ao carregar lista de aulas extras");
+        aulasExtrasForm.setValue("aulas", []); // fallback vazio
       }
-    };
 
-    loadConfig();
-  }, [geralForm, aulasExtrasForm, crossfitForm, pagamentoForm]);
+      toast.success("Configurações carregadas!");
+    } catch (err) {
+      console.error("Erro ao carregar configs:", err);
+      toast.error("Falha ao carregar configurações");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  loadConfig();
+}, [geralForm, aulasExtrasForm, crossfitForm, pagamentoForm]);
 
   // Salvamentos
   const salvarGeral = async (data: GeralFormData) => {
@@ -193,29 +221,61 @@ export default function ConfiguracoesAdminPage() {
     }
   };
 
-  const salvarAulasExtras = async () => {
-    setIsSaving(true);
-    try {
-      const currentData = aulasExtrasForm.getValues();
+  
+//SALVAR AULAS EXTRAS
+const salvarAulasExtras = async () => {
+  setIsSaving(true);
+  try {
+    const ativar = aulasExtrasForm.getValues("ativarAulasExtras");
+    await api.put("/tenant/config/aulas-extras/activation", { ativarAulasExtras: ativar });
+    toast.success("Ativação atualizada com sucesso!");
+    await refreshConfig();
+  } catch (err: any) {
+    toast.error("Erro ao atualizar ativação", {
+      description: err.response?.data?.error || "Tente novamente",
+    });
+  } finally {
+    setIsSaving(false);
+  }
+};
 
-      console.log('PAYLOAD ENVIADO PARA AULAS EXTRAS:', currentData);
+//Modal Editar Aula Esxtra
+const openEditModal = (aula: any) => {
+  setEditingAula(aula);
+  aulasExtrasForm.setValue("editNome", aula.nome);
+  aulasExtrasForm.setValue("editValor", aula.valor);
+  aulasExtrasForm.setValue("editDuracao", aula.duracao);
+  aulasExtrasForm.setValue("editDescricao", aula.descricao || "");
+  setIsEditModalOpen(true);
+};
 
-      await api.put("/tenant/config/aulas-extras", currentData);
-      toast.success("Aulas extras salvas!");
+// Função para salvar edição
+const salvarEdicao = async () => {
+  if (!editingAula?.id) return;
 
-      await refreshConfig();
+  try {
+    const payload = {
+      nome: aulasExtrasForm.getValues("editNome"),
+      valor: aulasExtrasForm.getValues("editValor"),
+      duracao: aulasExtrasForm.getValues("editDuracao"),
+      descricao: aulasExtrasForm.getValues("editDescricao") || undefined,
+    };
 
-      aulasExtrasForm.reset(currentData);
-      aulasExtrasForm.trigger();
-    } catch (err: any) {
-      console.error('ERRO AO SALVAR AULAS EXTRAS:', err.response?.data || err.message);
-      toast.error("Erro ao salvar aulas extras", {
-        description: err.response?.data?.error || "Tente novamente",
-      });
-    } finally {
-      setIsSaving(false);
-    }
-  };
+    await api.put(`/tenant/config/aulas-extras/${editingAula.id}`, payload);
+    toast.success("Aula atualizada com sucesso!");
+
+    // Recarrega lista
+    const res = await api.get("/tenant/config/aulas-extras");
+    aulasExtrasForm.setValue("aulas", res.data.data || []);
+
+    setIsEditModalOpen(false);
+    setEditingAula(null);
+  } catch (err: any) {
+    toast.error("Erro ao atualizar aula", {
+      description: err.response?.data?.error || "Tente novamente",
+    });
+  }
+};
 
   const salvarCrossfit = async () => {
     setIsSaving(true);
@@ -424,20 +484,31 @@ export default function ConfiguracoesAdminPage() {
               </div>
               <Switch
                 checked={aulasExtrasForm.watch("ativarAulasExtras")}
-                onCheckedChange={(checked) => aulasExtrasForm.setValue("ativarAulasExtras", checked)}
+                onCheckedChange={async (checked) => {
+                  aulasExtrasForm.setValue("ativarAulasExtras", checked);
+                  try {
+                    await api.put("/tenant/config/aulas-extras/activation", { ativarAulasExtras: checked });
+                    await refreshConfig();
+                    toast.success(`Aulas Extras ${checked ? "ativadas" : "desativadas"}`);
+                  } catch (err: any) {
+                    toast.error("Erro ao atualizar ativação");
+                    aulasExtrasForm.setValue("ativarAulasExtras", !checked); // reverte se falhar
+                  }
+                }}
               />
             </div>
 
+            {/* Conteúdo só aparece se ativado */}
             {aulasExtrasForm.watch("ativarAulasExtras") && (
               <div className="space-y-6">
-                {/* Formulário separado para nova aula */}
+                {/* Formulário para adicionar nova aula */}
                 <Card className="bg-gray-50">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-lg">Adicionar Nova Aula Extra</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                      <div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+                      <div className="md:col-span-2">
                         <Label>Nome da aula</Label>
                         <Input
                           placeholder="ex: Condicionamento Físico"
@@ -445,6 +516,7 @@ export default function ConfiguracoesAdminPage() {
                           onChange={(e) => setNovaAulaNome(e.target.value)}
                         />
                       </div>
+
                       <div>
                         <Label>Valor (R$)</Label>
                         <Input
@@ -452,9 +524,10 @@ export default function ConfiguracoesAdminPage() {
                           placeholder="80"
                           step="0.01"
                           value={novaAulaValor}
-                          onChange={(e) => setNovaAulaValor(Number(e.target.value))}
+                          onChange={(e) => setNovaAulaValor(Number(e.target.value) || 0)}
                         />
                       </div>
+
                       <div>
                         <Label>Duração</Label>
                         <Select value={novaAulaDuracao} onValueChange={setNovaAulaDuracao}>
@@ -469,34 +542,58 @@ export default function ConfiguracoesAdminPage() {
                           </SelectContent>
                         </Select>
                       </div>
-                      <Button
-                        type="button"
-                        onClick={() => {
-                          if (novaAulaNome && novaAulaValor && novaAulaDuracao) {
-                            const aulasAtuais = aulasExtrasForm.getValues("aulas") || [];
-                            aulasExtrasForm.setValue("aulas", [
-                              ...aulasAtuais,
-                              {
-                                nome: novaAulaNome,
-                                valor: novaAulaValor,
-                                duracao: novaAulaDuracao,
-                                descricao: novaAulaDescricao || "",
-                              },
-                            ]);
 
-                            // Limpa os campos
-                            setNovaAulaNome("");
-                            setNovaAulaValor(0);
-                            setNovaAulaDuracao("");
-                            setNovaAulaDescricao("");
-                          } else {
-                            toast.error("Preencha todos os campos obrigatórios");
-                          }
-                        }}
-                        className="bg-yellow-600 hover:bg-yellow-700"
-                      >
-                        Adicionar Aula
-                      </Button>
+                      <div className="md:col-span-2 lg:col-span-4">
+                        <Label>Descrição</Label>
+                        <Textarea
+                          placeholder="Detalhes da aula, público-alvo, objetivos..."
+                          rows={2}
+                          value={novaAulaDescricao}
+                          onChange={(e) => setNovaAulaDescricao(e.target.value)}
+                        />
+                      </div>
+
+                      <div className="md:col-span-2 lg:col-span-4 flex justify-end">
+                        <Button
+                          type="button"
+                          onClick={async () => {
+                            if (!novaAulaNome.trim() || novaAulaValor <= 0 || !novaAulaDuracao.trim()) {
+                              toast.error("Preencha nome, valor (>0) e duração");
+                              return;
+                            }
+
+                            try {
+                              const payload = {
+                                nome: novaAulaNome.trim(),
+                                valor: novaAulaValor,
+                                duracao: novaAulaDuracao.trim(),
+                                descricao: novaAulaDescricao.trim() || undefined,
+                              };
+
+                              await api.post("/tenant/config/aulas-extras", payload);
+                              toast.success("Aula extra criada com sucesso!");
+
+                              // Limpa os campos
+                              setNovaAulaNome("");
+                              setNovaAulaValor(0);
+                              setNovaAulaDuracao("");
+                              setNovaAulaDescricao("");
+
+                              // Recarrega lista do backend (com IDs reais)
+                              const res = await api.get("/tenant/config/aulas-extras");
+                              aulasExtrasForm.setValue("aulas", res.data.data || []);
+                            } catch (err: any) {
+                              console.error("Erro ao criar aula:", err);
+                              toast.error("Erro ao criar aula extra", {
+                                description: err.response?.data?.error || "Verifique o console",
+                              });
+                            }
+                          }}
+                          className="bg-yellow-600 hover:bg-yellow-700"
+                        >
+                          Adicionar Aula
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -513,25 +610,45 @@ export default function ConfiguracoesAdminPage() {
                           <TableHead>Aula</TableHead>
                           <TableHead>Valor (R$)</TableHead>
                           <TableHead>Duração</TableHead>
+                          <TableHead>Descrição</TableHead>
                           <TableHead className="text-right">Ações</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {aulasExtrasForm.watch("aulas")?.map((aula, index) => (
-                          <TableRow key={index}>
+                        {aulasExtrasForm.watch("aulas")?.map((aula) => (
+                          <TableRow key={aula.id}>
                             <TableCell className="font-medium">{aula.nome}</TableCell>
                             <TableCell>{aula.valor.toFixed(2)}</TableCell>
                             <TableCell>{aula.duracao}</TableCell>
+                            <TableCell className="max-w-xs truncate">
+                              {aula.descricao || "-"}
+                            </TableCell>
                             <TableCell className="text-right space-x-2">
-                              <Button size="sm" variant="outline" onClick={() => toast.info("Edição em desenvolvimento")}>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => openEditModal(aula)}
+                              >
                                 Editar
                               </Button>
                               <Button
                                 size="sm"
                                 variant="destructive"
-                                onClick={() => {
-                                  const aulas = aulasExtrasForm.getValues("aulas") || [];
-                                  aulasExtrasForm.setValue("aulas", aulas.filter((_, i) => i !== index));
+                                onClick={async () => {
+                                  if (!confirm("Tem certeza que deseja excluir esta aula?")) return;
+
+                                  try {
+                                    await api.delete(`/tenant/config/aulas-extras/${aula.id}`);
+                                    toast.success("Aula excluída com sucesso");
+
+                                    // Recarrega lista
+                                    const res = await api.get("/tenant/config/aulas-extras");
+                                    aulasExtrasForm.setValue("aulas", res.data.data || []);
+                                  } catch (err: any) {
+                                    toast.error("Erro ao excluir aula", {
+                                      description: err.response?.data?.error || "Tente novamente",
+                                    });
+                                  }
                                 }}
                               >
                                 Excluir
@@ -542,7 +659,7 @@ export default function ConfiguracoesAdminPage() {
 
                         {aulasExtrasForm.watch("aulas")?.length === 0 && (
                           <TableRow>
-                            <TableCell colSpan={4} className="text-center text-gray-500 py-8">
+                            <TableCell colSpan={5} className="text-center text-gray-500 py-8">
                               Nenhuma aula extra cadastrada ainda
                             </TableCell>
                           </TableRow>
@@ -552,27 +669,95 @@ export default function ConfiguracoesAdminPage() {
                   </CardContent>
                 </Card>
 
-                {/* Botão salvar sempre visível */}
+                {/* Botão salvar ativação (opcional, pode remover se não quiser) */}
                 <div className="flex justify-end pt-4 border-t">
                   <Button
-                    onClick={salvarAulasExtras}
-                    disabled={aulasExtrasForm.formState.isSubmitting || isSaving}
+                    onClick={async () => {
+                      const ativar = aulasExtrasForm.getValues("ativarAulasExtras");
+                      try {
+                        await api.put("/tenant/config/aulas-extras/activation", { ativarAulasExtras: ativar });
+                        toast.success("Ativação atualizada!");
+                        await refreshConfig();
+                      } catch (err) {
+                        toast.error("Erro ao atualizar ativação");
+                      }
+                    }}
+                    disabled={isSaving}
                     className="bg-yellow-600 hover:bg-yellow-700"
                   >
-                    {isSaving ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Salvando...
-                      </>
-                    ) : (
-                      "Salvar Aulas Extras"
-                    )}
+                    Salvar Ativação
                   </Button>
                 </div>
               </div>
             )}
           </CardContent>
         </Card>
+
+        {/* Modal de edição */}
+        <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Editar Aula Extra</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="editNome" className="text-right">
+                  Nome
+                </Label>
+                <Input
+                  id="editNome"
+                  className="col-span-3"
+                  {...aulasExtrasForm.register("editNome")}
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="editValor" className="text-right">
+                  Valor (R$)
+                </Label>
+                <Input
+                  id="editValor"
+                  type="number"
+                  step="0.01"
+                  className="col-span-3"
+                  {...aulasExtrasForm.register("editValor", { valueAsNumber: true })}
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="editDuracao" className="text-right">
+                  Duração
+                </Label>
+                <Select {...aulasExtrasForm.register("editDuracao")}>
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="30 min">30 min</SelectItem>
+                    <SelectItem value="45 min">45 min</SelectItem>
+                    <SelectItem value="60 min">60 min</SelectItem>
+                    <SelectItem value="90 min">90 min</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="editDescricao" className="text-right">
+                  Descrição
+                </Label>
+                <Textarea
+                  id="editDescricao"
+                  className="col-span-3"
+                  rows={3}
+                  {...aulasExtrasForm.register("editDescricao")}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={salvarEdicao}>Salvar Alterações</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </TabsContent>
 
         {/* ABA CROSSFIT */}
