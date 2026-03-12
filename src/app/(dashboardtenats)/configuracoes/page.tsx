@@ -36,6 +36,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/src/componen
 const geralSchema = z.object({
   nomeEscolinha: z.string().min(3, "Nome da escolinha é obrigatório"),
   mensagemBoasVindas: z.string().optional(),
+  valorMensalidadeFutebol: z.number().optional(), 
+  valorMensalidadeCrossfit: z.number().optional(),
 });
 
 const aulasExtrasSchema = z.object({
@@ -154,8 +156,10 @@ useEffect(() => {
       const config = resConfig.data.data || {};
 
       geralForm.reset({
-        nomeEscolinha: config.nome || "Gol de Placa Academy",
+        nomeEscolinha: config.nome || "Escolinha",
         mensagemBoasVindas: config.mensagemBoasVindas || "",
+        valorMensalidadeFutebol: config.valorMensalidadeFutebol ||"", 
+        valorMensalidadeCrossfit: config.valorMensalidadeCrossfit ||"",
       });
 
       aulasExtrasForm.reset({
@@ -255,12 +259,13 @@ const salvarEdicao = async () => {
 
   try {
     const payload = {
+      id: editingAula.id,
       nome: aulasExtrasForm.getValues("editNome"),
       valor: aulasExtrasForm.getValues("editValor"),
       duracao: aulasExtrasForm.getValues("editDuracao"),
       descricao: aulasExtrasForm.getValues("editDescricao") || undefined,
     };
-
+     console.log("PAYLOAD DE EDIÇÃO ENVIADO:", payload);
     await api.put(`/tenant/config/aulas-extras/${editingAula.id}`, payload);
     toast.success("Aula atualizada com sucesso!");
 
