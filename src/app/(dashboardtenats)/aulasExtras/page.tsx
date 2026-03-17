@@ -17,7 +17,7 @@ import api from "@/src/lib/api";
 import { useEscolinhaConfig } from "@/src/context/EscolinhaConfigContext";
 
 const AulasExtrasPage = () => {
-const [aulas, setAulas] = useState<any[]>([]);
+  const [aulas, setAulas] = useState<any[]>([]);
   const [inscricoes, setInscricoes] = useState<any[]>([]);
   const [alunos, setAlunos] = useState<any[]>([]);
   const [professores, setProfessores] = useState<any[]>([]);
@@ -88,6 +88,13 @@ const [aulas, setAulas] = useState<any[]>([]);
   const salvarInscricao = async () => {
   if (!selectedAula?.id || !selectedAlunoId || !selectedProfessorId) {
     toast.error("Selecione aula, aluno e professor");
+    return;
+  }
+
+  // Verificação rápida no frontend (evita requisição desnecessária)
+  const jaInscrito = inscricoes.some((ins) => ins.alunoId === selectedAlunoId);
+  if (jaInscrito) {
+    toast.warning("Este aluno já está inscrito nesta aula");
     return;
   }
 

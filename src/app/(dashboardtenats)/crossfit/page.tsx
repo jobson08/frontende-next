@@ -1,603 +1,378 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// src/app/(dashboard)/crossfit/page.tsx
+// src/app/(dashboard)/crossfit-gestao/page.tsx
 "use client";
 
-import { useState, useEffect } from "react"; // ← adicionei useEffect aqui
-import { format } from "date-fns";
-import {
-  Activity,
-  Search,
-  DollarSign,
-  Calendar,
-  Phone,
-  Mail,
-  MoreVertical,
-  Edit,
-  Trash2,
-  AlertCircle,
-  Users,
-  UserPlus,
-  LayoutGrid,
-  Table as TableIcon,
-  Loader2,
-} from "lucide-react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/src/components/ui/card";
-import { Badge } from "@/src/components/ui/badge";
-import { Input } from "@/src/components/ui/input";
+import { Loader2, Plus, Users, Edit, Trash2, UserPlus } from "lucide-react";
 import { Button } from "@/src/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/src/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/src/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/src/components/ui/avatar";
-import Link from "next/link";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/src/components/ui/alert-dialog";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/src/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/src/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/src/components/ui/select";
+import { Label } from "@/src/components/ui/label";
+import { Input } from "@/src/components/ui/input";
+import { Textarea } from "@/src/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/src/components/ui/dialog";
 import api from "@/src/lib/api";
-import { Pagination } from "@/src/components/common/Pagination";
+import Link from "next/link";
 
-// Função para formatar telefone
-const formatarTelefone = (phone: string | null) => {
-  if (!phone) return "Não informado";
-  const cleaned = phone.replace(/\D/g, "");
-  if (cleaned.length === 11) {
-    return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2, 7)}-${cleaned.slice(7)}`;
-  }
-  return phone;
-};
+const CrossfitGestaoPage = () =>  {
 
-interface AlunoCrossfit {
-  id: string;
-  nome: string;
-  email: string;
-  telefone: string | null;
-  dataNascimento: string;
-  observacoes: string | null;
-  frequencia: number;
-  status: string;
-  createdAt: string;
-  ultimoPagamento?: string | null;
-  statusPagamento?: "Em Dia" | "Atrasado" | "Pendente";
-}
+const [turmas, setTurmas] = useState<any[]>([]);
+  const [inscricoes, setInscricoes] = useState<any[]>([]);
+  const [alunos, setAlunos] = useState<any[]>([]);
+  const [professores, setProfessores] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isTurmaModalOpen, setIsTurmaModalOpen] = useState(false);
+  const [isInscricaoModalOpen, setIsInscricaoModalOpen] = useState(false);
+  const [selectedTurma, setSelectedTurma] = useState<any>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
-const ClientesCrossFitPage = () => {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [alunoParaRemover, setAlunoParaRemover] = useState<AlunoCrossfit | null>(null);
+  // Form states para nova turma
+  const [nomeTurma, setNomeTurma] = useState("");
+  const [horarioTurma, setHorarioTurma] = useState("");
+  const [valorTurma, setValorTurma] = useState(0);
+  const [vagasMaxTurma, setVagasMaxTurma] = useState(15);
+  const [descricaoTurma, setDescricaoTurma] = useState("");
+  const [professorTurmaId, setProfessorTurmaId] = useState("");
 
-  // Recupera o modo salvo ou usa "table" como padrão
-  const [viewMode, setViewMode] = useState<"cards" | "table">(() => {
-    const saved = localStorage.getItem("crossfit-view-mode");
-    return (saved === "cards" || saved === "table") ? saved : "table";
-  });
+  // Form states para nova inscrição
+  const [selectedAlunoId, setSelectedAlunoId] = useState("");
+  const [dataInicio, setDataInicio] = useState("");
+  const [observacaoInscricao, setObservacaoInscricao] = useState("");
 
-  // Salva no localStorage sempre que mudar (no topo do componente!)
+  // Carregar dados iniciais
   useEffect(() => {
-    localStorage.setItem("crossfit-view-mode", viewMode);
-  }, [viewMode]);
+    const loadData = async () => {
+      try {
+        setIsLoading(true);
 
-  // Estados de paginação
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+        const [resTurmas, resAlunos, resProfessores] = await Promise.all([
+          api.get("/tenant/crossfit/turmas"),
+          api.get("/tenant/aluno"),               // ajuste rota se necessário
+          api.get("/tenant/funcionarios"),         // ajuste rota se necessário
+        ]);
 
-  const queryClient = useQueryClient();
+        setTurmas(resTurmas.data.data || []);
+        setAlunos(resAlunos.data.data || []);
+        setProfessores(resProfessores.data.data || []);
+      } catch (err) {
+        toast.error("Erro ao carregar dados");
+        console.error(err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  const { data: alunos = [], isLoading, error } = useQuery<AlunoCrossfit[]>({
-    queryKey: ["alunos-crossfit", searchTerm],
-    queryFn: async () => {
-      const res = await api.get("/tenant/alunos-crossfit", {
-        params: { search: searchTerm || undefined },
-      });
-      return res.data.data || [];
-    },
-  });
+    loadData();
+  }, []);
 
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      await api.delete(`/tenant/alunos-crossfit/${id}`);
-    },
-    onSuccess: () => {
-      toast.success("Aluno removido com sucesso!");
-      queryClient.invalidateQueries({ queryKey: ["alunos-crossfit"] });
-      setAlunoParaRemover(null);
-    },
-    onError: (err: any) => {
-      toast.error("Erro ao remover aluno", {
+  // Carregar inscrições da turma selecionada
+  const loadInscricoes = async (turmaId: string) => {
+    try {
+      const res = await api.get(`/tenant/crossfit/inscricoes/${turmaId}`);
+      setInscricoes(res.data.data || []);
+    } catch (err) {
+      toast.error("Erro ao carregar inscritos");
+    }
+  };
+
+  // Abrir modal de nova turma
+  const openNovaTurmaModal = () => {
+    setNomeTurma("");
+    setHorarioTurma("");
+    setValorTurma(0);
+    setVagasMaxTurma(15);
+    setDescricaoTurma("");
+    setProfessorTurmaId("");
+    setIsTurmaModalOpen(true);
+  };
+
+  // Salvar nova turma
+  const salvarTurma = async () => {
+    if (!nomeTurma.trim() || valorTurma <= 0 || !professorTurmaId) {
+      toast.error("Preencha nome, valor e professor");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const payload = {
+        nome: nomeTurma.trim(),
+        horario: horarioTurma.trim() || undefined,
+        valorMensalidade: valorTurma,
+        vagasMax: vagasMaxTurma,
+        descricao: descricaoTurma.trim() || undefined,
+        professorId: professorTurmaId,
+      };
+
+      await api.post("/tenant/crossfit/turmas", payload);
+      toast.success("Turma criada com sucesso!");
+
+      // Recarrega lista de turmas
+      const res = await api.get("/tenant/crossfit/turmas");
+      setTurmas(res.data.data || []);
+
+      setIsTurmaModalOpen(false);
+    } catch (err: any) {
+      toast.error("Erro ao criar turma", {
         description: err.response?.data?.error || "Tente novamente",
       });
-    },
-  });
-
-  const filtered = alunos.filter(
-    (aluno) =>
-      aluno.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      aluno.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const totalItems = filtered.length;
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedItems = filtered.slice(startIndex, startIndex + itemsPerPage);
-
-  const totalAlunos = filtered.length;
-  const emDia = filtered.filter((a) => a.statusPagamento === "Em Dia").length;
-  const atrasados = filtered.filter((a) => a.statusPagamento !== "Em Dia").length;
-
-  const getStatusBadge = (status?: string) => {
-    switch (status) {
-      case "Em Dia":
-        return <Badge className="bg-green-600">Em Dia</Badge>;
-      case "Atrasado":
-        return <Badge className="bg-red-600">Atrasado</Badge>;
-      case "Pendente":
-        return <Badge className="bg-orange-600">Pendente</Badge>;
-      default:
-        return <Badge variant="secondary">Indefinido</Badge>;
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const handleRemover = (aluno: AlunoCrossfit) => {
-    setAlunoParaRemover(aluno);
+  // Abrir modal de inscrições da turma
+  const openInscricoesModal = (turma: any) => {
+    setSelectedTurma(turma);
+    setSelectedAlunoId("");
+    setDataInicio("");
+    setObservacaoInscricao("");
+    setIsInscricaoModalOpen(true);
+    loadInscricoes(turma.id);
   };
 
-  const confirmarRemocao = () => {
-    if (alunoParaRemover) {
-      deleteMutation.mutate(alunoParaRemover.id);
+  // Salvar nova inscrição
+  const salvarInscricao = async () => {
+    if (!selectedTurma?.id || !selectedAlunoId) {
+      toast.error("Selecione um aluno");
+      return;
+    }
+
+    // Verificação rápida no frontend
+    const jaInscrito = inscricoes.some(ins => ins.alunoId === selectedAlunoId);
+    if (jaInscrito) {
+      toast.warning("Este aluno já está inscrito nesta turma");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const payload = {
+        aulaCrossfitId: selectedTurma.id,
+        alunoId: selectedAlunoId,
+        dataInicio: dataInicio || undefined,
+        observacao: observacaoInscricao.trim() || undefined,
+      };
+
+      await api.post("/tenant/crossfit/inscricoes", payload);
+      toast.success("Aluno inscrito com sucesso!");
+      loadInscricoes(selectedTurma.id);
+    } catch (err: any) {
+      toast.error("Erro ao inscrever aluno", {
+        description: err.response?.data?.error || "Tente novamente",
+      });
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-  };
+  // Excluir inscrição
+  const excluirInscricao = async (id: string) => {
+    if (!confirm("Deseja realmente excluir esta inscrição?")) return;
 
-  const handleItemsPerPageChange = (value: number) => {
-    setItemsPerPage(value);
-    setCurrentPage(1);
+    try {
+      await api.delete(`/tenant/crossfit/inscricoes/${id}`);
+      toast.success("Inscrição excluída");
+      if (selectedTurma) loadInscricoes(selectedTurma.id);
+    } catch (err) {
+      toast.error("Erro ao excluir inscrição");
+    }
   };
 
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-red-600" />
-        <p className="ml-4 text-lg text-gray-600">Carregando alunos CrossFit...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="p-8 text-center text-red-600">
-        <AlertCircle className="h-16 w-16 mx-auto mb-4" />
-        <h2 className="text-2xl font-bold">Erro ao carregar alunos</h2>
-        <p className="mt-2">{(error as Error).message || "Tente novamente mais tarde"}</p>
-        <Button className="mt-6" onClick={() => queryClient.refetchQueries({ queryKey: ["alunos-crossfit"] })}>
-          Tentar novamente
-        </Button>
       </div>
     );
   }
 
   return (
-    <div className="p-4 lg:p-8 space-y-8">
-      {/* Cabeçalho */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="p-4 lg:p-8 max-w-7xl mx-auto">
+      <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-4xl font-bold flex items-center gap-3">
-            <Activity className="h-10 w-10 text-red-600" />
-            Alunos CrossFit
-          </h1>
-          <p className="text-gray-600 text-lg mt-2">Gerencie os alunos adultos do CrossFit da sua escolinha</p>
+          <h1 className="text-4xl font-bold">Gestão de CrossFit</h1>
+          <p className="text-gray-600 mt-2">Crie turmas e gerencie inscrições de alunos</p>
         </div>
-      </div>
-
-      {/* Cards de Totais */}
-      <div className="grid gap-6 md:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Users className="h-5 w-5 text-red-600" />
-              Total de Alunos
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-red-600">{totalAlunos}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <DollarSign className="h-5 w-5 text-green-600" />
-              Em Dia
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-green-600">{emDia}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-orange-600" />
-              Atrasados/Pendentes
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-orange-600">{atrasados}</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Busca + Botões de ação */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="relative max-w-md w-full">
-          <Search className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
-          <Input
-            placeholder="Buscar por nome ou e-mail..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-11 h-12"
-          />
-        </div>
-
         <div className="flex flex-wrap gap-3">
-          <Button asChild className="bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700">
-            <Link href="/crossfit/presenca">
-              <Calendar className="mr-2 h-4 w-4" />
-              Marca Presença
-            </Link>
-          </Button>
-          <Button asChild className="bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700">
-            <Link href="/crossfit/novo">
-              <UserPlus className="mr-2 h-4 w-4" />
-              Novo Aluno
-            </Link>
-          </Button>
+           <Button onClick={openNovaTurmaModal} className="bg-green-600 hover:bg-green-700">
+            <Plus className="mr-2 h-4 w-4" />
+             Nova Turma
+            </Button> 
 
-          {/* Alternância de visualização */}
-          <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-lg">
-            <Button
-              variant={viewMode === "cards" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setViewMode("cards")}
-              className="gap-1"
-            >
-              <LayoutGrid className="h-4 w-4" />
-              Cards
-            </Button>
-            <Button
-              variant={viewMode === "table" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setViewMode("table")}
-              className="gap-1"
-            >
-              <TableIcon className="h-4 w-4" />
-              Tabela
-            </Button>
-              </div>
+            <Button asChild className="bg-gradient-to-r from-green-600 to-green-600 hover:from-green-700 hover:to-green-700">
+              <Link href="/crossfit/aluno">
+                <UserPlus className="mr-2 h-4 w-4" />
+                 Alunos
+              </Link>
+           </Button>
+          </div>  
+      </div>
+
+      <div className="grid gap-6">
+        {turmas.map((turma) => (
+          <Card key={turma.id} className="overflow-hidden">
+            <CardHeader className="bg-red-50">
+              <CardTitle className="flex items-center justify-between">
+                {turma.nome}
+                <Button onClick={() => openInscricoesModal(turma)} className="bg-red-600 hover:bg-red-700">
+                  <Users className="mr-2 h-4 w-4" />
+                  Gerenciar Inscrições ({turma._count?.inscricoes || 0}/{turma.vagasMax})
+                </Button>
+              </CardTitle>
+              <CardDescription>
+                Valor mensal: R$ {turma.valorMensalidade.toFixed(2)} | Horário: {turma.horario || "-"} | Professor: {turma.professor?.nome || "Não definido"}
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        ))}
+
+        {turmas.length === 0 && (
+          <Card>
+            <CardContent className="py-12 text-center">
+              <p className="text-gray-500">Nenhuma turma de CrossFit cadastrada ainda.</p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      {/* Modal para criar nova turma */}
+      <Dialog open={isTurmaModalOpen} onOpenChange={setIsTurmaModalOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Criar Nova Turma de CrossFit</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="nomeTurma" className="text-right">Nome</Label>
+              <Input id="nomeTurma" className="col-span-3" value={nomeTurma} onChange={e => setNomeTurma(e.target.value)} />
             </div>
-        </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="horario" className="text-right">Horário</Label>
+              <Input id="horario" className="col-span-3" value={horarioTurma} onChange={e => setHorarioTurma(e.target.value)} placeholder="ex: Segunda e Quarta - 19h" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="valor" className="text-right">Valor mensal</Label>
+              <Input id="valor" type="number" step="0.01" className="col-span-3" value={valorTurma} onChange={e => setValorTurma(Number(e.target.value))} />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="vagas" className="text-right">Vagas</Label>
+              <Input id="vagas" type="number" className="col-span-3" value={vagasMaxTurma} onChange={e => setVagasMaxTurma(Number(e.target.value))} />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="professor" className="text-right">Professor</Label>
+              <Select value={professorTurmaId} onValueChange={setProfessorTurmaId}>
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Selecione o professor" />
+                </SelectTrigger>
+                <SelectContent>
+                  {professores.map(prof => (
+                    <SelectItem key={prof.id} value={prof.id}>{prof.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="descricao" className="text-right">Descrição</Label>
+              <Textarea id="descricao" className="col-span-3" value={descricaoTurma} onChange={e => setDescricaoTurma(e.target.value)} />
+            </div>
+          </div>
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setIsTurmaModalOpen(false)}>Cancelar</Button>
+            <Button onClick={salvarTurma} disabled={isSaving}>
+              {isSaving ? "Criando..." : "Criar Turma"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
-      {/* Conteúdo principal: Cards ou Tabela */}
-      {viewMode === "cards" ? (
-      <>
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {paginatedItems.map((aluno) => (
-              <Card key={aluno.id} className="overflow-hidden hover:shadow-md transition-shadow">
-                <CardHeader className="pb-3 bg-gradient-to-r from-red-50 to-orange-50">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Avatar>
-                        <AvatarFallback className="bg-gradient-to-br from-red-600 to-orange-600 text-white">
-                          {aluno.nome.split(" ").map((n) => n[0]).join("")}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <CardTitle className="text-lg">{aluno.nome}</CardTitle>
-                        <p className="text-sm text-gray-600 truncate">{aluno.email}</p>
-                      </div>
-                    </div>
+      {/* Modal para gerenciar inscrições */}
+      <Dialog open={isInscricaoModalOpen} onOpenChange={setIsInscricaoModalOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Gerenciar Inscrições - {selectedTurma?.nome}</DialogTitle>
+          </DialogHeader>
 
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem asChild>
-                          <Link href={`/crossfit/${aluno.id}/editar`}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Editar aluno
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <Link href={`/crossfit/${aluno.id}/pagamentos`}>
-                            <DollarSign className="mr-2 h-4 w-4" />
-                            Ver pagamentos
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <Link href="/crossfit/presenca">
-                            <Calendar className="mr-2 h-4 w-4" />
-                            Marcar presença
-                          </Link>
-                        </DropdownMenuItem>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <DropdownMenuItem
-                              className="text-red-600 focus:text-red-600"
-                              onSelect={(e) => e.preventDefault()}
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Remover aluno
-                            </DropdownMenuItem>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Confirmar remoção?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Tem certeza que deseja remover <strong>{aluno.nome}</strong> da lista de alunos CrossFit?
-                                <br />
-                                Essa ação não pode ser desfeita.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                              <AlertDialogAction
-                                className="bg-red-600 hover:bg-red-700"
-                                onClick={confirmarRemocao}
-                              >
-                                Sim, remover
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4 pt-4">
-                  <div className="flex items-center gap-3">
-                    <Phone className="h-5 w-5 text-gray-600" />
-                    <span>{formatarTelefone(aluno.telefone || "Não informado")}</span>
-                </div>
-               <div>
-                {/*  
-                  <div className="flex items-center gap-3">
-                    <Mail className="h-5 w-5 text-gray-600" />
-                    <span className="truncate">{aluno.email}</span>
-                  </div>
-                   <div className="flex items-center gap-2">
-                      <Calendar className="h-5 w-5 text-gray-600" />
-                      <span>{format(new Date(aluno.dataNascimento), "dd/MM/yyyy")}</span>
-                  </div>
-                  */}
-                </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Activity className="h-5 w-5 text-gray-600" />
-                      <Badge variant="outline">{aluno.frequencia} aulas/semana</Badge>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between pt-2 border-t">
-                    <span className="text-sm text-gray-600">Status:</span>
-                    <Badge variant={aluno.status === "ativo" ? "default" : "destructive"}>
-                      {aluno.status === "ativo" ? "Ativo" : "Inativo"}
-                    </Badge>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+          {/* Form nova inscrição */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div>
+              <Label>Aluno</Label>
+              <Select value={selectedAlunoId} onValueChange={setSelectedAlunoId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um aluno" />
+                </SelectTrigger>
+                <SelectContent>
+                  {alunos.map(aluno => (
+                    <SelectItem key={aluno.id} value={aluno.id}>{aluno.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>Data de Início</Label>
+              <Input type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)} />
+            </div>
+
+            <div className="md:col-span-2">
+              <Label>Observação</Label>
+              <Textarea value={observacaoInscricao} onChange={e => setObservacaoInscricao(e.target.value)} placeholder="Observações do professor..." />
+            </div>
+
+            <div className="md:col-span-2 flex justify-end">
+              <Button onClick={salvarInscricao} disabled={isSaving} className="bg-green-600">
+                {isSaving ? "Salvando..." : "Adicionar Aluno"}
+              </Button>
+            </div>
           </div>
 
-          {/* Paginação no modo cards */}
-          <Pagination
-            currentPage={currentPage}
-            totalItems={totalItems}
-            itemsPerPage={itemsPerPage}
-            onPageChange={handlePageChange}
-            onItemsPerPageChange={handleItemsPerPageChange}
-            className="mt-6"
-          />
-        </>
-      ) : (
-      <Card>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  {/* Coluna única para Aluno (avatar + nome) */}
-                  <TableHead>Aluno</TableHead>
-                  
-                  {/* Colunas ocultas em mobile */}
-                  <TableHead className="hidden md:table-cell">Contato</TableHead>
-                  <TableHead className="hidden md:table-cell">Data de Nascimento</TableHead>
-                  <TableHead className="hidden md:table-cell">Frequência Semanal</TableHead>
-                  
-                  {/* Sempre visíveis */}
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedItems.map((aluno) => (
-                  <TableRow key={aluno.id}>
-                    {/* Coluna Aluno: avatar + nome (em mobile fica mais compacto) */}
-                    <TableCell className="font-medium">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-10 w-10">
-                          <AvatarFallback className="bg-gradient-to-br from-red-600 to-orange-600 text-white">
-                            {aluno.nome.split(" ").map((n) => n[0]).join("")}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex flex-col">
-                          <span className="font-medium">{aluno.nome}</span>
-                          {/* Em desktop mostra email/telefone como subtítulo */}
-                          <span className="text-xs text-gray-500 md:hidden truncate">
-                            {aluno.email}
-                          </span>
-                        </div>
-                      </div>
-                    </TableCell>
-
-                    {/* Colunas extras (só desktop) */}
-                    <TableCell className="hidden md:table-cell">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-1 text-sm">
-                          <Mail className="h-3 w-3 text-gray-500" />
-                          {aluno.email}
-                        </div>
-                        <div className="flex items-center gap-1 text-sm">
-                          <Phone className="h-3 w-3 text-gray-500" />
-                          {formatarTelefone(aluno.telefone || "Não informado")}
-                        </div>
-                      </div>
-                    </TableCell>
-
-                    <TableCell className="hidden md:table-cell">
-                      {format(new Date(aluno.dataNascimento), "dd/MM/yyyy")}
-                    </TableCell>
-
-                    <TableCell className="hidden md:table-cell">
-                      <Badge variant="outline">{aluno.frequencia} aulas/semana</Badge>
-                    </TableCell>
-
-                    {/* Status (sempre visível) */}
-                    <TableCell>
-                      <Badge variant={aluno.status === "ATIVO" ? "default" : "destructive"}>
-                        {aluno.status === "ATIVO" ? "ATIVO" : "Inativo"}
-                      </Badge>
-                    </TableCell>
-
-                    {/* Ações (sempre visível) */}
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem asChild>
-                            <Link href={`/crossfit/${aluno.id}/editar`}>
-                              <Edit className="mr-2 h-4 w-4" />
-                              Editar aluno
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem asChild>
-                            <Link href={`/crossfit/${aluno.id}/pagamentos`}>
-                              <DollarSign className="mr-2 h-4 w-4" />
-                              Ver pagamentos
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem asChild>
-                            <Link href="/crossfit/presenca">
-                              <Calendar className="mr-2 h-4 w-4" />
-                              Marcar presença
-                            </Link>
-                          </DropdownMenuItem>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <DropdownMenuItem
-                                className="text-red-600 focus:text-red-600"
-                                onSelect={(e) => e.preventDefault()}
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Remover aluno
-                              </DropdownMenuItem>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Confirmar remoção?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Tem certeza que deseja remover <strong>{aluno.nome}</strong> da lista de alunos CrossFit?
-                                  <br />
-                                  Essa ação não pode ser desfeita.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                <AlertDialogAction
-                                  className="bg-red-600 hover:bg-red-700"
-                                  onClick={confirmarRemocao}
-                                >
-                                  Sim, remover
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
+          {/* Tabela de inscritos */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Alunos Inscritos ({inscricoes.length}/{selectedTurma?.vagasMax})</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Aluno</TableHead>
+                    <TableHead>Data Início</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Observação</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-
-              {/* Paginação */}
-              <Pagination
-                currentPage={currentPage}
-                totalItems={totalItems}
-                itemsPerPage={itemsPerPage}
-                onPageChange={handlePageChange}
-                onItemsPerPageChange={handleItemsPerPageChange}
-                className="mt-6"
-              />
+                </TableHeader>
+                <TableBody>
+                  {inscricoes.map(ins => (
+                    <TableRow key={ins.id}>
+                      <TableCell>{ins.aluno?.nome}</TableCell>
+                      <TableCell>{ins.dataInicio ? new Date(ins.dataInicio).toLocaleDateString() : "-"}</TableCell>
+                      <TableCell>{ins.status}</TableCell>
+                      <TableCell className="max-w-xs truncate">{ins.observacao || "-"}</TableCell>
+                      <TableCell className="text-right">
+                        <Button size="sm" variant="destructive" onClick={() => excluirInscricao(ins.id)}>
+                          Excluir
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {inscricoes.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                        Nenhum aluno inscrito ainda
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
             </CardContent>
-        </Card>
-      )}
-
-      {/* AlertDialog de remoção */}
-      <AlertDialog open={!!alunoParaRemover} onOpenChange={() => setAlunoParaRemover(null)}>
-         <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar remoção?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja remover <strong>{alunoParaRemover?.nome}</strong> da lista de alunos CrossFit?
-              <br />
-              Essa ação não pode ser desfeita.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-red-600 hover:bg-red-700"
-              onClick={confirmarRemocao}
-            >
-              Sim, remover
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+          </Card>
+        </DialogContent>
+      </Dialog>
     </div>
   );
-};
+}
 
-export default ClientesCrossFitPage;
+export default CrossfitGestaoPage;

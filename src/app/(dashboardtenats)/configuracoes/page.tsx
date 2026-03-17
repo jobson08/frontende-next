@@ -36,9 +36,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/src/componen
 const geralSchema = z.object({
   nomeEscolinha: z.string().min(3, "Nome da escolinha é obrigatório"),
   mensagemBoasVindas: z.string().optional(),
-  valorMensalidadeFutebol: z.number().optional(), 
+});
+// Schema Zod para valores
+const valoresSchema = z.object({
+  valorMensalidadeFutebol: z.number().positive("Valor deve ser positivo"),
+  diaVencimento: z.number().int().min(1).max(31, "Dia inválido"),
   valorMensalidadeCrossfit: z.number().optional(),
 });
+
 
 const aulasExtrasSchema = z.object({
   ativarAulasExtras: z.boolean(),
@@ -57,14 +62,14 @@ const aulasExtrasSchema = z.object({
   editDescricao: z.string().optional(),
 });
 
-type AulasExtrasInput = z.infer<typeof aulasExtrasSchema>;
-
-
-
 const crossfitSchema = z.object({
   ativarCrossfit: z.boolean(),
-  mostrarNavbar: z.boolean().default(false),
-  mostrarSidebar: z.boolean().default(false),
+  nomeServicoCrossfit: z.string().min(3, "Nome obrigatório").optional(),
+  valorMensalidadeCrossfit: z.number().positive("Valor deve ser positivo").optional(),
+  professorCrossfitId: z.string().uuid("Professor obrigatório").optional(),
+  limiteVagasCrossfit: z.number().int().positive().optional(),
+  mostrarNavbar: z.boolean().optional(),
+  mostrarSidebar: z.boolean().optional(),
 });
 
 const pagamentoSchema = z.object({
@@ -87,15 +92,18 @@ const pagamentoSchema = z.object({
 );
 
 type GeralFormData = z.infer<typeof geralSchema>;
+type ValoresForm = z.infer<typeof valoresSchema>;
 type AulasExtrasForm = z.infer<typeof aulasExtrasSchema>;
 type CrossfitForm = z.infer<typeof crossfitSchema>;
 type PagamentoForm = z.infer<typeof pagamentoSchema>;
+type AulasExtrasInput = z.infer<typeof aulasExtrasSchema>;
 
 export default function ConfiguracoesAdminPage() {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [crossfitBanner, setCrossfitBanner] = useState<string | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const crossfitInputRef = useRef<HTMLInputElement>(null);
+  const [professores, setProfessores] = useState<any[]>([]);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -116,6 +124,16 @@ const [editingAula, setEditingAula] = useState<any | null>(null); // tipo da aul
     resolver: zodResolver(geralSchema),
   });
 
+  //Valor e Vencimento aula futebol
+const valoresForm = useForm<ValoresForm>({
+  resolver: zodResolver(valoresSchema),
+  defaultValues: {
+    valorMensalidadeFutebol: 150.00,
+    valorMensalidadeCrossfit: 150.00,
+    diaVencimento: 10,
+  },
+});
+
 const aulasExtrasForm = useForm<AulasExtrasForm>({
   resolver: zodResolver(aulasExtrasSchema)as any,
   defaultValues: {
@@ -134,6 +152,9 @@ const aulasExtrasForm = useForm<AulasExtrasForm>({
       ativarCrossfit: false,
       mostrarNavbar: false,
       mostrarSidebar: false,
+      nomeServicoCrossfit: "",
+      professorCrossfitId: "",
+      limiteVagasCrossfit: 15,
     },
   });
 
@@ -158,9 +179,23 @@ useEffect(() => {
       geralForm.reset({
         nomeEscolinha: config.nome || "Escolinha",
         mensagemBoasVindas: config.mensagemBoasVindas || "",
-        valorMensalidadeFutebol: config.valorMensalidadeFutebol ||"", 
-        valorMensalidadeCrossfit: config.valorMensalidadeCrossfit ||"",
       });
+      // Carrega professores (funcionários treinadores)
+        try {
+          const resProf = await api.get("/tenant/funcionarios");  // ajuste a rota se for diferente
+          setProfessores(resProf.data.data || []);
+        } catch (err) {
+          console.error("Erro ao carregar professores:", err);
+          toast.error("Falha ao carregar lista de professores");
+        }
+      // Dentro do try do loadConfig, após resetar os outros forms
+     valoresForm.reset({
+      valorMensalidadeFutebol: config.valorMensalidadeFutebol ?? 150.00,
+      valorMensalidadeCrossfit: config.valorMensalidadeCrossfit ?? 150.00,
+      diaVencimento: config.diaVencimentoMensalidade ?? 10,
+    });
+    console.log("CONFIG CARREGADA:", config);
+    console.log("VALOR MENSALIDADE FUTEBOL DO BANCO:", config.valorMensalidadeFutebol);
 
       aulasExtrasForm.reset({
         ativarAulasExtras: config.aulasExtrasAtivas ?? false,
@@ -171,6 +206,10 @@ useEffect(() => {
         ativarCrossfit: config.crossfitAtivo ?? false,
         mostrarNavbar: config.mostrarCrossfitNavbar ?? false,
         mostrarSidebar: config.mostrarCrossfitSidebar ?? false,
+        nomeServicoCrossfit: config.nomeServicoCrossfit || "",
+        valorMensalidadeCrossfit: config.valorMensalidadeCrossfit || 0,
+        professorCrossfitId: config.professorCrossfitId || "",
+        limiteVagasCrossfit: config.limiteVagasCrossfit || 15,
       });
 
       pagamentoForm.reset({
@@ -209,7 +248,7 @@ useEffect(() => {
   };
 
   loadConfig();
-}, [geralForm, aulasExtrasForm, crossfitForm, pagamentoForm]);
+}, [geralForm, valoresForm, aulasExtrasForm, crossfitForm, pagamentoForm]);
 
   // Salvamentos
   const salvarGeral = async (data: GeralFormData) => {
@@ -225,6 +264,21 @@ useEffect(() => {
     }
   };
 
+  // Salvar valore aulas e data
+  const salvarValores = async (data: ValoresForm) => {
+  setIsSaving(true);
+  try {
+    await api.put("/tenant/config/valores", data);
+    toast.success("Valores salvos com sucesso!");
+    await refreshConfig(); // atualiza navbar/sidebar se necessário
+  } catch (err: any) {
+    toast.error("Erro ao salvar valores", {
+      description: err.response?.data?.error || "Tente novamente",
+    });
+  } finally {
+    setIsSaving(false);
+  }
+};
   
 //SALVAR AULAS EXTRAS
 const salvarAulasExtras = async () => {
@@ -282,28 +336,48 @@ const salvarEdicao = async () => {
   }
 };
 
-  const salvarCrossfit = async () => {
-    setIsSaving(true);
-    try {
-      const currentData = crossfitForm.getValues();
+//Salvar aulas crossfit
+ const salvarCrossfit = async () => {
+  setIsSaving(true);
+  try {
+    const data = crossfitForm.getValues();
 
-      console.log('VALORES ENVIADOS PARA CROSSFIT:', currentData);
-
-      const response = await api.put("/tenant/config/crossfit", currentData);
-      console.log('RESPOSTA DO BACKEND:', response.data);
-
-      toast.success("CrossFit salvo!");
-
-      await refreshConfig();
-
-      crossfitForm.reset(currentData);
-    } catch (err: any) {
-      console.error('ERRO NO PUT CROSSFIT:', err.response?.data || err.message);
-      toast.error("Erro ao salvar CrossFit", { description: err.response?.data?.error || err.message });
-    } finally {
-      setIsSaving(false);
+    if (!data.nomeServicoCrossfit?.trim()) {
+      toast.error("Preencha o nome do serviço");
+      return;
     }
-  };
+    if (!data.valorMensalidadeCrossfit || data.valorMensalidadeCrossfit <= 0) {
+      toast.error("Valor mensal deve ser maior que 0");
+      return;
+    }
+    if (!data.professorCrossfitId) {
+      toast.error("Selecione um professor responsável");
+      return;
+    }
+
+    const payload = {
+      ativarCrossfit: data.ativarCrossfit,
+      nomeServicoCrossfit: data.nomeServicoCrossfit.trim(),
+      valorMensalidadeCrossfit: data.valorMensalidadeCrossfit,
+      professorCrossfitId: data.professorCrossfitId,
+      limiteVagasCrossfit: data.limiteVagasCrossfit || 15,
+      mostrarNavbar: data.mostrarNavbar,
+      mostrarSidebar: data.mostrarSidebar,
+    };
+
+    console.log("PAYLOAD ENVIADO:", JSON.stringify(payload, null, 2));
+
+    await api.put("/tenant/config/crossfit", payload);
+    toast.success("Configuração CrossFit salva!");
+    await refreshConfig();
+  } catch (err: any) {
+    console.error("ERRO:", err.response?.data);
+    const msg = err.response?.data?.details?.map((d: any) => d.message).join(", ") || err.response?.data?.error || err.message;
+    toast.error("Erro ao salvar CrossFit", { description: msg });
+  } finally {
+    setIsSaving(false);
+  }
+};
 
   const salvarPagamento = async (data: PagamentoForm) => {
     setIsSaving(true);
@@ -448,21 +522,58 @@ const salvarEdicao = async () => {
                 <DollarSign className="h-8 w-8 text-green-600" />
                 Valores dos Serviços
               </CardTitle>
+              <CardDescription>Configure os valores de mensalidade e vencimento</CardDescription>
             </CardHeader>
+
             <CardContent className="space-y-8">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-4">
                   <Label className="text-lg font-semibold">Mensalidade Futebol</Label>
-                  <Input type="number" step="0.01" defaultValue="150.00" className="text-xl font-bold h-10" />
+                  <Input
+                    type="number"
+                    step="0.01"
+                    {...valoresForm.register("valorMensalidadeFutebol", { valueAsNumber: true })}
+                    className="text-xl font-bold h-10"
+                  />
+                  {valoresForm.formState.errors.valorMensalidadeFutebol && (
+                    <p className="text-red-500 text-sm">
+                      {valoresForm.formState.errors.valorMensalidadeFutebol.message}
+                    </p>
+                  )}
                 </div>
+
                 <div className="space-y-4">
                   <Label className="text-lg font-semibold">Dia de Vencimento</Label>
-                  <Input type="number" min="1" max="31" defaultValue="10" className="w-20 text-center h-10" />
+                  <Input
+                    type="number"
+                    min="1"
+                    max="31"
+                    {...valoresForm.register("diaVencimento", { valueAsNumber: true })}
+                    className="w-20 text-center h-10"
+                  />
+                  {valoresForm.formState.errors.diaVencimento && (
+                    <p className="text-red-500 text-sm">
+                      {valoresForm.formState.errors.diaVencimento.message}
+                    </p>
+                  )}
                 </div>
               </div>
+
               <div className="flex justify-end">
-                <Button size="lg" className="bg-green-600">
-                  Salvar Valores
+                <Button
+                  size="lg"
+                  className="bg-green-600"
+                  onClick={valoresForm.handleSubmit(salvarValores)}
+                  disabled={valoresForm.formState.isSubmitting || isSaving}
+                >
+                  {valoresForm.formState.isSubmitting || isSaving ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Salvando...
+                    </>
+                  ) : (
+                    "Salvar Valores"
+                  )}
                 </Button>
               </div>
             </CardContent>
@@ -766,107 +877,136 @@ const salvarEdicao = async () => {
       </TabsContent>
 
         {/* ABA CROSSFIT */}
-        <TabsContent value="crossfit">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Activity className="h-6 w-6 text-red-600" />
-                CrossFit para Pais e Comunidade
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex items-center justify-between p-4 border rounded-lg bg-red-50">
-                <div>
-                  <Label className="text-lg font-semibold">Ativar CrossFit</Label>
-                  <p className="text-sm text-gray-600">Ofereça aulas para adultos</p>
-                </div>
-                  <Switch
-                    checked={ativarCrossfit}
-                    onCheckedChange={(checked) => {
-                      crossfitForm.setValue("ativarCrossfit", checked, { shouldDirty: true, shouldValidate: true, shouldTouch: true });
-                      crossfitForm.setValue("mostrarNavbar", checked, { shouldDirty: true });
-                      crossfitForm.setValue("mostrarSidebar", checked, { shouldDirty: true });
-                    }}
-                  />
+      <TabsContent value="crossfit">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Activity className="h-6 w-6 text-red-600" />
+              CrossFit para Pais e Comunidade
+            </CardTitle>
+          </CardHeader>
+
+          <CardContent className="space-y-6">
+            {/* Switch de ativação */}
+            <div className="flex items-center justify-between p-4 border rounded-lg bg-red-50">
+              <div>
+                <Label className="text-lg font-semibold">Ativar CrossFit</Label>
+                <p className="text-sm text-gray-600">Ofereça aulas para adultos</p>
               </div>
+              <Switch
+                checked={crossfitForm.watch("ativarCrossfit")}
+                onCheckedChange={async (checked) => {
+                  crossfitForm.setValue("ativarCrossfit", checked);
+                  try {
+                    await api.put("/tenant/config/crossfit/activation", { ativarCrossfit: checked });
+                    await refreshConfig();
+                    toast.success(`CrossFit ${checked ? "ativado" : "desativado"}`);
+                  } catch (err: any) {
+                    toast.error("Erro ao atualizar ativação");
+                    crossfitForm.setValue("ativarCrossfit", !checked);
+                  }
+                }}
+              />
+            </div>
 
-              {ativarCrossfit && (
-                <div className="space-y-8">
-                  <div className="flex flex-col items-center gap-4 py-6 border-b">
-                    <Avatar className="h-40 w-40 ring-4 ring-red-100">
-                      <AvatarImage src={crossfitBanner || undefined} />
-                      <AvatarFallback className="bg-gradient-to-br from-red-600 to-orange-600 text-white text-4xl font-bold">
-                        CF
-                      </AvatarFallback>
-                    </Avatar>
+            {crossfitForm.watch("ativarCrossfit") && (
+              <div className="space-y-8">
+                {/* Banner */}
+                <div className="flex flex-col items-center gap-4 py-6 border-b">
+                  <Avatar className="h-40 w-40 ring-4 ring-red-100">
+                    <AvatarImage src={crossfitBanner || undefined} />
+                    <AvatarFallback className="bg-gradient-to-br from-red-600 to-orange-600 text-white text-4xl font-bold">
+                      CF
+                    </AvatarFallback>
+                  </Avatar>
 
-                    <div className="flex gap-3">
-                      <Button type="button" variant="outline" size="sm" onClick={() => crossfitInputRef.current?.click()}>
-                        <Camera className="mr-2 h-4 w-4" />
-                        Alterar banner
+                  <div className="flex gap-3">
+                    <Button type="button" variant="outline" size="sm" onClick={() => crossfitInputRef.current?.click()}>
+                      <Camera className="mr-2 h-4 w-4" />
+                      Alterar banner
+                    </Button>
+                    {crossfitBanner && (
+                      <Button type="button" variant="destructive" size="sm" onClick={() => setCrossfitBanner(null)}>
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Remover
                       </Button>
-                      {crossfitBanner && (
-                        <Button type="button" variant="destructive" size="sm" onClick={() => setCrossfitBanner(null)}>
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Remover
-                        </Button>
-                      )}
-                    </div>
-
-                    <input type="file" accept="image/*" ref={crossfitInputRef} onChange={handleCrossfitBannerUpload} className="hidden" />
+                    )}
                   </div>
 
-                 {/* <div className="space-y-6 p-6 bg-red-50 rounded-lg border border-red-200">
-                    <h3 className="text-xl font-bold text-red-800">Visibilidade</h3>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label className="font-medium">Mostrar na Navbar</Label>
-                        <p className="text-sm text-gray-600">Menu superior</p>
-                      </div>
-                      <Switch checked={crossfitForm.watch("mostrarNavbar")} onCheckedChange={(c) => crossfitForm.setValue("mostrarNavbar", c)} />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label className="font-medium">Mostrar na Sidebar</Label>
-                        <p className="text-sm text-gray-600">Menu lateral</p>
-                      </div>
-                      <Switch checked={crossfitForm.watch("mostrarSidebar")} onCheckedChange={(c) => crossfitForm.setValue("mostrarSidebar", c)} />
-                    </div>
+                  <input type="file" accept="image/*" ref={crossfitInputRef} onChange={handleCrossfitBannerUpload} className="hidden" />
+                </div>
+
+                {/* Campos de configuração da turma padrão */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label>Nome do serviço</Label>
+                    <Input
+                      placeholder="ex: CrossFit FutElite Pais"
+                      {...crossfitForm.register("nomeServicoCrossfit")}
+                    />
                   </div>
-                  */}
-                  {/* Campos extras */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label>Nome do serviço</Label>
-                      <Input placeholder="ex: CrossFit FutElite Pais" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Valor mensal</Label>
-                      <Input type="number" placeholder="ex: 149" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Professor responsável</Label>
-                      <Input placeholder="ex: Professor Marcos" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Limite de vagas</Label>
-                      <Input type="number" placeholder="ex: 15" />
-                    </div>
+
+                  <div className="space-y-2">
+                    <Label>Mensalidade Crossfit</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="ex: 149"
+                      {...valoresForm.register("valorMensalidadeCrossfit", { valueAsNumber: true })}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Professor responsável</Label>
+                    <Select
+                      value={crossfitForm.watch("professorCrossfitId") || ""}
+                      onValueChange={(value) => crossfitForm.setValue("professorCrossfitId", value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o professor" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {professores.map((prof) => (
+                          <SelectItem key={prof.id} value={prof.id}>
+                            {prof.nome}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Limite de vagas</Label>
+                    <Input
+                      type="number"
+                      placeholder="ex: 15"
+                      {...crossfitForm.register("limiteVagasCrossfit", { valueAsNumber: true })}
+                    />
                   </div>
                 </div>
-              )}
-                <div className="flex justify-end">
-                    <Button
-                      onClick={salvarCrossfit}
-                      disabled={!crossfitForm.formState.isDirty || isSaving}  // só habilita se mudou algo
-                      className="bg-green-600"
-                    >
-                      {isSaving ? "Salvando..." : "Salvar CrossFit"}
-                    </Button>
-                  </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+              </div>
+            )}
+
+            {/* Botão salvar */}
+            <div className="flex justify-end">
+              <Button
+                onClick={salvarCrossfit}
+                disabled={!crossfitForm.formState.isDirty || isSaving}
+                className="bg-green-600"
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Salvando...
+                  </>
+                ) : (
+                  "Salvar Configuração CrossFit"
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </TabsContent>
 
         {/* ABA PAGAMENTOS */}
         <TabsContent value="pagamentos">
