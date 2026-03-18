@@ -12,23 +12,24 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/src/components/ui/label";
 import { Input } from "@/src/components/ui/input";
 import { Textarea } from "@/src/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/src/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/src/components/ui/dialog";
 import api from "@/src/lib/api";
 import Link from "next/link";
 
-const CrossfitGestaoPage = () =>  {
-
-const [turmas, setTurmas] = useState<any[]>([]);
+const CrossfitGestaoPage = () => {
+  const [turmas, setTurmas] = useState<any[]>([]);
   const [inscricoes, setInscricoes] = useState<any[]>([]);
   const [alunos, setAlunos] = useState<any[]>([]);
   const [professores, setProfessores] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isTurmaModalOpen, setIsTurmaModalOpen] = useState(false);
+  const [isEditTurmaModalOpen, setIsEditTurmaModalOpen] = useState(false);
   const [isInscricaoModalOpen, setIsInscricaoModalOpen] = useState(false);
   const [selectedTurma, setSelectedTurma] = useState<any>(null);
+  const [editingTurma, setEditingTurma] = useState<any>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Form states para nova turma
+  // Form states para nova/editar turma
   const [nomeTurma, setNomeTurma] = useState("");
   const [horarioTurma, setHorarioTurma] = useState("");
   const [valorTurma, setValorTurma] = useState(0);
@@ -38,7 +39,6 @@ const [turmas, setTurmas] = useState<any[]>([]);
 
   // Form states para nova inscrição
   const [selectedAlunoId, setSelectedAlunoId] = useState("");
-  const [dataInicio, setDataInicio] = useState("");
   const [observacaoInscricao, setObservacaoInscricao] = useState("");
 
   // Carregar dados iniciais
@@ -49,8 +49,8 @@ const [turmas, setTurmas] = useState<any[]>([]);
 
         const [resTurmas, resAlunos, resProfessores] = await Promise.all([
           api.get("/tenant/crossfit/turmas"),
-          api.get("/tenant/aluno"),               // ajuste rota se necessário
-          api.get("/tenant/funcionarios"),         // ajuste rota se necessário
+          api.get("/tenant/alunos-crossfit"),
+          api.get("/tenant/funcionarios"),
         ]);
 
         setTurmas(resTurmas.data.data || []);
@@ -86,9 +86,22 @@ const [turmas, setTurmas] = useState<any[]>([]);
     setDescricaoTurma("");
     setProfessorTurmaId("");
     setIsTurmaModalOpen(true);
+    setEditingTurma(null); // limpa edição
   };
 
-  // Salvar nova turma
+  // Abrir modal de edição de turma
+  const openEditarTurmaModal = (turma: any) => {
+    setEditingTurma(turma);
+    setNomeTurma(turma.nome);
+    setHorarioTurma(turma.horario || "");
+    setValorTurma(turma.valorMensalidade);
+    setVagasMaxTurma(turma.vagasMax);
+    setDescricaoTurma(turma.descricao || "");
+    setProfessorTurmaId(turma.professorId);
+    setIsEditTurmaModalOpen(true);
+  };
+
+  // Salvar nova ou editar turma
   const salvarTurma = async () => {
     if (!nomeTurma.trim() || valorTurma <= 0 || !professorTurmaId) {
       toast.error("Preencha nome, valor e professor");
@@ -106,16 +119,25 @@ const [turmas, setTurmas] = useState<any[]>([]);
         professorId: professorTurmaId,
       };
 
-      await api.post("/tenant/crossfit/turmas", payload);
-      toast.success("Turma criada com sucesso!");
+      if (editingTurma) {
+        // Atualiza turma existente
+        await api.put(`/tenant/crossfit/turmas/${editingTurma.id}`, payload);
+        toast.success("Turma atualizada com sucesso!");
+      } else {
+        // Cria nova turma
+        await api.post("/tenant/crossfit/turmas", payload);
+        toast.success("Turma criada com sucesso!");
+      }
 
-      // Recarrega lista de turmas
+      // Recarrega lista
       const res = await api.get("/tenant/crossfit/turmas");
       setTurmas(res.data.data || []);
 
       setIsTurmaModalOpen(false);
+      setIsEditTurmaModalOpen(false);
+      setEditingTurma(null);
     } catch (err: any) {
-      toast.error("Erro ao criar turma", {
+      toast.error("Erro ao salvar turma", {
         description: err.response?.data?.error || "Tente novamente",
       });
     } finally {
@@ -127,7 +149,6 @@ const [turmas, setTurmas] = useState<any[]>([]);
   const openInscricoesModal = (turma: any) => {
     setSelectedTurma(turma);
     setSelectedAlunoId("");
-    setDataInicio("");
     setObservacaoInscricao("");
     setIsInscricaoModalOpen(true);
     loadInscricoes(turma.id);
@@ -136,33 +157,33 @@ const [turmas, setTurmas] = useState<any[]>([]);
   // Salvar nova inscrição
   const salvarInscricao = async () => {
     if (!selectedTurma?.id || !selectedAlunoId) {
-      toast.error("Selecione um aluno");
+      toast.error("Selecione a turma e um aluno");
       return;
     }
 
-    // Verificação rápida no frontend
     const jaInscrito = inscricoes.some(ins => ins.alunoId === selectedAlunoId);
     if (jaInscrito) {
       toast.warning("Este aluno já está inscrito nesta turma");
       return;
     }
 
+    const payload = {
+      aulaCrossfitId: selectedTurma.id,
+      alunoId: selectedAlunoId,
+      observacao: observacaoInscricao.trim() || undefined,
+    };
+
+    console.log("PAYLOAD ENVIADO PARA INSCRIÇÃO:", JSON.stringify(payload, null, 2));
+
     setIsSaving(true);
     try {
-      const payload = {
-        aulaCrossfitId: selectedTurma.id,
-        alunoId: selectedAlunoId,
-        dataInicio: dataInicio || undefined,
-        observacao: observacaoInscricao.trim() || undefined,
-      };
-
       await api.post("/tenant/crossfit/inscricoes", payload);
       toast.success("Aluno inscrito com sucesso!");
       loadInscricoes(selectedTurma.id);
     } catch (err: any) {
-      toast.error("Erro ao inscrever aluno", {
-        description: err.response?.data?.error || "Tente novamente",
-      });
+      console.error("ERRO AO INSCREVER:", err.response?.data);
+      const msg = err.response?.data?.error || "Erro ao inscrever aluno";
+      toast.error("Erro ao inscrever aluno", { description: msg });
     } finally {
       setIsSaving(false);
     }
@@ -197,18 +218,18 @@ const [turmas, setTurmas] = useState<any[]>([]);
           <p className="text-gray-600 mt-2">Crie turmas e gerencie inscrições de alunos</p>
         </div>
         <div className="flex flex-wrap gap-3">
-           <Button onClick={openNovaTurmaModal} className="bg-green-600 hover:bg-green-700">
+          <Button onClick={openNovaTurmaModal} className="bg-green-600 hover:bg-green-700">
             <Plus className="mr-2 h-4 w-4" />
-             Nova Turma
-            </Button> 
+            Nova Turma
+          </Button>
 
-            <Button asChild className="bg-gradient-to-r from-green-600 to-green-600 hover:from-green-700 hover:to-green-700">
-              <Link href="/crossfit/aluno">
-                <UserPlus className="mr-2 h-4 w-4" />
-                 Alunos
-              </Link>
-           </Button>
-          </div>  
+          <Button asChild className="bg-gradient-to-r from-green-600 to-green-600 hover:from-green-700 hover:to-green-700">
+            <Link href="/crossfit/aluno">
+              <UserPlus className="mr-2 h-4 w-4" />
+              Alunos
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-6">
@@ -217,10 +238,21 @@ const [turmas, setTurmas] = useState<any[]>([]);
             <CardHeader className="bg-red-50">
               <CardTitle className="flex items-center justify-between">
                 {turma.nome}
-                <Button onClick={() => openInscricoesModal(turma)} className="bg-red-600 hover:bg-red-700">
-                  <Users className="mr-2 h-4 w-4" />
-                  Gerenciar Inscrições ({turma._count?.inscricoes || 0}/{turma.vagasMax})
-                </Button>
+                <div className="flex gap-2">
+                  <Button onClick={() => openInscricoesModal(turma)} className="bg-blue-600 hover:bg-blue-700">
+                    <Users className="mr-2 h-4 w-4" />
+                    Gerenciar Inscrições ({turma._count?.inscricoes || 0}/{turma.vagasMax})
+                  </Button>
+                  
+                   <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => openEditarTurmaModal(turma)}
+                  >
+                    <Edit className="mr-2 h-4 w-4" />
+                    Editar
+                  </Button>
+                </div>
               </CardTitle>
               <CardDescription>
                 Valor mensal: R$ {turma.valorMensalidade.toFixed(2)} | Horário: {turma.horario || "-"} | Professor: {turma.professor?.nome || "Não definido"}
@@ -238,11 +270,15 @@ const [turmas, setTurmas] = useState<any[]>([]);
         )}
       </div>
 
-      {/* Modal para criar nova turma */}
-      <Dialog open={isTurmaModalOpen} onOpenChange={setIsTurmaModalOpen}>
+      {/* Modal para criar/editar turma */}
+      <Dialog open={isTurmaModalOpen || isEditTurmaModalOpen} onOpenChange={(open) => {
+        setIsTurmaModalOpen(open);
+        setIsEditTurmaModalOpen(open);
+        if (!open) setEditingTurma(null);
+      }}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Criar Nova Turma de CrossFit</DialogTitle>
+            <DialogTitle>{editingTurma ? "Editar Turma" : "Criar Nova Turma"} de CrossFit</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
@@ -280,9 +316,13 @@ const [turmas, setTurmas] = useState<any[]>([]);
             </div>
           </div>
           <div className="flex justify-end gap-3">
-            <Button variant="outline" onClick={() => setIsTurmaModalOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => {
+              setIsTurmaModalOpen(false);
+              setIsEditTurmaModalOpen(false);
+              setEditingTurma(null);
+            }}>Cancelar</Button>
             <Button onClick={salvarTurma} disabled={isSaving}>
-              {isSaving ? "Criando..." : "Criar Turma"}
+              {isSaving ? "Salvando..." : (editingTurma ? "Salvar Alterações" : "Criar Turma")}
             </Button>
           </div>
         </DialogContent>
@@ -309,11 +349,6 @@ const [turmas, setTurmas] = useState<any[]>([]);
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-
-            <div>
-              <Label>Data de Início</Label>
-              <Input type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)} />
             </div>
 
             <div className="md:col-span-2">
@@ -348,7 +383,7 @@ const [turmas, setTurmas] = useState<any[]>([]);
                   {inscricoes.map(ins => (
                     <TableRow key={ins.id}>
                       <TableCell>{ins.aluno?.nome}</TableCell>
-                      <TableCell>{ins.dataInicio ? new Date(ins.dataInicio).toLocaleDateString() : "-"}</TableCell>
+                      <TableCell>{ins.dataInscricao ? new Date(ins.dataInscricao).toLocaleDateString() : "-"}</TableCell>
                       <TableCell>{ins.status}</TableCell>
                       <TableCell className="max-w-xs truncate">{ins.observacao || "-"}</TableCell>
                       <TableCell className="text-right">
@@ -373,6 +408,6 @@ const [turmas, setTurmas] = useState<any[]>([]);
       </Dialog>
     </div>
   );
-}
+};
 
 export default CrossfitGestaoPage;

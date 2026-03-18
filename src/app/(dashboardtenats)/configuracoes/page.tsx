@@ -64,12 +64,13 @@ const aulasExtrasSchema = z.object({
 
 const crossfitSchema = z.object({
   ativarCrossfit: z.boolean(),
-  nomeServicoCrossfit: z.string().min(3, "Nome obrigatório").optional(),
-  valorMensalidadeCrossfit: z.number().positive("Valor deve ser positivo").optional(),
+  mostrarNavbar: z.boolean().default(false),
+  mostrarSidebar: z.boolean().default(false),
+  nomeServicoCrossfit: z.string().min(3, "Nome do serviço obrigatório").optional(),
+  valorMensalidadeCrossfit: z.number().positive("Valor obrigatório").optional(),
   professorCrossfitId: z.string().uuid("Professor obrigatório").optional(),
-  limiteVagasCrossfit: z.number().int().positive().optional(),
-  mostrarNavbar: z.boolean().optional(),
-  mostrarSidebar: z.boolean().optional(),
+  limiteVagasCrossfit: z.number().int().positive().optional().default(15),
+  descricao: z.string().optional(), // ← novo campo (opcional)
 });
 
 const pagamentoSchema = z.object({
@@ -153,9 +154,11 @@ const aulasExtrasForm = useForm<AulasExtrasForm>({
       mostrarNavbar: false,
       mostrarSidebar: false,
       nomeServicoCrossfit: "",
+      valorMensalidadeCrossfit: 0,
       professorCrossfitId: "",
       limiteVagasCrossfit: 15,
-    },
+      descricao: "",
+    }
   });
 
   const pagamentoForm = useForm<PagamentoForm>({
@@ -172,7 +175,7 @@ useEffect(() => {
     try {
       setIsLoading(true);
 
-      // 1. Carrega as configurações gerais (como já fazia)
+      // 1. Carrega as configurações gerais da escolinha
       const resConfig = await api.get("/tenant/config/escolinha");
       const config = resConfig.data.data || {};
 
@@ -180,36 +183,61 @@ useEffect(() => {
         nomeEscolinha: config.nome || "Escolinha",
         mensagemBoasVindas: config.mensagemBoasVindas || "",
       });
+
       // Carrega professores (funcionários treinadores)
-        try {
-          const resProf = await api.get("/tenant/funcionarios");  // ajuste a rota se for diferente
-          setProfessores(resProf.data.data || []);
-        } catch (err) {
-          console.error("Erro ao carregar professores:", err);
-          toast.error("Falha ao carregar lista de professores");
-        }
-      // Dentro do try do loadConfig, após resetar os outros forms
-     valoresForm.reset({
-      valorMensalidadeFutebol: config.valorMensalidadeFutebol ?? 150.00,
-      valorMensalidadeCrossfit: config.valorMensalidadeCrossfit ?? 150.00,
-      diaVencimento: config.diaVencimentoMensalidade ?? 10,
-    });
-    console.log("CONFIG CARREGADA:", config);
-    console.log("VALOR MENSALIDADE FUTEBOL DO BANCO:", config.valorMensalidadeFutebol);
+      try {
+        const resProf = await api.get("/tenant/funcionarios"); // ajuste rota se for diferente
+        setProfessores(resProf.data.data || []);
+        console.log("Professores carregados:", resProf.data.data?.length || 0);
+      } catch (err) {
+        console.error("Erro ao carregar professores:", err);
+        toast.error("Falha ao carregar lista de professores");
+        setProfessores([]);
+      }
+
+      // Carrega valores (mensalidade futebol, crossfit, vencimento)
+      valoresForm.reset({
+        valorMensalidadeFutebol: config.valorMensalidadeFutebol ?? 150.00,
+        valorMensalidadeCrossfit: config.valorMensalidadeCrossfit ?? 150.00,
+        diaVencimento: config.diaVencimentoMensalidade ?? 10,
+      });
+
+      // Carrega configuração CrossFit e turma padrão
+      let turmaPadrao = null;
+      try {
+        const resTurmas = await api.get("/tenant/crossfit/turmas");
+        const turmas = resTurmas.data.data || [];
+        turmaPadrao = turmas.find((t: any) => 
+          t.nome.includes("Padrão") || t.nome === "CrossFit Padrão" || turmas.length === 1
+        );
+
+        crossfitForm.reset({
+          ativarCrossfit: config.crossfitAtivo ?? false,
+          mostrarNavbar: config.mostrarCrossfitNavbar ?? false,
+          mostrarSidebar: config.mostrarCrossfitSidebar ?? false,
+          nomeServicoCrossfit: turmaPadrao?.nome || config.nomeServicoCrossfit || "",
+          valorMensalidadeCrossfit: turmaPadrao?.valorMensalidade || config.valorMensalidadeCrossfit || 0,
+          professorCrossfitId: turmaPadrao?.professorId || config.professorCrossfitId || "",
+          limiteVagasCrossfit: turmaPadrao?.vagasMax || config.limiteVagasCrossfit || 15,
+        });
+
+        console.log("Turma padrão CrossFit encontrada:", turmaPadrao ? "Sim" : "Não", turmaPadrao);
+      } catch (errTurma) {
+        console.error("Erro ao carregar turmas CrossFit:", errTurma);
+        // Fallback se não conseguir carregar turmas
+        crossfitForm.reset({
+          ativarCrossfit: config.crossfitAtivo ?? false,
+          mostrarNavbar: config.mostrarCrossfitNavbar ?? false,
+          mostrarSidebar: config.mostrarCrossfitSidebar ?? false,
+          nomeServicoCrossfit: config.nomeServicoCrossfit || "",
+          valorMensalidadeCrossfit: config.valorMensalidadeCrossfit || 0,
+          professorCrossfitId: config.professorCrossfitId || "",
+          limiteVagasCrossfit: config.limiteVagasCrossfit || 15,
+        });
+      }
 
       aulasExtrasForm.reset({
         ativarAulasExtras: config.aulasExtrasAtivas ?? false,
-        // aulas: config.aulasExtras || [], // ← remova ou ignore se não vier aqui
-      });
-
-      crossfitForm.reset({
-        ativarCrossfit: config.crossfitAtivo ?? false,
-        mostrarNavbar: config.mostrarCrossfitNavbar ?? false,
-        mostrarSidebar: config.mostrarCrossfitSidebar ?? false,
-        nomeServicoCrossfit: config.nomeServicoCrossfit || "",
-        valorMensalidadeCrossfit: config.valorMensalidadeCrossfit || 0,
-        professorCrossfitId: config.professorCrossfitId || "",
-        limiteVagasCrossfit: config.limiteVagasCrossfit || 15,
       });
 
       pagamentoForm.reset({
@@ -226,17 +254,23 @@ useEffect(() => {
       if (config.logoUrl) setLogoPreview(config.logoUrl);
       if (config.crossfitBannerUrl) setCrossfitBanner(config.crossfitBannerUrl);
 
-      // 2. Carrega as aulas extras separadamente (GET específico)
+      // Carrega aulas extras separadamente
       try {
         const resAulas = await api.get("/tenant/config/aulas-extras");
-        const aulasData = resAulas.data.data || resAulas.data || []; // ajuste conforme o formato do retorno
+        const aulasData = resAulas.data.data || [];
         aulasExtrasForm.setValue("aulas", aulasData);
-        console.log("Aulas extras carregadas:", aulasData);
+        console.log("Aulas extras carregadas:", aulasData.length);
       } catch (errAulas) {
         console.error("Erro ao carregar aulas extras:", errAulas);
         toast.error("Falha ao carregar lista de aulas extras");
-        aulasExtrasForm.setValue("aulas", []); // fallback vazio
+        aulasExtrasForm.setValue("aulas", []);
       }
+
+      console.log("CONFIG VALORES DO BANCO:", {
+        valorMensalidadeFutebol: config.valorMensalidadeFutebol,
+        valorMensalidadeCrossfit: config.valorMensalidadeCrossfit,
+        diaVencimento: config.diaVencimentoMensalidade,
+      });
 
       toast.success("Configurações carregadas!");
     } catch (err) {
@@ -308,42 +342,43 @@ const openEditModal = (aula: any) => {
 };
 
 // Função para salvar edição
-const salvarEdicao = async () => {
-  if (!editingAula?.id) return;
+  const salvarEdicao = async () => {
+    if (!editingAula?.id) return;
 
-  try {
-    const payload = {
-      id: editingAula.id,
-      nome: aulasExtrasForm.getValues("editNome"),
-      valor: aulasExtrasForm.getValues("editValor"),
-      duracao: aulasExtrasForm.getValues("editDuracao"),
-      descricao: aulasExtrasForm.getValues("editDescricao") || undefined,
-    };
-     console.log("PAYLOAD DE EDIÇÃO ENVIADO:", payload);
-    await api.put(`/tenant/config/aulas-extras/${editingAula.id}`, payload);
-    toast.success("Aula atualizada com sucesso!");
+    try {
+      const payload = {
+        id: editingAula.id,
+        nome: aulasExtrasForm.getValues("editNome"),
+        valor: aulasExtrasForm.getValues("editValor"),
+        duracao: aulasExtrasForm.getValues("editDuracao"),
+        descricao: aulasExtrasForm.getValues("editDescricao") || undefined,
+      };
+      console.log("PAYLOAD DE EDIÇÃO ENVIADO:", payload);
+      await api.put(`/tenant/config/aulas-extras/${editingAula.id}`, payload);
+      toast.success("Aula atualizada com sucesso!");
 
-    // Recarrega lista
-    const res = await api.get("/tenant/config/aulas-extras");
-    aulasExtrasForm.setValue("aulas", res.data.data || []);
+      // Recarrega lista
+      const res = await api.get("/tenant/config/aulas-extras");
+      aulasExtrasForm.setValue("aulas", res.data.data || []);
 
-    setIsEditModalOpen(false);
-    setEditingAula(null);
-  } catch (err: any) {
-    toast.error("Erro ao atualizar aula", {
-      description: err.response?.data?.error || "Tente novamente",
-    });
-  }
-};
+      setIsEditModalOpen(false);
+      setEditingAula(null);
+    } catch (err: any) {
+      toast.error("Erro ao atualizar aula", {
+        description: err.response?.data?.error || "Tente novamente",
+      });
+    }
+  };
 
 //Salvar aulas crossfit
- const salvarCrossfit = async () => {
+const salvarCrossfit = async () => {
   setIsSaving(true);
   try {
     const data = crossfitForm.getValues();
 
+    // Validação manual (impede envio de payload inválido)
     if (!data.nomeServicoCrossfit?.trim()) {
-      toast.error("Preencha o nome do serviço");
+      toast.error("Preencha o Nome do serviço");
       return;
     }
     if (!data.valorMensalidadeCrossfit || data.valorMensalidadeCrossfit <= 0) {
@@ -351,28 +386,55 @@ const salvarEdicao = async () => {
       return;
     }
     if (!data.professorCrossfitId) {
-      toast.error("Selecione um professor responsável");
+      toast.error("Selecione um Professor responsável");
       return;
     }
 
+    // Payload com valores garantidos (nunca undefined)
     const payload = {
-      ativarCrossfit: data.ativarCrossfit,
-      nomeServicoCrossfit: data.nomeServicoCrossfit.trim(),
-      valorMensalidadeCrossfit: data.valorMensalidadeCrossfit,
-      professorCrossfitId: data.professorCrossfitId,
-      limiteVagasCrossfit: data.limiteVagasCrossfit || 15,
-      mostrarNavbar: data.mostrarNavbar,
-      mostrarSidebar: data.mostrarSidebar,
+      nome: data.nomeServicoCrossfit.trim(),
+      valorMensalidade: data.valorMensalidadeCrossfit,
+      professorId: data.professorCrossfitId,
+      vagasMax: data.limiteVagasCrossfit ?? 15,
+      horario: "Horário padrão (editável na gestão)", // opcional
+      descricao: data.descricao?.trim() || undefined,
     };
 
-    console.log("PAYLOAD ENVIADO:", JSON.stringify(payload, null, 2));
+    console.log("PAYLOAD ENVIADO PARA CROSSFIT:", JSON.stringify(payload, null, 2));
 
-    await api.put("/tenant/config/crossfit", payload);
-    toast.success("Configuração CrossFit salva!");
+    // Verifica se já existe turma padrão
+    const resTurmas = await api.get("/tenant/crossfit/turmas");
+    const turmas = resTurmas.data.data || [];
+    const turmaPadrao = turmas.find((t: any) => t.nome.includes("Padrão") || t.nome === payload.nome);
+
+    if (turmaPadrao) {
+      // Atualiza
+      await api.put(`/tenant/crossfit/turmas/${turmaPadrao.id}`, payload);
+      toast.success("Turma padrão atualizada!");
+    } else {
+      // Cria
+      await api.post("/tenant/crossfit/turmas", payload);
+      toast.success("Turma padrão criada!");
+    }
+
     await refreshConfig();
+
+    // Recarrega o form com os valores salvos
+    const resAtualizado = await api.get("/tenant/crossfit/turmas");
+    const turmasAtualizadas = resAtualizado.data.data || [];
+    const turmaAtual = turmasAtualizadas.find((t: any) => t.nome === payload.nome);
+    if (turmaAtual) {
+      crossfitForm.reset({
+        ...data,
+        nomeServicoCrossfit: turmaAtual.nome,
+        valorMensalidadeCrossfit: turmaAtual.valorMensalidade,
+        professorCrossfitId: turmaAtual.professorId,
+        limiteVagasCrossfit: turmaAtual.vagasMax,
+      });
+    }
   } catch (err: any) {
-    console.error("ERRO:", err.response?.data);
-    const msg = err.response?.data?.details?.map((d: any) => d.message).join(", ") || err.response?.data?.error || err.message;
+    console.error("ERRO AO SALVAR CROSSFIT:", err.response?.data || err);
+    const msg = err.response?.data?.details?.map((d: any) => d.message).join(", ") || err.response?.data?.error || "Erro ao salvar configuração";
     toast.error("Erro ao salvar CrossFit", { description: msg });
   } finally {
     setIsSaving(false);
@@ -877,136 +939,171 @@ const salvarEdicao = async () => {
       </TabsContent>
 
         {/* ABA CROSSFIT */}
-      <TabsContent value="crossfit">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Activity className="h-6 w-6 text-red-600" />
-              CrossFit para Pais e Comunidade
-            </CardTitle>
-          </CardHeader>
+<TabsContent value="crossfit">
+  <Card>
+    <CardHeader>
+      <CardTitle className="flex items-center gap-2">
+        <Activity className="h-6 w-6 text-red-600" />
+        CrossFit para Pais e Comunidade
+      </CardTitle>
+    </CardHeader>
 
-          <CardContent className="space-y-6">
-            {/* Switch de ativação */}
-            <div className="flex items-center justify-between p-4 border rounded-lg bg-red-50">
-              <div>
-                <Label className="text-lg font-semibold">Ativar CrossFit</Label>
-                <p className="text-sm text-gray-600">Ofereça aulas para adultos</p>
-              </div>
-              <Switch
-                checked={crossfitForm.watch("ativarCrossfit")}
-                onCheckedChange={async (checked) => {
-                  crossfitForm.setValue("ativarCrossfit", checked);
-                  try {
-                    await api.put("/tenant/config/crossfit/activation", { ativarCrossfit: checked });
-                    await refreshConfig();
-                    toast.success(`CrossFit ${checked ? "ativado" : "desativado"}`);
-                  } catch (err: any) {
-                    toast.error("Erro ao atualizar ativação");
-                    crossfitForm.setValue("ativarCrossfit", !checked);
-                  }
-                }}
-              />
-            </div>
+    <CardContent className="space-y-6">
+      {/* Switch de ativação */}
+      <div className="flex items-center justify-between p-4 border rounded-lg bg-red-50">
+        <div>
+          <Label className="text-lg font-semibold">Ativar CrossFit</Label>
+          <p className="text-sm text-gray-600">Ofereça aulas para adultos</p>
+        </div>
+        <Switch
+          checked={crossfitForm.watch("ativarCrossfit")}
+          onCheckedChange={async (checked) => {
+            crossfitForm.setValue("ativarCrossfit", checked);
+            try {
+              await api.put("/tenant/config/crossfit/activation", { ativarCrossfit: checked });
+              await refreshConfig();
+              toast.success(`CrossFit ${checked ? "ativado" : "desativado"}`);
+            } catch (err: any) {
+              toast.error("Erro ao atualizar ativação");
+              crossfitForm.setValue("ativarCrossfit", !checked); // reverte se falhar
+            }
+          }}
+        />
+      </div>
 
-            {crossfitForm.watch("ativarCrossfit") && (
-              <div className="space-y-8">
-                {/* Banner */}
-                <div className="flex flex-col items-center gap-4 py-6 border-b">
-                  <Avatar className="h-40 w-40 ring-4 ring-red-100">
-                    <AvatarImage src={crossfitBanner || undefined} />
-                    <AvatarFallback className="bg-gradient-to-br from-red-600 to-orange-600 text-white text-4xl font-bold">
-                      CF
-                    </AvatarFallback>
-                  </Avatar>
+      {crossfitForm.watch("ativarCrossfit") && (
+        <div className="space-y-8">
+          {/* Banner */}
+          <div className="flex flex-col items-center gap-4 py-6 border-b">
+            <Avatar className="h-40 w-40 ring-4 ring-red-100">
+              <AvatarImage src={crossfitBanner || undefined} />
+              <AvatarFallback className="bg-gradient-to-br from-red-600 to-orange-600 text-white text-4xl font-bold">
+                CF
+              </AvatarFallback>
+            </Avatar>
 
-                  <div className="flex gap-3">
-                    <Button type="button" variant="outline" size="sm" onClick={() => crossfitInputRef.current?.click()}>
-                      <Camera className="mr-2 h-4 w-4" />
-                      Alterar banner
-                    </Button>
-                    {crossfitBanner && (
-                      <Button type="button" variant="destructive" size="sm" onClick={() => setCrossfitBanner(null)}>
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Remover
-                      </Button>
-                    )}
-                  </div>
-
-                  <input type="file" accept="image/*" ref={crossfitInputRef} onChange={handleCrossfitBannerUpload} className="hidden" />
-                </div>
-
-                {/* Campos de configuração da turma padrão */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label>Nome do serviço</Label>
-                    <Input
-                      placeholder="ex: CrossFit FutElite Pais"
-                      {...crossfitForm.register("nomeServicoCrossfit")}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Mensalidade Crossfit</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      placeholder="ex: 149"
-                      {...valoresForm.register("valorMensalidadeCrossfit", { valueAsNumber: true })}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Professor responsável</Label>
-                    <Select
-                      value={crossfitForm.watch("professorCrossfitId") || ""}
-                      onValueChange={(value) => crossfitForm.setValue("professorCrossfitId", value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o professor" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {professores.map((prof) => (
-                          <SelectItem key={prof.id} value={prof.id}>
-                            {prof.nome}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Limite de vagas</Label>
-                    <Input
-                      type="number"
-                      placeholder="ex: 15"
-                      {...crossfitForm.register("limiteVagasCrossfit", { valueAsNumber: true })}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Botão salvar */}
-            <div className="flex justify-end">
-              <Button
-                onClick={salvarCrossfit}
-                disabled={!crossfitForm.formState.isDirty || isSaving}
-                className="bg-green-600"
-              >
-                {isSaving ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Salvando...
-                  </>
-                ) : (
-                  "Salvar Configuração CrossFit"
-                )}
+            <div className="flex gap-3">
+              <Button type="button" variant="outline" size="sm" onClick={() => crossfitInputRef.current?.click()}>
+                <Camera className="mr-2 h-4 w-4" />
+                Alterar banner
               </Button>
+              {crossfitBanner && (
+                <Button type="button" variant="destructive" size="sm" onClick={() => setCrossfitBanner(null)}>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Remover
+                </Button>
+              )}
             </div>
-          </CardContent>
-        </Card>
-      </TabsContent>
+
+            <input type="file" accept="image/*" ref={crossfitInputRef} onChange={handleCrossfitBannerUpload} className="hidden" />
+          </div>
+
+          {/* Campos da turma padrão */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label>Nome do serviço</Label>
+              <Input
+                placeholder="ex: CrossFit FutElite Pais"
+                {...crossfitForm.register("nomeServicoCrossfit")}
+              />
+              {crossfitForm.formState.errors.nomeServicoCrossfit && (
+                <p className="text-red-500 text-sm">
+                  {crossfitForm.formState.errors.nomeServicoCrossfit.message}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label>Mensalidade Crossfit</Label>
+              <Input
+                type="number"
+                step="0.01"
+                placeholder="ex: 149"
+                {...crossfitForm.register("valorMensalidadeCrossfit", { valueAsNumber: true })}
+              />
+              {crossfitForm.formState.errors.valorMensalidadeCrossfit && (
+                <p className="text-red-500 text-sm">
+                  {crossfitForm.formState.errors.valorMensalidadeCrossfit.message}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label>Professor responsável</Label>
+              <Select
+                value={crossfitForm.watch("professorCrossfitId") || ""}
+                onValueChange={(value) => crossfitForm.setValue("professorCrossfitId", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o professor" />
+                </SelectTrigger>
+                <SelectContent>
+                  {professores.map((prof) => (
+                    <SelectItem key={prof.id} value={prof.id}>
+                      {prof.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {crossfitForm.formState.errors.professorCrossfitId && (
+                <p className="text-red-500 text-sm">
+                  {crossfitForm.formState.errors.professorCrossfitId.message}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label>Limite de vagas</Label>
+              <Input
+                type="number"
+                placeholder="ex: 15"
+                {...crossfitForm.register("limiteVagasCrossfit", { valueAsNumber: true })}
+              />
+              {crossfitForm.formState.errors.limiteVagasCrossfit && (
+                <p className="text-red-500 text-sm">
+                  {crossfitForm.formState.errors.limiteVagasCrossfit.message}
+                </p>
+              )}
+            </div>
+
+            {/* Novo campo: Descrição */}
+            <div className="md:col-span-2 space-y-2">
+              <Label>Descrição da turma</Label>
+              <Textarea
+                placeholder="Detalhes da turma, foco, público-alvo, objetivos..."
+                rows={3}
+                {...crossfitForm.register("descricao")}
+              />
+              {crossfitForm.formState.errors.descricao && (
+                <p className="text-red-500 text-sm">
+                  {crossfitForm.formState.errors.descricao.message}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Botão salvar */}
+      <div className="flex justify-end">
+        <Button
+          onClick={salvarCrossfit}
+          disabled={!crossfitForm.formState.isDirty || isSaving}
+          className="bg-green-600"
+        >
+          {isSaving ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Salvando...
+            </>
+          ) : (
+            "Salvar Configuração CrossFit"
+          )}
+        </Button>
+      </div>
+    </CardContent>
+  </Card>
+</TabsContent>
 
         {/* ABA PAGAMENTOS */}
         <TabsContent value="pagamentos">
