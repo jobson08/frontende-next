@@ -145,6 +145,23 @@ const CrossfitGestaoPage = () => {
     }
   };
 
+  const excluirTurmaConfirm = async (turmaId: string) => {
+  if (!confirm("Tem certeza que deseja excluir esta turma? Esta ação não pode ser desfeita.")) return;
+
+  try {
+    await api.delete(`/tenant/crossfit/turmas/${turmaId}`);
+    toast.success("Turma excluída com sucesso!");
+
+    // Recarrega lista
+    const res = await api.get("/tenant/crossfit/turmas");
+    setTurmas(res.data.data || []);
+  } catch (err: any) {
+    console.error("ERRO AO EXCLUIR TURMA:", err.response?.data);
+    const msg = err.response?.data?.error || "Erro ao excluir turma";
+    toast.error("Erro ao excluir turma", { description: msg });
+  }
+};
+
   // Abrir modal de inscrições da turma
   const openInscricoesModal = (turma: any) => {
     setSelectedTurma(turma);
@@ -251,6 +268,16 @@ const CrossfitGestaoPage = () => {
                   >
                     <Edit className="mr-2 h-4 w-4" />
                     Editar
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => excluirTurmaConfirm(turma.id)}
+                    disabled={turma._count?.inscricoes > 0}
+                    title={turma._count?.inscricoes > 0 ? "Remova os alunos inscritos antes" : ""}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Excluir
                   </Button>
                 </div>
               </CardTitle>
