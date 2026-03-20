@@ -315,7 +315,7 @@ useEffect(() => {
 };
   
 //SALVAR AULAS EXTRAS
-const salvarAulasExtras = async () => {
+/*const salvarAulasExtras = async () => {
   setIsSaving(true);
   try {
     const ativar = aulasExtrasForm.getValues("ativarAulasExtras");
@@ -329,7 +329,7 @@ const salvarAulasExtras = async () => {
   } finally {
     setIsSaving(false);
   }
-};
+};*/
 
 //Modal Editar Aula Esxtra
 const openEditModal = (aula: any) => {
@@ -939,171 +939,171 @@ const salvarCrossfit = async () => {
       </TabsContent>
 
         {/* ABA CROSSFIT */}
-<TabsContent value="crossfit">
-  <Card>
-    <CardHeader>
-      <CardTitle className="flex items-center gap-2">
-        <Activity className="h-6 w-6 text-red-600" />
-        CrossFit para Pais e Comunidade
-      </CardTitle>
-    </CardHeader>
+      <TabsContent value="crossfit">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Activity className="h-6 w-6 text-red-600" />
+              CrossFit para Pais e Comunidade
+            </CardTitle>
+          </CardHeader>
 
-    <CardContent className="space-y-6">
-      {/* Switch de ativação */}
-      <div className="flex items-center justify-between p-4 border rounded-lg bg-red-50">
-        <div>
-          <Label className="text-lg font-semibold">Ativar CrossFit</Label>
-          <p className="text-sm text-gray-600">Ofereça aulas para adultos</p>
-        </div>
-        <Switch
-          checked={crossfitForm.watch("ativarCrossfit")}
-          onCheckedChange={async (checked) => {
-            crossfitForm.setValue("ativarCrossfit", checked);
-            try {
-              await api.put("/tenant/config/crossfit/activation", { ativarCrossfit: checked });
-              await refreshConfig();
-              toast.success(`CrossFit ${checked ? "ativado" : "desativado"}`);
-            } catch (err: any) {
-              toast.error("Erro ao atualizar ativação");
-              crossfitForm.setValue("ativarCrossfit", !checked); // reverte se falhar
-            }
-          }}
-        />
-      </div>
-
-      {crossfitForm.watch("ativarCrossfit") && (
-        <div className="space-y-8">
-          {/* Banner */}
-          <div className="flex flex-col items-center gap-4 py-6 border-b">
-            <Avatar className="h-40 w-40 ring-4 ring-red-100">
-              <AvatarImage src={crossfitBanner || undefined} />
-              <AvatarFallback className="bg-gradient-to-br from-red-600 to-orange-600 text-white text-4xl font-bold">
-                CF
-              </AvatarFallback>
-            </Avatar>
-
-            <div className="flex gap-3">
-              <Button type="button" variant="outline" size="sm" onClick={() => crossfitInputRef.current?.click()}>
-                <Camera className="mr-2 h-4 w-4" />
-                Alterar banner
-              </Button>
-              {crossfitBanner && (
-                <Button type="button" variant="destructive" size="sm" onClick={() => setCrossfitBanner(null)}>
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Remover
-                </Button>
-              )}
-            </div>
-
-            <input type="file" accept="image/*" ref={crossfitInputRef} onChange={handleCrossfitBannerUpload} className="hidden" />
-          </div>
-
-          {/* Campos da turma padrão */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <Label>Nome do serviço</Label>
-              <Input
-                placeholder="ex: CrossFit FutElite Pais"
-                {...crossfitForm.register("nomeServicoCrossfit")}
+          <CardContent className="space-y-6">
+            {/* Switch de ativação */}
+            <div className="flex items-center justify-between p-4 border rounded-lg bg-red-50">
+              <div>
+                <Label className="text-lg font-semibold">Ativar CrossFit</Label>
+                <p className="text-sm text-gray-600">Ofereça aulas para adultos</p>
+              </div>
+              <Switch
+                checked={crossfitForm.watch("ativarCrossfit")}
+                onCheckedChange={async (checked) => {
+                  crossfitForm.setValue("ativarCrossfit", checked);
+                  try {
+                    await api.put("/tenant/config/crossfit/activation", { ativarCrossfit: checked });
+                    await refreshConfig();
+                    toast.success(`CrossFit ${checked ? "ativado" : "desativado"}`);
+                  } catch (err: any) {
+                    toast.error("Erro ao atualizar ativação");
+                    crossfitForm.setValue("ativarCrossfit", !checked); // reverte se falhar
+                  }
+                }}
               />
-              {crossfitForm.formState.errors.nomeServicoCrossfit && (
-                <p className="text-red-500 text-sm">
-                  {crossfitForm.formState.errors.nomeServicoCrossfit.message}
-                </p>
-              )}
             </div>
 
-            <div className="space-y-2">
-              <Label>Mensalidade Crossfit</Label>
-              <Input
-                type="number"
-                step="0.01"
-                placeholder="ex: 149"
-                {...crossfitForm.register("valorMensalidadeCrossfit", { valueAsNumber: true })}
-              />
-              {crossfitForm.formState.errors.valorMensalidadeCrossfit && (
-                <p className="text-red-500 text-sm">
-                  {crossfitForm.formState.errors.valorMensalidadeCrossfit.message}
-                </p>
-              )}
-            </div>
+            {crossfitForm.watch("ativarCrossfit") && (
+              <div className="space-y-8">
+                {/* Banner */}
+                <div className="flex flex-col items-center gap-4 py-6 border-b">
+                  <Avatar className="h-40 w-40 ring-4 ring-red-100">
+                    <AvatarImage src={crossfitBanner || undefined} />
+                    <AvatarFallback className="bg-gradient-to-br from-red-600 to-orange-600 text-white text-4xl font-bold">
+                      CF
+                    </AvatarFallback>
+                  </Avatar>
 
-            <div className="space-y-2">
-              <Label>Professor responsável</Label>
-              <Select
-                value={crossfitForm.watch("professorCrossfitId") || ""}
-                onValueChange={(value) => crossfitForm.setValue("professorCrossfitId", value)}
+                  <div className="flex gap-3">
+                    <Button type="button" variant="outline" size="sm" onClick={() => crossfitInputRef.current?.click()}>
+                      <Camera className="mr-2 h-4 w-4" />
+                      Alterar banner
+                    </Button>
+                    {crossfitBanner && (
+                      <Button type="button" variant="destructive" size="sm" onClick={() => setCrossfitBanner(null)}>
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Remover
+                      </Button>
+                    )}
+                  </div>
+
+                  <input type="file" accept="image/*" ref={crossfitInputRef} onChange={handleCrossfitBannerUpload} className="hidden" />
+                </div>
+
+                {/* Campos da turma padrão */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label>Nome do serviço</Label>
+                    <Input
+                      placeholder="ex: CrossFit FutElite Pais"
+                      {...crossfitForm.register("nomeServicoCrossfit")}
+                    />
+                    {crossfitForm.formState.errors.nomeServicoCrossfit && (
+                      <p className="text-red-500 text-sm">
+                        {crossfitForm.formState.errors.nomeServicoCrossfit.message}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Mensalidade Crossfit</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="ex: 149"
+                      {...crossfitForm.register("valorMensalidadeCrossfit", { valueAsNumber: true })}
+                    />
+                    {crossfitForm.formState.errors.valorMensalidadeCrossfit && (
+                      <p className="text-red-500 text-sm">
+                        {crossfitForm.formState.errors.valorMensalidadeCrossfit.message}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Professor responsável</Label>
+                    <Select
+                      value={crossfitForm.watch("professorCrossfitId") || ""}
+                      onValueChange={(value) => crossfitForm.setValue("professorCrossfitId", value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o professor" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {professores.map((prof) => (
+                          <SelectItem key={prof.id} value={prof.id}>
+                            {prof.nome}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {crossfitForm.formState.errors.professorCrossfitId && (
+                      <p className="text-red-500 text-sm">
+                        {crossfitForm.formState.errors.professorCrossfitId.message}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Limite de vagas</Label>
+                    <Input
+                      type="number"
+                      placeholder="ex: 15"
+                      {...crossfitForm.register("limiteVagasCrossfit", { valueAsNumber: true })}
+                    />
+                    {crossfitForm.formState.errors.limiteVagasCrossfit && (
+                      <p className="text-red-500 text-sm">
+                        {crossfitForm.formState.errors.limiteVagasCrossfit.message}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Novo campo: Descrição */}
+                  <div className="md:col-span-2 space-y-2">
+                    <Label>Descrição da turma</Label>
+                    <Textarea
+                      placeholder="Detalhes da turma, foco, público-alvo, objetivos..."
+                      rows={3}
+                      {...crossfitForm.register("descricao")}
+                    />
+                    {crossfitForm.formState.errors.descricao && (
+                      <p className="text-red-500 text-sm">
+                        {crossfitForm.formState.errors.descricao.message}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Botão salvar */}
+            <div className="flex justify-end">
+              <Button
+                onClick={salvarCrossfit}
+                disabled={!crossfitForm.formState.isDirty || isSaving}
+                className="bg-green-600"
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o professor" />
-                </SelectTrigger>
-                <SelectContent>
-                  {professores.map((prof) => (
-                    <SelectItem key={prof.id} value={prof.id}>
-                      {prof.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {crossfitForm.formState.errors.professorCrossfitId && (
-                <p className="text-red-500 text-sm">
-                  {crossfitForm.formState.errors.professorCrossfitId.message}
-                </p>
-              )}
+                {isSaving ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Salvando...
+                  </>
+                ) : (
+                  "Salvar Configuração CrossFit"
+                )}
+              </Button>
             </div>
-
-            <div className="space-y-2">
-              <Label>Limite de vagas</Label>
-              <Input
-                type="number"
-                placeholder="ex: 15"
-                {...crossfitForm.register("limiteVagasCrossfit", { valueAsNumber: true })}
-              />
-              {crossfitForm.formState.errors.limiteVagasCrossfit && (
-                <p className="text-red-500 text-sm">
-                  {crossfitForm.formState.errors.limiteVagasCrossfit.message}
-                </p>
-              )}
-            </div>
-
-            {/* Novo campo: Descrição */}
-            <div className="md:col-span-2 space-y-2">
-              <Label>Descrição da turma</Label>
-              <Textarea
-                placeholder="Detalhes da turma, foco, público-alvo, objetivos..."
-                rows={3}
-                {...crossfitForm.register("descricao")}
-              />
-              {crossfitForm.formState.errors.descricao && (
-                <p className="text-red-500 text-sm">
-                  {crossfitForm.formState.errors.descricao.message}
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Botão salvar */}
-      <div className="flex justify-end">
-        <Button
-          onClick={salvarCrossfit}
-          disabled={!crossfitForm.formState.isDirty || isSaving}
-          className="bg-green-600"
-        >
-          {isSaving ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Salvando...
-            </>
-          ) : (
-            "Salvar Configuração CrossFit"
-          )}
-        </Button>
-      </div>
-    </CardContent>
-  </Card>
-</TabsContent>
+          </CardContent>
+        </Card>
+      </TabsContent>
 
         {/* ABA PAGAMENTOS */}
         <TabsContent value="pagamentos">
