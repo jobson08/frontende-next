@@ -4,7 +4,7 @@
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
-import { BarChart3, BookOpen, Building2, Calendar, Clock, CreditCard, DollarSign, Home, LifeBuoy, LogOut, Menu, MessageSquare, Settings, Trophy, User, UserPlus, Users } from "lucide-react";
+import { BarChart3, BookOpen, Building2, Calendar, ChartPie, ChartSpline, Clock, CreditCard, DollarSign, Home, LifeBuoy, LogOut, Menu, MessageSquare, Settings, Trophy, User, UserPlus, Users } from "lucide-react";
 import { Button } from "../ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "../ui/sheet";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "../ui/dropdown-menu";
@@ -35,11 +35,11 @@ const menuItems = {
   ],
   ADMIN: [
    { icon: Home, label: "Dashboard", href: "/admin" },
-      { icon: Users, label: "Alunos", href: "/aluno" },
+      { icon: Users, label: "Alunos Futebol", href: "/aluno" },
       { icon: User, label: "Responsáveis", href: "/responsavel" },
       { icon: Users, label: "Funcionários", href: "/funcionario" },
       { icon: Calendar, label: "Treinos", href: "/treinos" },
-      { icon: DollarSign, label: "Financeiro", href: "/financeiro" },
+      { icon: ChartSpline, label: "Financeiro", href: "/financeiro" },
       { icon: DollarSign, label: "Inadimplentes", href: "/inadimplentes" },
       { icon: Settings, label: "Configurações", href: "/configuracoes" },
   ],

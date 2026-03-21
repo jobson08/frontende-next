@@ -31,6 +31,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import api from "@/src/lib/api";
 import { useEscolinhaConfig } from "@/src/context/EscolinhaConfigContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/src/components/ui/dialog";
+import { ImageUploader } from "@/src/components/ImageUploader";
 
 /// Schemas Zod
 const geralSchema = z.object({
@@ -523,31 +524,27 @@ const salvarCrossfit = async () => {
                 Informações Gerais
               </CardTitle>
             </CardHeader>
+
             <CardContent>
               <form onSubmit={geralForm.handleSubmit(salvarGeral)} className="space-y-8">
-                <div className="flex flex-col items-center gap-4 py-6 border-b">
-                  <Avatar className="h-40 w-40 ring-4 ring-blue-100">
-                    <AvatarImage src={logoPreview || undefined} />
-                    <AvatarFallback className="bg-linear-to-br from-blue-600 to-cyan-600 text-white text-4xl font-bold">
-                      {geralForm.watch("nomeEscolinha")?.slice(0, 2) || "GP"}
-                    </AvatarFallback>
-                  </Avatar>
-
-                  <div className="flex gap-3">
-                    <Button type="button" variant="outline" size="sm" onClick={() => logoInputRef.current?.click()}>
-                      <Camera className="mr-2 h-4 w-4" />
-                      Alterar logo
-                    </Button>
-                    {logoPreview && (
-                      <Button type="button" variant="destructive" size="sm" onClick={() => setLogoPreview(null)}>
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Remover
-                      </Button>
-                    )}
-                  </div>
-
-                  <input type="file" accept="image/*" ref={logoInputRef} onChange={handleLogoUpload} className="hidden" />
-                </div>
+                {/* Logo da Escolinha - usando o componente reutilizável */}
+                <ImageUploader
+                  currentImageUrl={logoPreview}
+                  entityName={geralForm.watch("nomeEscolinha") || "Escolinha"}
+                  uploadEndpoint="/tenant/upload/escolinha"  // rota genérica que criamos
+                  onUploadSuccess={(url) => {
+                    setLogoPreview(url);
+                    // Opcional: se quiser salvar no form ou no banco imediatamente
+                    // geralForm.setValue("logoUrl", url);
+                  }}
+                  onRemove={() => {
+                    setLogoPreview(null);
+                    // Opcional: limpar no form se precisar
+                    // geralForm.setValue("logoUrl", null);
+                  }}
+                  size="lg"
+                  className="py-6 border-b"
+                />
 
                 <div className="space-y-2">
                   <Label>Nome da Escolinha</Label>
@@ -560,7 +557,10 @@ const salvarCrossfit = async () => {
                 </div>
 
                 <div className="flex justify-end">
-                  <Button type="submit" disabled={geralForm.formState.isSubmitting || isSaving}>
+                  <Button 
+                    type="submit" 
+                    disabled={geralForm.formState.isSubmitting || isSaving}
+                  >
                     {geralForm.formState.isSubmitting || isSaving ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />

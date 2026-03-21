@@ -23,6 +23,8 @@ import {
   UserPlus,
   CreditCard,
   LifeBuoy,
+  ChartPie,
+  ChartSpline,
 } from "lucide-react";
 
 import { Button } from "../ui/button";
@@ -67,11 +69,11 @@ export function Sidebar({ userType, userName, role }: SidebarProps) {
   if (userType === "ADMIN" || (userType === "FUNCIONARIO" && role === "admin")) {
     const baseItems = [
       { icon: Home, label: "Dashboard", href: "/admin" },
-      { icon: Users, label: "Alunos", href: "/aluno" },
+      { icon: Users, label: "Alunos Futebol", href: "/aluno" },
       { icon: User, label: "Responsáveis", href: "/responsavel" },
       { icon: Users, label: "Funcionários", href: "/funcionario" },
       { icon: Calendar, label: "Treinos", href: "/treinos" },
-      { icon: DollarSign, label: "Financeiro", href: "/financeiro" },
+      { icon: ChartSpline, label: "Financeiro", href: "/financeiro" },
       { icon: DollarSign, label: "Inadimplentes", href: "/inadimplentes" },
     ];
 
