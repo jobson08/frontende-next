@@ -528,24 +528,16 @@ const salvarCrossfit = async () => {
             <CardContent>
               <form onSubmit={geralForm.handleSubmit(salvarGeral)} className="space-y-8">
                 {/* Logo da Escolinha - usando o componente reutilizável */}
-                <ImageUploader
+                 <ImageUploader
                   currentImageUrl={logoPreview}
                   entityName={geralForm.watch("nomeEscolinha") || "Escolinha"}
-                  uploadEndpoint="/tenant/upload/escolinha"  // rota genérica que criamos
-                  onUploadSuccess={(url) => {
-                    setLogoPreview(url);
-                    // Opcional: se quiser salvar no form ou no banco imediatamente
-                    // geralForm.setValue("logoUrl", url);
-                  }}
-                  onRemove={() => {
-                    setLogoPreview(null);
-                    // Opcional: limpar no form se precisar
-                    // geralForm.setValue("logoUrl", null);
-                  }}
+                  uploadEndpoint="/tenant/upload/escolinha"
+                  deleteEndpoint="/tenant/upload/escolinha"
+                  onUploadSuccess={(url) => setLogoPreview(url)}
+                  onRemove={() => setLogoPreview(null)}
                   size="lg"
                   className="py-6 border-b"
                 />
-
                 <div className="space-y-2">
                   <Label>Nome da Escolinha</Label>
                   <Input {...geralForm.register("nomeEscolinha")} />
