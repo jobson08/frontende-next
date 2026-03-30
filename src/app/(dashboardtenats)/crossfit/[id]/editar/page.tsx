@@ -23,7 +23,21 @@ import api from "@/src/lib/api";
 import InputCPFEdit from "@/src/components/common/inputsEdit/InputCPFEdit";
 import InputTelefoneEdit from "@/src/components/common/inputsEdit/InputTelefoneEdit";
 import InputDataEdit from "@/src/components/common/inputsEdit/InputDataEdit";
+import dynamic from "next/dynamic";
 
+// Import dinâmico com suppressHydrationWarning
+const ImageUploader = dynamic(
+  () => import("@/src/components/ImageUploader"), // Ajuste o caminho se necessário
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex flex-col items-center justify-center py-8">
+        <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mb-6" />
+        <p className="text-gray-500">Carregando uploader de imagem...</p>
+      </div>
+    ),
+  }
+);
 // Schema Zod completo e corrigido
 const formSchema = z.object({
   nome: z.string().min(3, "Nome completo obrigatório"),
@@ -60,6 +74,11 @@ interface AlunoDetalhe {
 const EditarAlunoCrossfitPage = () => {
   const { id } = useParams();
   const router = useRouter();
+
+  const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isRemovingImage, setIsRemovingImage] = useState(false);
+
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -94,7 +113,9 @@ const EditarAlunoCrossfitPage = () => {
       const [ano, mes, dia] = aluno.dataNascimento.split("T")[0].split("-");
       const dataFormatada = `${dia}/${mes}/${ano}`;
 
-      setPhotoPreview(aluno.fotoUrl || null);
+      setCurrentImageUrl(aluno.fotoUrl || null);
+      setSelectedFile(null);
+      setIsRemovingImage(false);
 
       setValue("nome", aluno.nome || "");
       setValue("email", aluno.email || "");
@@ -110,9 +131,19 @@ const EditarAlunoCrossfitPage = () => {
   // Mutation para atualizar
   const updateMutation = useMutation({
     mutationFn: async (data: FormData) => {
-      console.log("=== [UPDATE ALUNO CROSSFIT] Iniciando salvamento ===");
-      console.log("ID do aluno:", id);
-      console.log("Dados do form:", data);
+      let novaFotoUrl = aluno?.fotoUrl || null;
+
+      if (selectedFile) {
+        const formData = new FormData();
+        formData.append("file", selectedFile);
+
+        const res = await api.post(`/tenant/upload/aluno-futebol/${id}`, formData);
+        novaFotoUrl = res.data.url;
+      }
+
+      if (isRemovingImage && !selectedFile) {
+        novaFotoUrl = null;
+      }
 
       const payload = {
         nome: data.nome?.trim(),
@@ -125,6 +156,7 @@ const EditarAlunoCrossfitPage = () => {
         observacoes: data.observacoes?.trim() || null,
         frequencia: data.frequencia,
         status: data.status,
+        fotoUrl: novaFotoUrl,
       };
 
       console.log("=== PAYLOAD ENVIADO ===");
@@ -189,8 +221,16 @@ const EditarAlunoCrossfitPage = () => {
     },
   });
 
-  const onSubmit = (data: FormData) => {
-    updateMutation.mutate(data);
+  const handleImageChange = (file: File | null, imageUrl?: string) => {
+    setSelectedFile(file);
+    if (imageUrl) setCurrentImageUrl(imageUrl);
+    setIsRemovingImage(false);
+  };
+
+const handleRemoveImage = () => {
+    setSelectedFile(null);
+    setCurrentImageUrl(null);
+    setIsRemovingImage(true);
   };
 
   const redefinirSenha = () => {
@@ -199,19 +239,10 @@ const EditarAlunoCrossfitPage = () => {
     }
   };
 
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setPhotoPreview(reader.result as string);
-      reader.readAsDataURL(file);
-    }
+    const onSubmit = (data: FormData) => {
+    updateMutation.mutate(data);
   };
 
-  const removePhoto = () => {
-    setPhotoPreview(null);
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  };
 
   if (isLoading) {
     return (
@@ -266,35 +297,26 @@ const EditarAlunoCrossfitPage = () => {
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
             {/* Foto */}
-            <div className="flex flex-col items-center gap-4 py-6 border-b">
-              <Avatar className="h-32 w-32 ring-4 ring-red-100">
-                <AvatarImage src={photoPreview || aluno.fotoUrl || undefined} />
-                <AvatarFallback className="bg-gradient-to-br from-red-600 to-orange-600 text-white text-3xl font-bold">
-                  {watchedName ? watchedName.split(" ").map(n => n[0]).join("").toUpperCase() : "?"}
-                </AvatarFallback>
-              </Avatar>
-
-              <div className="flex gap-3">
-                <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
-                  <Camera className="mr-2 h-4 w-4" />
-                  Alterar foto
-                </Button>
-                {photoPreview && (
-                  <Button type="button" variant="destructive" size="sm" onClick={removePhoto}>
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Remover
-                  </Button>
-                )}
-              </div>
-
-              <input
-                type="file"
-                accept="image/*"
-                ref={fileInputRef}
-                onChange={handlePhotoChange}
-                className="hidden"
-              />
-            </div>
+            <div suppressHydrationWarning={true} className="flex justify-center py-6 border-b">
+            <ImageUploader
+              currentImageUrl={currentImageUrl || undefined}
+              entityName={watchedName || "Aluno"}
+              uploadEndpoint={`/tenant/upload/aluno-crossfit/${id}`}
+              deleteEndpoint={`/tenant/upload/aluno-crossfit/${id}`}
+              onUploadSuccess={(url) => {
+                setCurrentImageUrl(url);
+                setSelectedFile(null);
+                setIsRemovingImage(false);
+              }}
+              onRemove={() => {
+                setCurrentImageUrl(null);
+                setSelectedFile(null);
+                setIsRemovingImage(true);
+              }}
+              size="lg"
+              className="mx-auto"
+            />
+          </div>
 
             {/* Dados Pessoais */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

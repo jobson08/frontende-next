@@ -20,7 +20,7 @@ interface ImageUploaderProps {
   className?: string;
 }
 
-export function ImageUploader({
+function ImageUploader({
   currentImageUrl = null,
   entityName,
   uploadEndpoint,
@@ -125,7 +125,7 @@ const handleRemove = async () => {
     <div className={`flex flex-col items-center gap-4 ${className}`} suppressHydrationWarning>
       <Avatar className={`${avatarSize} ring-4 ring-blue-100`} suppressHydrationWarning>
         <AvatarImage src={preview || undefined} />
-        <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white font-bold">
+        <AvatarFallback className="bg-linear-to-br from-blue-500 to-purple-600 text-white font-bold">
           {entityName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2) || "?"}
         </AvatarFallback>
       </Avatar>
@@ -174,3 +174,5 @@ const handleRemove = async () => {
     </div>
   );
 }
+
+export default ImageUploader;

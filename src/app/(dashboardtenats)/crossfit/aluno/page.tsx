@@ -47,7 +47,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/src/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/src/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage, } from "@/src/components/ui/avatar";
 import Link from "next/link";
 import {
   AlertDialog,
@@ -84,6 +84,7 @@ interface AlunoCrossfit {
   status: string;
   createdAt: string;
   ultimoPagamento?: string | null;
+  fotoUrl: string | null;
   statusPagamento?: "Em Dia" | "Atrasado" | "Pendente";
 }
 
@@ -459,6 +460,7 @@ const ClientesCrossFitPage = () => {
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-3">
                         <Avatar className="h-10 w-10">
+                          <AvatarImage src={aluno.fotoUrl|| undefined} />
                           <AvatarFallback className="bg-gradient-to-br from-red-600 to-orange-600 text-white">
                             {aluno.nome.split(" ").map((n) => n[0]).join("")}
                           </AvatarFallback>

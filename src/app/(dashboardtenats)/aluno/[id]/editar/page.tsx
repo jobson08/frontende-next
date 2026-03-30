@@ -23,6 +23,21 @@ import InputDataEdit from "@/src/components/common/inputsEdit/InputDataEdit";
 import InputTelefoneEdit from "@/src/components/common/inputsEdit/InputTelefoneEdit";
 import InputCPFEdit from "@/src/components/common/inputsEdit/InputCPFEdit";
 import { Controller } from "react-hook-form";
+import dynamic from "next/dynamic";
+
+// Import dinâmico com suppressHydrationWarning
+const ImageUploader = dynamic(
+  () => import("@/src/components/ImageUploader"), // Ajuste o caminho se necessário
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex flex-col items-center justify-center py-8">
+        <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mb-6" />
+        <p className="text-gray-500">Carregando uploader de imagem...</p>
+      </div>
+    ),
+  }
+);
 
 // Schema Zod para edição
 const formSchema = z.object({
@@ -67,7 +82,12 @@ interface Responsavel {
 const EditarAlunoPage = () => {
  const { id } = useParams();
   const router = useRouter();
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+
+  const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  //const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [isRemovingImage, setIsRemovingImage] = useState(false);
+
   const [date, setDate] = useState<Date | undefined>(undefined);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -112,7 +132,9 @@ if (aluno && aluno.dataNascimento) {
     const dataFormatada = `${dia}/${mes}/${ano}`;
 
     setDate(new Date(`${ano}-${mes}-${dia}`)); // cria Date sem hora/fuso
-      setPhotoPreview(aluno.fotoUrl || null);
+      setCurrentImageUrl(aluno.fotoUrl || null);
+      setSelectedFile(null);
+      setIsRemovingImage(false);
 
       setValue("nome", aluno.nome);
       setValue("dataNascimento", dataFormatada);
@@ -128,70 +150,48 @@ if (aluno && aluno.dataNascimento) {
 
   // Mutation para atualizar aluno
 const updateMutation = useMutation({
-  mutationFn: async (data: FormData) => {
-    console.log("=== [UPDATE] Iniciando salvamento do aluno ===");
-    console.log("ID do aluno:", id);
-    console.log("Dados do form (data):", data);
+    mutationFn: async (data: FormData) => {
+      let novaFotoUrl = aluno?.fotoUrl || null;
 
-    const payload = {
-      nome: data.nome.trim(),
-      dataNascimento: data.dataNascimento
-        ? data.dataNascimento.split("/").reverse().join("-")
-        : null,
-      telefone: data.telefone.trim() || null,
-      cpf: data.cpf 
-      ? data.cpf.replace(/\D/g, "")   // ← remove tudo que não é dígito (pontos, traços, espaços)
-      : null,
-      categoria: data.categoria.trim(),
-      responsavelId: data.responsavelId === "none" ? null : data.responsavelId,
-      email: data.email?.toLowerCase().trim() || null,
-      status: data.status,
-      observacoes: data.observacoes?.trim() || null,
-    };
+      if (selectedFile) {
+        const formData = new FormData();
+        formData.append("file", selectedFile);
 
-    console.log("Payload que será enviado:");
-    console.log(JSON.stringify(payload, null, 2));
+        const res = await api.post(`/tenant/upload/aluno-futebol/${id}`, formData);
+        novaFotoUrl = res.data.url;
+      }
 
-    const url = `/tenant/alunos/${id}`;
-    console.log("URL completa chamada:", api.getUri() + url);  // mostra baseURL + caminho
+      if (isRemovingImage && !selectedFile) {
+        novaFotoUrl = null;
+      }
 
-    try {
-      const res = await api.patch(url, payload);
-      console.log("Resposta de SUCESSO do PATCH:");
-      console.log("Status:", res.status);
-      console.log("Dados retornados:", res.data);
-      return res.data;
-    } catch (error: any) {
-      console.error("=== [UPDATE] ERRO NO PATCH ===");
-      console.error("Status do erro:", error.response?.status);
-      console.error("URL chamada:", error.config?.url);
-      console.error("Método:", error.config?.method);
-      console.error("Headers enviados:", error.config?.headers);
-      console.error("Payload enviado:", error.config?.data);
-      console.error("Resposta do servidor:", error.response?.data);
-      console.error("Mensagem do erro:", error.message);
-      throw error;
-    }
-  },
+      const payload = {
+        nome: data.nome.trim(),
+        dataNascimento: data.dataNascimento.split("/").reverse().join("-"),
+        telefone: data.telefone.trim(),
+        cpf: data.cpf ? data.cpf.replace(/\D/g, "") : null,
+        categoria: data.categoria.trim(),
+        responsavelId: data.responsavelId || null,
+        email: data.email?.trim().toLowerCase() || null,
+        status: data.status,
+        observacoes: data.observacoes?.trim() || null,
+        fotoUrl: novaFotoUrl,
+      };
 
-  onSuccess: () => {
-    console.log("=== [UPDATE] Sucesso total! ===");
-    toast.success("Aluno atualizado com sucesso!");
-    setTimeout(() => {
-      router.push("/aluno");
-    }, 1500);
-  },
+      return api.patch(`/tenant/alunos/${id}`, payload);
+    },
 
-  onError: (err: any) => {
-    console.error("=== [UPDATE] Erro capturado no onError ===");
-    console.error("Erro completo:", err);
-    console.error("Resposta do erro:", err.response?.data);
-    console.error("Mensagem:", err.message);
-    toast.error("Erro ao atualizar aluno", {
-      description: err.response?.data?.error || err.message || "Tente novamente",
-    });
-  },
-});
+    onSuccess: () => {
+      toast.success("Aluno atualizado com sucesso!");
+      setTimeout(() => router.push("/aluno"), 1500);
+    },
+
+    onError: (err: any) => {
+      toast.error("Erro ao atualizar aluno", {
+        description: err.response?.data?.error || err.message,
+      });
+    },
+  });
 
 // Mutation para redefinir senha (já está correta)
   const redefinirSenhaMutation = useMutation({
@@ -233,24 +233,23 @@ const updateMutation = useMutation({
     updateMutation.mutate(data);
   };
 
+
+const handleImageChange = (file: File | null, imageUrl?: string) => {
+    setSelectedFile(file);
+    if (imageUrl) setCurrentImageUrl(imageUrl);
+    setIsRemovingImage(false);
+  };
+
+const handleRemoveImage = () => {
+    setSelectedFile(null);
+    setCurrentImageUrl(null);
+    setIsRemovingImage(true);
+  };
+
   const redefinirSenha = () => {
     if (confirm("Tem certeza que deseja gerar uma nova senha temporária?")) {
       redefinirSenhaMutation.mutate();
     }
-  };
-
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setPhotoPreview(reader.result as string);
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const removePhoto = () => {
-    setPhotoPreview(null);
-    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
  if (isLoadingAluno || isLoadingResponsaveis) {
@@ -297,37 +296,29 @@ const updateMutation = useMutation({
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-            {/* Foto */}
-            <div className="flex flex-col items-center gap-4 py-6 border-b">
-              <Avatar className="h-32 w-32 ring-4 ring-blue-100">
-                <AvatarImage src={photoPreview || aluno.fotoUrl || undefined} />
-                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-3xl font-bold">
-                  {watchedName ? watchedName.split(" ").map(n => n[0]).join("").toUpperCase() : "?"}
-                </AvatarFallback>
-              </Avatar>
-
-              <div className="flex gap-3">
-                <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
-                  <Camera className="mr-2 h-4 w-4" />
-                  Alterar foto
-                </Button>
-                {photoPreview && (
-                  <Button type="button" variant="destructive" size="sm" onClick={removePhoto}>
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Remover
-                  </Button>
-                )}
-              </div>
-
-              <input
-                type="file"
-                accept="image/*"
-                ref={fileInputRef}
-                onChange={handlePhotoChange}
-                className="hidden"
-              />
-            </div>
-
+{/* ==================== SEÇÃO DA FOTO ==================== */}
+        {/* ImageUploader com suppressHydrationWarning */}
+          <div suppressHydrationWarning={true} className="flex justify-center py-6 border-b">
+            <ImageUploader
+              currentImageUrl={currentImageUrl || undefined}
+              entityName={watchedName || "Aluno"}
+              uploadEndpoint={`/tenant/upload/aluno-futebol/${id}`}
+              deleteEndpoint={`/tenant/upload/aluno-futebol/${id}`}
+              onUploadSuccess={(url) => {
+                setCurrentImageUrl(url);
+                setSelectedFile(null);
+                setIsRemovingImage(false);
+              }}
+              onRemove={() => {
+                setCurrentImageUrl(null);
+                setSelectedFile(null);
+                setIsRemovingImage(true);
+              }}
+              size="lg"
+              className="mx-auto"
+            />
+          </div>
+            
               {/* Informações Pessoais */}
             <div className="space-y-6">
               <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">Informações Pessoais</h3>

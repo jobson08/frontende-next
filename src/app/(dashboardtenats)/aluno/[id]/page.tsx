@@ -8,6 +8,7 @@ import { useState } from "react";
 import {
   Avatar,
   AvatarFallback,
+  AvatarImage,
 } from "@/src/components/ui/avatar";
 import { Badge } from "@/src/components/ui/badge";
 import { Button } from "@/src/components/ui/button";
@@ -113,6 +114,7 @@ interface AlunoDetalhe {
   userId: string | null;
   categoria: string | null;
   valorPlano?: number; // ← adicione isso no backend se possível (valor atual do plano)
+  fotoUrl: string | null;
 }
 
 interface PagamentoAluno {
@@ -339,11 +341,12 @@ if (isLoading || isLoadingPagamentos) {
 
       {/* Perfil Principal */}
       <Card className="overflow-hidden">
-        <div className="bg-gradient-to-r from-blue-600 to-purple-600 h-32" />
+        <div className="bg-linear-to-r from-blue-600 to-purple-600 h-32" />
         <CardContent className="relative pt-0">
           <div className="flex flex-col sm:flex-row items-center sm:items-end gap-6 -mt-16">
             <Avatar className="h-32 w-32 ring-8 ring-white shadow-2xl">
-              <AvatarFallback className="bg-gradient-to-br from-blue-600 to-purple-600 text-white text-4xl font-bold">
+              <AvatarImage src={aluno.fotoUrl|| undefined} />
+              <AvatarFallback className="bg-linear-to-br from-blue-600 to-purple-600 text-white text-4xl font-bold">
                 {aluno.nome.split(" ").map(n => n[0]).join("")}
               </AvatarFallback>
             </Avatar>

@@ -31,7 +31,20 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import api from "@/src/lib/api";
 import { useEscolinhaConfig } from "@/src/context/EscolinhaConfigContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/src/components/ui/dialog";
-import { ImageUploader } from "@/src/components/ImageUploader";
+import dynamic from 'next/dynamic';
+
+const ImageUploader = dynamic(
+  () => import("@/src/components/ImageUploader"), // Ajuste o caminho se necessário
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex flex-col items-center justify-center py-8">
+        <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mb-6" />
+        <p className="text-gray-500">Carregando uploader de imagem...</p>
+      </div>
+    ),
+  }
+);
 
 /// Schemas Zod
 const geralSchema = z.object({
@@ -528,6 +541,7 @@ const salvarCrossfit = async () => {
             <CardContent>
               <form onSubmit={geralForm.handleSubmit(salvarGeral)} className="space-y-8">
                 {/* Logo da Escolinha - usando o componente reutilizável */}
+                <div suppressHydrationWarning={true} className="flex justify-center py-6 border-b">
                  <ImageUploader
                   currentImageUrl={logoPreview}
                   entityName={geralForm.watch("nomeEscolinha") || "Escolinha"}
@@ -542,7 +556,8 @@ const salvarCrossfit = async () => {
                   <Label>Nome da Escolinha</Label>
                   <Input {...geralForm.register("nomeEscolinha")} />
                 </div>
-
+              </div>
+              
                 <div className="space-y-2">
                   <Label>Mensagem de Boas-vindas</Label>
                   <Textarea rows={4} {...geralForm.register("mensagemBoasVindas")} />

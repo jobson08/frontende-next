@@ -34,7 +34,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/src/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/src/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/src/components/ui/avatar";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -80,6 +80,7 @@ interface Inadimplente {
   dataVencimento: string;
   status: string;
   alunoId: string;
+  fotoUrl: string | null;
   modalidade: 'futebol' | 'crossfit';  // ← obrigatório agora
 }
 
@@ -87,6 +88,7 @@ interface Aniversariante {
   nome: string;
   idade: number;
   dataAniversario: string;
+  fotoUrl: string | null;
   modalidade: 'futebol' | 'crossfit';  // ← adicione isso aqui
 }
 
@@ -435,7 +437,7 @@ useQuery<DashboardData>({
                 proximasAulas.slice(0, 4).map((aula) => (  // limita a 4 aulas visíveis
                   <div 
                     key={aula.id} 
-                    className="flex items-center justify-between p-1 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg border border-gray-200 hover:shadow-sm transition"
+                    className="flex items-center justify-between p-1 bg-linear-to-r from-gray-50 to-gray-100 rounded-lg border border-gray-200 hover:shadow-sm transition"
                   >
                     <div className="flex items-center gap-4 flex-1">
                      {/*} <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 flex flex-col items-center justify-center text-white font-bold text-xs shrink-0">
@@ -486,8 +488,8 @@ useQuery<DashboardData>({
             {aniversariantesSemana.length > 0 ? (
               <div className="space-y-2">
                 {aniversariantesSemana.map((a, i) => (
-                  <div key={i} className="flex items-center gap-4 p-1 bg-gradient-to-r from-purple-100 to-pink-100 rounded-lg">
-                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center text-white font-bold">
+                  <div key={i} className="flex items-center gap-4 p-1 bg-linear-to-r from-purple-100 to-pink-100 rounded-lg">
+                    <div className="w-7 h-7 rounded-full bg-linear-to-br from-purple-600 to-pink-600 flex items-center justify-center text-white font-bold">
                       {a.idade}
                     </div>
                     <div className="flex flex-col">
@@ -583,6 +585,7 @@ useQuery<DashboardData>({
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-3">
                           <Avatar className="h-10 w-10">
+                            <AvatarImage src={pagamento.fotoUrl|| undefined} />
                             <AvatarFallback className="bg-red-600 text-white">
                               {pagamento.alunoNome?.split(" ").map(n => n[0]).join("") || "?"}
                             </AvatarFallback>
