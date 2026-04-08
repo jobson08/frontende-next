@@ -4,6 +4,7 @@
 
 import { useState, useRef } from "react";
 import { useForm } from "react-hook-form";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import Link from "next/link";
@@ -45,11 +46,15 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 
 const NovoAlunoCrossfitPage = () => {
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
+ // const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
   const {
     register,
     handleSubmit,
@@ -62,7 +67,7 @@ const NovoAlunoCrossfitPage = () => {
 
   const watchedName = watch("nome");
 
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  /*const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
@@ -74,82 +79,106 @@ const NovoAlunoCrossfitPage = () => {
   const removePhoto = () => {
     setPhotoPreview(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
-  };
+  };*/
 
-  const onSubmit = async (data: FormData) => {
-    setIsSubmitting(true);
-    try {
-      // Normaliza e-mail
-      data.email = data.email.toLowerCase().trim();
+//Mution criação aluno crossfit com foto
 
-      // Gera senha temporária
-      const senhaTemporaria = gerarSenhaAleatoria(10);
+ const createMutation = useMutation({
+    mutationFn: async (data: FormData) => {
+      const formData = new FormData();
 
-      // Prepara payload limpo
-      const payload = {
-        nome: data.nome.trim(),
-        email: data.email,
-        telefone: data.telefone ? data.telefone.replace(/\D/g, "") : null,
-        cpf: data.cpf ? data.cpf.replace(/\D/g, "") : null,
-        dataNascimento: data.dataNascimento
-          ? data.dataNascimento.split("/").reverse().join("-")
-          : null,
-        observacoes: data.observacoes?.trim() || null,
-        password: senhaTemporaria,
-      };
+    //campo do aluno
+    formData.append("nome", data.nome.trim());
+    formData.append("dataNascimento", data.dataNascimento.split("/").reverse().join("-"));
+    formData.append("telefone", data.telefone.trim());
+    formData.append("cpf", data.cpf ? data.cpf.replace(/\D/g, "") : "");
+    formData.append("email", data.email.trim().toLowerCase());
+    formData.append("status", "ATIVO");
+    formData.append("observacoes", data.observacoes?.trim() || "");
+   // formData.append("password", senhaTemporaria)
 
-      console.log("=== PAYLOAD ENVIADO AO BACKEND ===");
-      console.log("URL chamada:", "/tenant/alunos-crossfit");
-      console.log("Payload completo:", JSON.stringify(payload, null, 2));
+     // === FOTO ===
+    if (selectedFile) {
+      formData.append("foto", selectedFile);
+      console.log("✅ Foto adicionada ao FormData:", selectedFile.name, selectedFile.size);
+    } else {
+      console.log("⚠️ Nenhuma foto selecionada");
+    }
 
-      // Envia para o backend
-      const response = await api.post('/tenant/alunos-crossfit', payload);
+    // Debug completo do FormData
+    console.log("📋 Conteúdo do FormData enviado:");
+    for (const [key, value] of formData.entries()) {
+      if (value instanceof File) {
+        console.log(`   ${key} → FILE: ${value.name} (${value.size} bytes)`);
+      } else {
+        console.log(`   ${key} → ${value}`);
+      }
+    }
 
-      toast.success("Aluno CrossFit criado com sucesso!", {
+    const response = await api.post("/tenant/alunos-crossfit", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+
+    console.log("📥 Resposta do backend:", response.data);
+    return response.data;
+  },
+
+    onSuccess: (result) => {
+      toast.success("Aluno criado com sucesso!", {
         description: (
           <div className="space-y-3 text-sm">
-            <p className="font-medium">Aluno adicionado com login gerado.</p>
-            
+            <p>Aluno adicionado à escolinha.</p>
             <div className="bg-gray-100 p-3 rounded-md border border-gray-300">
-              <p className="font-semibold mb-1">Dados do login criado:</p>
-              <div className="space-y-1">
-                <p><span className="font-medium">Nome do aluno:</span> {data.nome || "Não informado"}</p>
-                <p><span className="font-medium">E-mail (usuário):</span> {data.email || "Não gerado"}</p>
-                <p className="font-bold text-blue-700">
-                  <span className="font-medium">Senha temporária:</span> {senhaTemporaria || "Gerada automaticamente"}
-                </p>
-              </div>
+              <p><strong>Nome:</strong> {result.nome || "Não informado"}</p>
+              <p><strong>E-mail:</strong> {result.email || "Não gerado"}</p>
+              {result.senhaTemporaria && (
+                <p><strong>Senha temporária:</strong> {result.senhaTemporaria}</p>
+              )}
             </div>
-
-            <p className="text-xs text-gray-600 mt-2">
-              Copie a senha e envie ao aluno imediatamente. Ele deve trocar no primeiro acesso.
-            </p>
           </div>
         ),
-        duration: 30000, // tempo suficiente para copiar
+        duration: 35000,
         action: {
           label: "Copiar senha",
           onClick: () => {
-            navigator.clipboard.writeText(senhaTemporaria || "");
-            toast("Senha copiada para a área de transferência!");
+            if (result.senhaTemporaria) {
+              navigator.clipboard.writeText(result.senhaTemporaria);
+              toast("Senha copiada!");
+            }
           },
         },
       });
 
-      // Redireciona automaticamente para a lista após 2 segundos
-      setTimeout(() => {
-        router.push("/crossfit");  // ← lista de alunos CrossFit
-      }, 2000);
+      setTimeout(() => router.push("/crossfit/aluno"), 1800);
+    },
 
-    } catch (error: any) {
-      console.error("[Criar Aluno CrossFit] Erro:", error);
-      toast.error("Erro ao criar aluno CrossFit", {
-        description: error.response?.data?.error || error.response?.data?.details?.[0]?.message || error.message || "Verifique os dados e tente novamente",
+    onError: (err: any) => {
+      console.error("❌ Erro ao criar aluno:", err.response?.data || err);
+      toast.error("Erro ao cadastrar aluno", {
+        description: err.response?.data?.error || err.message || "Tente novamente",
       });
-    } finally {
-      setIsSubmitting(false);
-    }
+  },
+});
+
+   const handleImageChange = (file: File | null, url?: string) => {
+  setSelectedFile(file);
+  if (url) setCurrentImageUrl(url);
+  console.log("📸 Imagem selecionada:", file?.name);
+};
+
+  const handleRemoveImage = () => {
+  setSelectedFile(null);
+  setCurrentImageUrl(null);
+  console.log("🗑️ Imagem removida");
+};
+
+
+  const onSubmit = (data: FormData) => {
+    createMutation.mutate(data);
   };
+
 
   return (
     <div className="p-4 lg:p-8 max-w-4xl mx-auto space-y-8">
@@ -174,23 +203,30 @@ const NovoAlunoCrossfitPage = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            {/* Foto */}
+           <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+            {/* ImageUploader */}
+            {/* Foto - Versão Simples e Eficiente */}
             <div className="flex flex-col items-center gap-4 py-6 border-b">
-              <Avatar className="h-32 w-32 ring-4 ring-blue-100">
-                <AvatarImage src={photoPreview || undefined} />
-                <AvatarFallback className="bg-gradient-to-br from-red-600 to-orange-600 text-white text-3xl font-bold">
-                  {watchedName ? watchedName.split(" ").map(n => n[0]).join("").toUpperCase() : "?"}
-                </AvatarFallback>
-              </Avatar>
+              <div className="relative">
+                <Avatar className="h-32 w-32 ring-4 ring-blue-100">
+                  <AvatarImage src={currentImageUrl || undefined} />
+                  <AvatarFallback className="bg-linear-to-br from-blue-500 to-purple-600 text-white text-3xl font-bold">
+                    {watchedName ? watchedName.split(" ").map(n => n[0]).join("").toUpperCase() : "?"}
+                  </AvatarFallback>
+                </Avatar>
+              </div>
 
               <div className="flex gap-3">
-                <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+                <Button type="button" variant="outline" onClick={() => document.getElementById("foto-input")?.click()}>
                   <Camera className="mr-2 h-4 w-4" />
-                  Escolher foto
+                  Adicionar foto
                 </Button>
-                {photoPreview && (
-                  <Button type="button" variant="destructive" size="sm" onClick={removePhoto}>
+
+                {currentImageUrl && (
+                  <Button type="button" variant="destructive" onClick={() => {
+                    setSelectedFile(null);
+                    setCurrentImageUrl(null);
+                  }}>
                     <Trash2 className="mr-2 h-4 w-4" />
                     Remover
                   </Button>
@@ -198,10 +234,18 @@ const NovoAlunoCrossfitPage = () => {
               </div>
 
               <input
+                id="foto-input"
                 type="file"
                 accept="image/*"
-                ref={fileInputRef}
-                onChange={handlePhotoChange}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    setSelectedFile(file);
+                    const reader = new FileReader();
+                    reader.onloadend = () => setCurrentImageUrl(reader.result as string);
+                    reader.readAsDataURL(file);
+                  }
+                }}
                 className="hidden"
               />
             </div>

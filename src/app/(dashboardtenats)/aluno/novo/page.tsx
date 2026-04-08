@@ -83,24 +83,44 @@ const router = useRouter();
     mutationFn: async (data: FormData) => {
       const formData = new FormData();
 
-      formData.append("nome", data.nome.trim());
-      formData.append("dataNascimento", data.dataNascimento.split("/").reverse().join("-"));
-      formData.append("telefone", data.telefone.trim());
-      formData.append("cpf", data.cpf ? data.cpf.replace(/\D/g, "") : "");
-      formData.append("categoria", data.categoria.trim());
-      formData.append("responsavelId", data.responsavelId && data.responsavelId !== "none" ? data.responsavelId : "");
-      formData.append("email", data.emailAluno.trim().toLowerCase());
-      formData.append("status", "ATIVO");
-      formData.append("observacoes", data.observacoes?.trim() || "");
+    // Campos do aluno
+    formData.append("nome", data.nome.trim());
+    formData.append("dataNascimento", data.dataNascimento.split("/").reverse().join("-"));
+    formData.append("telefone", data.telefone.trim());
+    formData.append("cpf", data.cpf ? data.cpf.replace(/\D/g, "") : "");
+    formData.append("categoria", data.categoria.trim());
+    formData.append("responsavelId", data.responsavelId && data.responsavelId !== "none" ? data.responsavelId : "");
+    formData.append("email", data.emailAluno.trim().toLowerCase());
+    formData.append("status", "ATIVO");
+    formData.append("observacoes", data.observacoes?.trim() || "");
 
-      if (selectedFile) {
-        formData.append("foto", selectedFile);
-        console.log("📸 Enviando foto:", selectedFile.name);
+    // === FOTO ===
+    if (selectedFile) {
+      formData.append("foto", selectedFile);
+      console.log("✅ Foto adicionada ao FormData:", selectedFile.name, selectedFile.size);
+    } else {
+      console.log("⚠️ Nenhuma foto selecionada");
+    }
+
+    // Debug completo do FormData
+    console.log("📋 Conteúdo do FormData enviado:");
+    for (const [key, value] of formData.entries()) {
+      if (value instanceof File) {
+        console.log(`   ${key} → FILE: ${value.name} (${value.size} bytes)`);
+      } else {
+        console.log(`   ${key} → ${value}`);
       }
+    }
 
-      const response = await api.post("/tenant/alunos", formData);
-      return response.data;
-    },
+    const response = await api.post("/tenant/alunos", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+
+    console.log("📥 Resposta do backend:", response.data);
+    return response.data;
+  },
 
     onSuccess: (result) => {
       toast.success("Aluno criado com sucesso!", {
@@ -108,8 +128,8 @@ const router = useRouter();
           <div className="space-y-3 text-sm">
             <p>Aluno adicionado à escolinha.</p>
             <div className="bg-gray-100 p-3 rounded-md border border-gray-300">
-              <p><strong>Nome:</strong> {result.nome}</p>
-              <p><strong>E-mail:</strong> {result.email}</p>
+              <p><strong>Nome:</strong> {result.nome || "Não informado"}</p>
+              <p><strong>E-mail:</strong> {result.email || "Não gerado"}</p>
               {result.senhaTemporaria && (
                 <p><strong>Senha temporária:</strong> {result.senhaTemporaria}</p>
               )}
@@ -132,22 +152,24 @@ const router = useRouter();
     },
 
     onError: (err: any) => {
-      console.error("Erro ao criar aluno:", err);
+      console.error("❌ Erro ao criar aluno:", err.response?.data || err);
       toast.error("Erro ao cadastrar aluno", {
         description: err.response?.data?.error || err.message || "Tente novamente",
       });
     },
   });
 
-      const handleImageChange = (file: File | null, url?: string) => {
-      setSelectedFile(file);
-      if (url) setCurrentImageUrl(url);
-    };
+    const handleImageChange = (file: File | null, url?: string) => {
+  setSelectedFile(file);
+  if (url) setCurrentImageUrl(url);
+  console.log("📸 Imagem selecionada:", file?.name);
+};
 
-    const handleRemoveImage = () => {
-      setSelectedFile(null);
-      setCurrentImageUrl(null);
-    };
+  const handleRemoveImage = () => {
+  setSelectedFile(null);
+  setCurrentImageUrl(null);
+  console.log("🗑️ Imagem removida");
+};
 
   const onSubmit = (data: FormData) => {
     createMutation.mutate(data);
