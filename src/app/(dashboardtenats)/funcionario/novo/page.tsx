@@ -6,8 +6,8 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import Link from "next/link";
-import { ChevronLeft, Loader2, Mail, Save, UserPlus } from "lucide-react";
-import { toast, Toaster } from "sonner";
+import { ChevronLeft, Loader2, Mail, UserPlus } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 import { Button } from "@/src/components/ui/button";
 import { Input } from "@/src/components/ui/input";
@@ -17,10 +17,25 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/src/components/ui/textarea";
 import api from "@/src/lib/api";
 import InputTelefone from "@/src/components/common/InputTelefone";
-import { useRouter } from "next/navigation";
+import { useApiMutation } from "@/src/hooks/useApiMutation";
+import { Toaster } from "@/src/components/ui/sonner";
 
-// Função para gerar senha aleatória forte
-function gerarSenhaAleatoria(tamanho = 12) {
+// Schema Zod
+const novoFuncionarioSchema = z.object({
+  nome: z.string().min(3, "Nome completo é obrigatório"),
+  telefone: z.string().min(10, "Telefone inválido").optional(),
+  cargo: z.enum(["PROFESSOR", "RECEPCAO", "ADMINISTRATIVO", "TREINADOR", "GERENTE"], {
+    message: "Cargo inválido",
+  }),
+  salario: z.number().positive("Salário deve ser positivo").optional(),
+  observacoes: z.string().optional(),
+  email: z.string().email("E-mail inválido").min(1, "E-mail é obrigatório"),
+});
+
+type FormData = z.infer<typeof novoFuncionarioSchema>;
+
+// Função para gerar senha aleatória
+function gerarSenhaAleatoria(tamanho = 12): string {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?";
   let senha = "";
   for (let i = 0; i < tamanho; i++) {
@@ -29,122 +44,54 @@ function gerarSenhaAleatoria(tamanho = 12) {
   return senha;
 }
 
-// Schema Zod (sem password no input do usuário)
-const novoFuncionarioSchema = z.object({
-  nome: z.string().min(3, { message: "Nome completo é obrigatório" }),
-  telefone: z.string().min(10, { message: "Telefone inválido" }).optional(),
-  cargo: z.enum([
-    "PROFESSOR",
-    "RECEPCAO",
-    "ADMINISTRATIVO",
-    "TREINADOR",
-    "GERENTE",
-  ], { message: "Cargo inválido" }),
-  salario: z.number().positive({ message: "Salário deve ser positivo" }).optional(),
-  observacoes: z.string().optional(),
-  fotoUrl: z.string().url({ message: "URL da foto inválida" }).optional(),
-
-  // Email obrigatório (login será criado com senha gerada automaticamente)
-  email: z.string().email({ message: "E-mail inválido" }).min(1, { message: "E-mail é obrigatório para criar o login" }),
-});
-
-type FormData = z.infer<typeof novoFuncionarioSchema>;
-
 const NovoFuncionarioPage = () => {
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
 
   const {
     register,
     handleSubmit,
-    setValue,
     control,
     formState: { errors },
   } = useForm<FormData>({
     resolver: zodResolver(novoFuncionarioSchema),
     defaultValues: {
-      cargo: "TREINADOR", // valor padrão útil
+      cargo: "TREINADOR",
     },
   });
 
-  const onSubmit = async (data: FormData) => {
-    setIsSubmitting(true);
-
-    try {
-      // Normaliza email
-      data.email = data.email.toLowerCase().trim();
-
-      // Gera senha aleatória automaticamente
+  // Mutation usando o hook reutilizável
+  const createMutation = useApiMutation(
+    async (data: FormData) => {
       const senhaGerada = gerarSenhaAleatoria(12);
 
-      // Payload enviado ao backend
       const payload = {
-        nome: data.nome,
+        nome: data.nome.trim(),
         telefone: data.telefone,
         cargo: data.cargo,
         salario: data.salario,
         observacoes: data.observacoes,
-        fotoUrl: data.fotoUrl,
-        email: data.email,
-        password: senhaGerada, // senha gerada automaticamente
+        email: data.email.toLowerCase().trim(),
+        password: senhaGerada,
       };
 
-      console.log("[Criar Funcionário + Login Auto] Enviando:", payload);
-
-      const response = await api.post('/tenant/funcionarios', payload);
-
-      toast.success("Funcionário criado com sucesso!", {
-        description: (
-          <div className="space-y-3 text-sm">
-            <p className="font-medium">Funcionário adicionado com login gerado automaticamente.</p>
-            
-            <div className="bg-gray-100 p-3 rounded-md border border-gray-300">
-              <p className="font-semibold mb-1">Dados do login criado:</p>
-              <div className="space-y-1">
-                <p><span className="font-medium">Nome:</span> {data.nome || "Não informado"}</p>
-                <p><span className="font-medium">E-mail (usuário):</span> {data.email || "Não gerado"}</p>
-                <p className="font-bold text-blue-700">
-                  <span className="font-medium">Senha temporária:</span> {senhaGerada}
-                </p>
-              </div>
-            </div>
-
-            <p className="text-xs text-gray-600 mt-2">
-              Copie a senha e envie ao funcionário imediatamente. Ele deve trocar no primeiro acesso.
-            </p>
-          </div>
-        ),
-        duration: 30000, // tempo suficiente para copiar
-        action: {
-          label: "Copiar senha",
-          onClick: () => {
-            navigator.clipboard.writeText(senhaGerada);
-            toast("Senha copiada para a área de transferência!");
-          },
-        },
-      });
-
-      // Redireciona automaticamente após 2 segundos
-      setTimeout(() => {
-        router.push("/funcionario");
-      }, 2000);
-
-    } catch (error: any) {
-      console.error("[Criar Funcionário + Login Auto] Erro:", error);
-      toast.error("Erro ao criar funcionário", {
-        description: error.response?.data?.error ||
-                      error.response?.data?.details?.[0]?.message ||
-                      error.message ||
-                      "Verifique os dados e tente novamente",
-      });
-    } finally {
-      setIsSubmitting(false);
+      return api.post("/tenant/funcionarios", payload);
+    },
+    {
+      successMessage: "Funcionário criado com sucesso!",
+      invalidateQueries: ["funcionarios"],
+      onSuccessCallback: () => {
+        // Redireciona após sucesso
+        setTimeout(() => router.push("/funcionario"), 1800);
+      },
     }
+  );
+
+  const onSubmit = (data: FormData) => {
+    createMutation.mutate(data);
   };
 
   return (
     <div className="p-4 lg:p-8 max-w-4xl mx-auto space-y-8">
-      {/* Cabeçalho */}
       <div className="flex items-center gap-4 mb-8">
         <Button variant="ghost" size="icon" asChild>
           <Link href="/funcionario">
@@ -159,11 +106,15 @@ const NovoFuncionarioPage = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl">Dados do Funcionário</CardTitle>
+          <CardTitle className="text-2xl flex items-center gap-2">
+            <UserPlus className="h-6 w-6" />
+            Dados do Funcionário
+          </CardTitle>
         </CardHeader>
+
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            {/* Nome Completo */}
+            {/* Nome */}
             <div className="space-y-2">
               <Label htmlFor="nome">Nome completo *</Label>
               <Input id="nome" placeholder="Lucas Silva Santos" {...register("nome")} />
@@ -201,7 +152,7 @@ const NovoFuncionarioPage = () => {
                 id="salario"
                 type="number"
                 step="0.01"
-                placeholder="R$ 3.500,00"
+                placeholder="3500.00"
                 {...register("salario", { valueAsNumber: true })}
               />
               {errors.salario && <p className="text-sm text-red-600">{errors.salario.message}</p>}
@@ -214,7 +165,7 @@ const NovoFuncionarioPage = () => {
               {errors.telefone && <p className="text-sm text-red-600">{errors.telefone.message}</p>}
             </div>
 
-            {/* E-mail (obrigatório para login) */}
+            {/* E-mail */}
             <div className="space-y-2">
               <Label htmlFor="email">E-mail *</Label>
               <div className="relative">
@@ -223,18 +174,14 @@ const NovoFuncionarioPage = () => {
                   id="email"
                   type="email"
                   placeholder="funcionario@escolinha.com"
-                  className="pl-12 h-12"
-                  {...register("email", {
-                    onChange: (e) => {
-                      const lower = e.target.value.toLowerCase();
-                      e.target.value = lower;
-                      setValue("email", lower);
-                    },
-                  })}
+                  className="pl-12"
+                  {...register("email")}
                 />
               </div>
               {errors.email && <p className="text-sm text-red-600">{errors.email.message}</p>}
-              <p className="text-xs text-gray-500">O login será criado automaticamente e a senha gerada será exibida após o cadastro</p>
+              <p className="text-xs text-gray-500">
+                O login será criado automaticamente com senha gerada.
+              </p>
             </div>
 
             {/* Observações */}
@@ -243,7 +190,6 @@ const NovoFuncionarioPage = () => {
               <Textarea
                 id="observacoes"
                 placeholder="Horário de trabalho, especialidade, etc..."
-                className="resize-none"
                 rows={4}
                 {...register("observacoes")}
               />
@@ -251,12 +197,12 @@ const NovoFuncionarioPage = () => {
 
             {/* Botões */}
             <div className="flex flex-col sm:flex-row gap-4 pt-6">
-              <Button 
-                type="submit" 
-                disabled={isSubmitting} 
-                className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+              <Button
+                type="submit"
+                disabled={createMutation.isPending}
+                className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600"
               >
-                {isSubmitting ? (
+                {createMutation.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Criando funcionário...
@@ -265,6 +211,7 @@ const NovoFuncionarioPage = () => {
                   "Criar Funcionário"
                 )}
               </Button>
+
               <Button type="button" variant="outline" asChild className="flex-1">
                 <Link href="/funcionario">Cancelar</Link>
               </Button>

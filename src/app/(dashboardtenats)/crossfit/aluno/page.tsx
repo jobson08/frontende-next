@@ -129,9 +129,20 @@ const ClientesCrossFitPage = () => {
       setAlunoParaRemover(null);
     },
     onError: (err: any) => {
+    const message = err.response?.data?.error || err.message || "Erro desconhecido";
+
+    // Tratamento específico por tipo de erro
+    if (err.response?.status === 404) {
+      toast.error("Aluno não encontrado");
+    } else if (err.response?.status === 403) {
+      toast.error("Você não tem permissão para excluir este aluno");
+    } else {
       toast.error("Erro ao remover aluno", {
-        description: err.response?.data?.error || "Tente novamente",
+        description: message,
       });
+    }
+
+    console.error("Erro ao deletar aluno:", err);
     },
   });
 

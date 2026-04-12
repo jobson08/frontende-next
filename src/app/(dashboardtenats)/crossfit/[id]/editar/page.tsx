@@ -137,7 +137,7 @@ const EditarAlunoCrossfitPage = () => {
         const formData = new FormData();
         formData.append("file", selectedFile);
 
-        const res = await api.post(`/tenant/upload/aluno-futebol/${id}`, formData);
+        const res = await api.post(`/tenant/upload/aluno-crossfit/${id}`, formData);
         novaFotoUrl = res.data.url;
       }
 
@@ -178,10 +178,20 @@ const EditarAlunoCrossfitPage = () => {
     },
 
     onError: (err: any) => {
-      console.error("=== [UPDATE ALUNO CROSSFIT] Erro ===", err);
+     const serverMessage = err.response?.data?.error || err.message || "Erro desconhecido";
+
+    console.error("❌ Erro ao atualizar aluno:", err.response?.data || err);
+
+    // Tratamento inteligente por status
+    if (err.response?.status === 404) {
+      toast.error("Aluno não encontrado");
+    } else if (err.response?.status === 400) {
+      toast.error("Dados inválidos", { description: serverMessage });
+    } else {
       toast.error("Erro ao atualizar aluno", {
-        description: err.response?.data?.error || err.message || "Tente novamente",
+        description: serverMessage,
       });
+    }
     },
   });
 

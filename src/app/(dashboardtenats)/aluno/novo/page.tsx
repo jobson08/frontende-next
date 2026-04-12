@@ -78,10 +78,10 @@ const router = useRouter();
     },
   });
 
-  // Mutation - Envia tudo junto (form + foto)
-  const createMutation = useMutation({
-    mutationFn: async (data: FormData) => {
-      const formData = new FormData();
+  
+ // Mutation - Criação de Aluno Futebol (com foto)
+const createMutation = useMutation({ mutationFn: async (data: FormData) => {
+    const formData = new FormData();
 
     // Campos do aluno
     formData.append("nome", data.nome.trim());
@@ -94,70 +94,70 @@ const router = useRouter();
     formData.append("status", "ATIVO");
     formData.append("observacoes", data.observacoes?.trim() || "");
 
-    // === FOTO ===
+    // Foto (se selecionada)
     if (selectedFile) {
       formData.append("foto", selectedFile);
-      console.log("✅ Foto adicionada ao FormData:", selectedFile.name, selectedFile.size);
-    } else {
-      console.log("⚠️ Nenhuma foto selecionada");
+      console.log("📸 Foto adicionada ao FormData:", selectedFile.name);
     }
 
-    // Debug completo do FormData
-    console.log("📋 Conteúdo do FormData enviado:");
+    // Debug (pode remover depois)
+    console.log("📤 Enviando FormData para criação de aluno...");
     for (const [key, value] of formData.entries()) {
       if (value instanceof File) {
-        console.log(`   ${key} → FILE: ${value.name} (${value.size} bytes)`);
+        console.log(`   ${key} → [FILE] ${value.name} (${value.size} bytes)`);
       } else {
-        console.log(`   ${key} → ${value}`);
+        console.log(`   ${key} → "${value}"`);
       }
     }
 
-    const response = await api.post("/tenant/alunos", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
-
-    console.log("📥 Resposta do backend:", response.data);
+    const response = await api.post("/tenant/alunos", formData);
     return response.data;
   },
 
-    onSuccess: (result) => {
-      toast.success("Aluno criado com sucesso!", {
-        description: (
-          <div className="space-y-3 text-sm">
-            <p>Aluno adicionado à escolinha.</p>
-            <div className="bg-gray-100 p-3 rounded-md border border-gray-300">
-              <p><strong>Nome:</strong> {result.nome || "Não informado"}</p>
-              <p><strong>E-mail:</strong> {result.email || "Não gerado"}</p>
-              {result.senhaTemporaria && (
-                <p><strong>Senha temporária:</strong> {result.senhaTemporaria}</p>
-              )}
-            </div>
+  onSuccess: (result) => {
+    toast.success("Aluno criado com sucesso!", {
+      description: (
+        <div className="space-y-3 text-sm">
+          <p>Aluno adicionado à escolinha.</p>
+          <div className="bg-gray-100 p-3 rounded-md border border-gray-300">
+            <p><strong>Nome:</strong> {result.nome}</p>
+            <p><strong>E-mail:</strong> {result.email}</p>
+            {result.senhaTemporaria && (
+              <p><strong>Senha temporária:</strong> {result.senhaTemporaria}</p>
+            )}
           </div>
-        ),
-        duration: 35000,
-        action: {
-          label: "Copiar senha",
-          onClick: () => {
-            if (result.senhaTemporaria) {
-              navigator.clipboard.writeText(result.senhaTemporaria);
-              toast("Senha copiada!");
-            }
-          },
+        </div>
+      ),
+      duration: 25000,
+      action: {
+        label: "Copiar senha",
+        onClick: () => {
+          if (result.senhaTemporaria) {
+            navigator.clipboard.writeText(result.senhaTemporaria);
+            toast("Senha copiada!");
+          }
         },
-      });
+      },
+    });
 
-      setTimeout(() => router.push("/aluno"), 1800);
-    },
+    setTimeout(() => router.push("/aluno"), 1500);
+  },
 
-    onError: (err: any) => {
-      console.error("❌ Erro ao criar aluno:", err.response?.data || err);
-      toast.error("Erro ao cadastrar aluno", {
-        description: err.response?.data?.error || err.message || "Tente novamente",
-      });
-    },
-  });
+  onError: (err: any) => {
+    const serverError = err.response?.data?.error || err.message || "Erro desconhecido";
+
+    console.error("❌ Erro ao criar aluno:", err.response?.data || err);
+
+    // Tratamento inteligente de erros
+    if (err.response?.status === 409) {
+      toast.error("E-mail já cadastrado", { description: serverError });
+    } else if (err.response?.status === 400) {
+      toast.error("Dados inválidos", { description: serverError });
+    } else {
+      toast.error("Erro ao cadastrar aluno", { description: serverError });
+    }
+  },
+});
 
     const handleImageChange = (file: File | null, url?: string) => {
   setSelectedFile(file);

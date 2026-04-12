@@ -155,10 +155,18 @@ const NovoAlunoCrossfitPage = () => {
     },
 
     onError: (err: any) => {
-      console.error("❌ Erro ao criar aluno:", err.response?.data || err);
-      toast.error("Erro ao cadastrar aluno", {
-        description: err.response?.data?.error || err.message || "Tente novamente",
-      });
+     const serverError = err.response?.data?.error || err.message || "Erro desconhecido";
+
+    console.error("❌ Erro ao criar aluno:", err.response?.data || err);
+
+    // Tratamento inteligente de erros
+    if (err.response?.status === 409) {
+      toast.error("E-mail já cadastrado", { description: serverError });
+    } else if (err.response?.status === 400) {
+      toast.error("Dados inválidos", { description: serverError });
+    } else {
+      toast.error("Erro ao cadastrar aluno", { description: serverError });
+    }
   },
 });
 

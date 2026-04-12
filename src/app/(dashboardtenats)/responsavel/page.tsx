@@ -184,93 +184,53 @@ const ResponsaveisPage = () => {
   return (
     <div className="space-y-6 p-4 lg:p-8">
       {/* Cabeçalho + Botões de ação */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">Responsáveis</h1>
-          <p className="text-gray-600">Gerencie os responsáveis pelos alunos</p>
-        </div>
-        <div className="flex flex-wrap gap-3">
-          <Button asChild className="bg-blue-600 hover:bg-blue-700">
-            <Link href="/responsavel/novo">
-              <UserPlus className="mr-2 h-4 w-4" />
-              Novo Responsável
-            </Link>
-          </Button>
-
+   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+           <div>
+             <h1 className="text-2xl font-bold">Responsaveis</h1>
+             <p className="text-gray-600">Gerencie todos os Responsaveis</p>
+           </div>
+           <div className="flex flex-wrap gap-3">
+             <Button asChild className="bg-blue-600 hover:bg-blue-700">
+               <Link href="/responsavel/novo">
+                 <UserPlus className="mr-2 h-4 w-4" />
+                 Novo resposavel
+               </Link>
+             </Button>
+           </div>
+         </div>
+   
+             {/* Busca */}
+           <div className="relative max-w-md">
+             <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+             <Input
+               placeholder="Buscar por nome, telefone ou e-mail..."
+               value={searchTerm}
+               onChange={(e) => setSearchTerm(e.target.value)}
+               className="pl-10"
+             />
+           </div>
+   
           {/* Alternância de visualização */}
-          <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-lg">
-            <Button
-              variant={viewMode === "cards" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setViewMode("cards")}
-              className="gap-1"
-            >
-              <LayoutGrid className="h-4 w-4" />
-              Cards
-            </Button>
-            <Button
-              variant={viewMode === "table" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setViewMode("table")}
-              className="gap-1"
-            >
-              <TableIcon className="h-4 w-4" />
-              Tabela
-            </Button>
+         <div className="flex items-center gap-2 p-1 rounded-lg">
+               <Button
+                 variant={viewMode === "cards" ? "default" : "ghost"}
+                 size="sm"
+                 onClick={() => setViewMode("cards")}
+                 className="gap-1"
+               >
+                 <LayoutGrid className="h-4 w-4" />
+                 Cards
+               </Button>
+               <Button
+                 variant={viewMode === "table" ? "default" : "ghost"}
+                 size="sm"
+                 onClick={() => setViewMode("table")}
+                 className="gap-1"
+               >
+                 <TableIcon className="h-4 w-4" />
+                 Tabela
+               </Button>
           </div>
-        </div>
-      </div>
-
-      {/* Busca */}
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-        <Input
-          placeholder="Buscar por nome, telefone ou e-mail..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-10"
-        />
-      </div>
-
-      {/* Cards de Totais */}
-      <div className="grid gap-6 md:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Users className="h-5 w-5 text-blue-600" />
-              Total de Responsáveis
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-blue-600">{totalResponsaveis}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Mail className="h-5 w-5 text-green-600" />
-              Com Login
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-green-600">{comLogin}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-orange-600" />
-              Sem Login
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-orange-600">{semLogin}</div>
-          </CardContent>
-        </Card>
-      </div>
-
       {/* Conteúdo principal: Cards ou Tabela */}
       {viewMode === "cards" ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -367,7 +327,7 @@ const ResponsaveisPage = () => {
                 <TableRow>
                   <TableHead>Responsável</TableHead>
                   <TableHead className="hidden md:table-cell">Contato</TableHead>
-                  <TableHead className="hidden md:table-cell">CPF</TableHead>
+                  {/*<TableHead className="hidden md:table-cell">CPF</TableHead>*/}
                   <TableHead>Filhos</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
@@ -405,9 +365,9 @@ const ResponsaveisPage = () => {
                       </div>
                     </TableCell>
 
-                    <TableCell className="hidden md:table-cell">
+                  {/*  <TableCell className="hidden md:table-cell">
                       {r.cpf || "Não informado"}
-                    </TableCell>
+                    </TableCell>*/}
 
                     <TableCell>
                       {r.filhos?.length || 0} aluno{r.filhos?.length !== 1 ? "s" : ""}
