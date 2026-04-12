@@ -2,6 +2,15 @@
 "use client";
 
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/src/components/ui/table";
 import {
   Card,
   CardContent,
@@ -17,45 +26,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/src/components/ui/select";
-import { Avatar, AvatarFallback } from "@/src/components/ui/avatar";
 import { Button } from "@/src/components/ui/button";
-import { ArrowLeft, Mail, Phone, Send } from "lucide-react";
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip as ChartTooltip,
-  Legend as ChartLegend,
-} from "chart.js";
-import { Bar } from "react-chartjs-2";
-import type { ChartOptions } from "chart.js";
+import { Avatar, AvatarFallback, AvatarImage } from "@/src/components/ui/avatar";
+import { ArrowLeft, Phone, Mail, Send, AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
-
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  ChartTooltip,
-  ChartLegend
-);
-
-const meses = [
-  { value: "2025-01", label: "Janeiro 2025" },
-  { value: "2025-02", label: "Fevereiro 2025" },
-  { value: "2025-03", label: "Março 2025" },
-  { value: "2025-04", label: "Abril 2025" },
-  { value: "2025-05", label: "Maio 2025" },
-  { value: "2025-06", label: "Junho 2025" },
-  { value: "2025-07", label: "Julho 2025" },
-  { value: "2025-08", label: "Agosto 2025" },
-  { value: "2025-09", label: "Setembro 2025" },
-  { value: "2025-10", label: "Outubro 2025" },
-  { value: "2025-11", label: "Novembro 2025" },
-  { value: "2025-12", label: "Dezembro 2025" },
-];
+import api from "@/src/lib/api";
 
 interface Inadimplente {
   id: string;
@@ -66,219 +41,241 @@ interface Inadimplente {
   valorDevido: number;
   mesesAtraso: number;
   ultimaMensalidade: string;
+  alunoId: string;
+  modalidade: "futebol" | "crossfit";   // Adicionado
 }
 
-const inadimplentesMock: Record<string, Inadimplente[]> = {
-  "2025-12": [
-    { id: "1", aluno: "Lucas Oliveira", responsavel: "Maria Oliveira", telefone: "(11) 98765-4321", email: "maria@email.com", valorDevido: 850, mesesAtraso: 2, ultimaMensalidade: "Out/2025" },
-    { id: "2", aluno: "Gabriel Santos", responsavel: "João Santos", telefone: "(11) 97654-3210", email: "joao@email.com", valorDevido: 1275, mesesAtraso: 3, ultimaMensalidade: "Set/2025" },
-    { id: "3", aluno: "Matheus Costa", responsavel: "Ana Costa", telefone: "(11) 96543-2109", email: "ana@email.com", valorDevido: 425, mesesAtraso: 1, ultimaMensalidade: "Nov/2025" },
-    { id: "4", aluno: "Enzo Gabriel", responsavel: "Paula Silva", telefone: "(11) 95432-1098", email: "paula@email.com", valorDevido: 1700, mesesAtraso: 4, ultimaMensalidade: "Ago/2025" },
-    { id: "5", aluno: "Pedro Henrique", responsavel: "Carlos Henrique", telefone: "(11) 94321-0987", email: "carlos@email.com", valorDevido: 850, mesesAtraso: 2, ultimaMensalidade: "Out/2025" },
-  ],
-};
+const InadimplentesPage = () => {
+  const [mesSelecionado, setMesSelecionado] = useState("2025-12");
+  const [paginaAtual, setPaginaAtual] = useState(1);
+  const itensPorPagina = 10;
 
-const InadimplentesPage = () => {       //inicio da função
-   const [mesSelecionado, setMesSelecionado] = useState("2025-12");
-
-  const inadimplentes = inadimplentesMock[mesSelecionado] || [];
-
-  const totalDevido = inadimplentes.reduce((sum, i) => sum + i.valorDevido, 0);
-
-  // Top 5 devedores para o gráfico
-  const topDevedores = [...inadimplentes]
-    .sort((a, b) => b.valorDevido - a.valorDevido)
-    .slice(0, 5);
-
-  const barChartData = {
-    labels: topDevedores.map((d) => d.aluno),
-    datasets: [
-      {
-        label: "Valor Devido",
-        data: topDevedores.map((d) => d.valorDevido),
-        backgroundColor: "#ef4444",
-        borderColor: "#dc2626",
-        borderWidth: 1,
-      },
-    ],
-  };
-
- const barChartOptions: ChartOptions<"bar"> = {
-  indexAxis: "y" as const,
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: {
-    legend: {
-      display: false,
+  const { data: response, isLoading, error, refetch } = useQuery({
+    queryKey: ["inadimplentes", mesSelecionado],
+    queryFn: async () => {
+      const res = await api.get("/tenant/inadimplentes", {
+        params: { mes: mesSelecionado },
+      });
+      return res.data;
     },
-    tooltip: {
-      callbacks: {
-        label: (context) => {
-          const value = context.parsed?.x ?? 0;
-          return `R$ ${Number(value).toLocaleString("pt-BR")}`;
-        },
-      },
-    },
-  },
-  scales: {
-    x: {
-      ticks: {
-        callback: (value) => `R$ ${Number(value).toLocaleString("pt-BR")}`,
-      },
-    },
-  },
-};
-    return ( 
-<div className="p-4 lg:p-8 space-y-8">
-  {/* Cabeçalho Responsivo */}
-  <div className="space-y-4">
-    {/* Botão Voltar + Título + Select alinhados */}
-    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-      <Button variant="outline" asChild className="self-start gap-2">
-        <Link href="/financeiro">
-          <ArrowLeft className="h-4 w-4" />
-          Voltar Financeiro
-        </Link>
-      </Button>
+    enabled: !!mesSelecionado,
+  });
 
-      <div className="text-center flex-1">
-        <h1 className="text-2xl sm:text-3xl font-bold">Inadimplentes</h1>
-        <p className="text-base sm:text-lg text-gray-600 mt-1">
-           mensalidades pendentes —{" "}
-          <span className="font-bold text-orange-600">
-            {meses.find((m) => m.value === mesSelecionado)?.label || "Dezembro 2025"}
-          </span>
-        </p>
+  const inadimplentes: Inadimplente[] = response?.data || [];
+  const totalDevido = response?.totalDevido || 0;
+
+  // Paginação
+  const totalPaginas = Math.ceil(inadimplentes.length / itensPorPagina);
+  const inicio = (paginaAtual - 1) * itensPorPagina;
+  const inadimplentesPaginados = inadimplentes.slice(inicio, inicio + itensPorPagina);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-red-200 border-t-red-600 rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-xl text-gray-600">Carregando inadimplentes...</p>
+        </div>
       </div>
+    );
+  }
 
-      <div className="sm:w-40">
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+        <div className="text-center max-w-md">
+          <AlertTriangle className="h-16 w-16 mx-auto mb-4 text-red-500" />
+          <h2 className="text-2xl font-bold text-red-600 mb-2">Erro ao carregar</h2>
+          <p className="text-gray-600 mb-6">Não foi possível carregar a lista de inadimplentes.</p>
+          <Button onClick={() => refetch()}>Tentar novamente</Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4 lg:p-8 space-y-6 md:space-y-8 min-h-screen bg-gray-50">
+      {/* Cabeçalho */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <Button variant="outline" asChild>
+          <Link href="/financeiro" className="flex items-center gap-2">
+            <ArrowLeft className="h-4 w-4" />
+            Voltar ao Financeiro
+          </Link>
+        </Button>
+
+        <div className="text-center flex-1">
+          <h1 className="text-2xl sm:text-3xl font-bold">Inadimplentes</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">
+            Mensalidades pendentes — <span className="font-semibold text-orange-600">{mesSelecionado}</span>
+          </p>
+        </div>
+
         <Select value={mesSelecionado} onValueChange={setMesSelecionado}>
-          <SelectTrigger>
+          <SelectTrigger className="w-full sm:w-60">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {meses.map((mes) => (
-              <SelectItem key={mes.value} value={mes.value}>
-                {mes.label}
+            {Array.from({ length: 12 }, (_, i) => {
+              const year = 2025;
+              const month = String(12 - i).padStart(2, '0');
+              return { value: `${year}-${month}`, label: `${month}/${year}` };
+            }).map((m) => (
+              <SelectItem key={m.value} value={m.value}>
+                {m.label}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
       </div>
-    </div>
-  </div>
 
-  {/* Resumo Rápido — Centralizado e Responsivo */}
-  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-    <Card className="flex flex-col items-center justify-center text-center py-2">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium">Total Devido</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl sm:text-3xl font-bold text-red-600">
-          R$ {totalDevido.toLocaleString("pt-BR")}
-        </div>
-      </CardContent>
-    </Card>
+      {/* Resumo */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader className="pb-3"><CardTitle className="text-sm">Total Devido</CardTitle></CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-red-600">R$ {totalDevido.toLocaleString("pt-BR")}</div>
+          </CardContent>
+        </Card>
 
-    <Card className="flex flex-col items-center justify-center text-center py-2">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium">Inadimplentes</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl sm:text-3xl font-bold text-orange-600">
-          {inadimplentes.length}
-        </div>
-        <p className="text-xs text-gray-600 mt-1">alunos/responsáveis</p>
-      </CardContent>
-    </Card>
+        <Card>
+          <CardHeader className="pb-3"><CardTitle className="text-sm">Inadimplentes</CardTitle></CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-orange-600">{inadimplentes.length}</div>
+          </CardContent>
+        </Card>
 
-    <Card className="flex flex-col items-center justify-center text-center py-2">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium">Média por Devedor</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl sm:text-3xl font-bold">
-          R$ {inadimplentes.length > 0 ? Math.round(totalDevido / inadimplentes.length).toLocaleString("pt-BR") : "0"}
-        </div>
-      </CardContent>
-    </Card>
-  </div>
-
-  {/* Gráfico Top Devedores — Altura Responsiva */}
-  <Card>
-    <CardHeader>
-      <CardTitle>Top 5 Maiores Devedores</CardTitle>
-      <CardDescription>Valor devido por aluno</CardDescription>
-    </CardHeader>
-    <CardContent>
-      <div className="h-64 sm:h-80">
-        <Bar data={barChartData} options={barChartOptions} />
+        <Card>
+          <CardHeader className="pb-3"><CardTitle className="text-sm">Média por Devedor</CardTitle></CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">
+              R$ {inadimplentes.length > 0 ? Math.round(totalDevido / inadimplentes.length).toLocaleString("pt-BR") : "0"}
+            </div>
+          </CardContent>
+        </Card>
       </div>
-    </CardContent>
-  </Card>
 
-  {/* Lista de Inadimplentes — Totalmente Responsiva */}
-  <Card>
-    <CardHeader>
-      <CardTitle>Lista Completa de Inadimplentes</CardTitle>
-    </CardHeader>
-    <CardContent>
-      <div className="space-y-4">
-        {inadimplentes.map((devedor) => (
-          <div 
-            key={devedor.id} 
-            className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-3 bg-red-50 rounded-lg border border-red-200"
-          >
-            {/* Coluna esquerda: Avatar + Info do Aluno */}
-            <div className="flex items-center gap-4 min-w-0">
-              <Avatar className="h-14 w-14 shrink-0">
-                <AvatarFallback className="bg-red-600 text-white text-lg">
-                  {devedor.aluno.split(" ").map((n) => n[0]).join("")}
-                </AvatarFallback>
-              </Avatar>
-              <div className="min-w-0 flex-1">
-                <p className="font-semibold text-lg truncate">{devedor.aluno}</p>
-                <p className="text-sm text-gray-600 truncate">
-                  Responsável: {devedor.responsavel}
-                </p>
-                <p className="text-sm text-gray-600">
-                  Última mensalidade: {devedor.ultimaMensalidade}
-                </p>
-              </div>
-            </div>
+      {/* Tabela de Inadimplentes */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Lista de Inadimplentes</CardTitle>
+          <CardDescription>
+            Mostrando {inadimplentesPaginados.length} de {inadimplentes.length} registros
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Aluno</TableHead>
+                  <TableHead>Modalidade</TableHead>
+                  <TableHead className="hidden md:table-cell">Responsável</TableHead>
+                  <TableHead className="hidden md:table-cell">Valor Devido</TableHead>
+                  <TableHead className="hidden md:table-cell">Atraso</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {inadimplentesPaginados.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-12 text-gray-500">
+                      Nenhum inadimplente encontrado neste mês.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  inadimplentesPaginados.map((devedor) => (
+                    <TableRow key={devedor.id}>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-10 w-10">
+                            <AvatarFallback className="bg-red-600 text-white text-sm">
+                              {devedor.aluno.substring(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="truncate">{devedor.aluno}</span>
+                        </div>
+                      </TableCell>
 
-            {/* Coluna direita: Valor + Ações */}
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-              <div className="text-center sm:text-right">
-                <p className="text-2xl font-bold text-red-600">
-                  R$ {devedor.valorDevido.toLocaleString("pt-BR")}
-                </p>
-                <Badge variant="outline" className="text-red-600 border-red-600 mt-2">
-                  {devedor.mesesAtraso} {devedor.mesesAtraso === 1 ? "mês atrasado" : "meses atrasados"}
-                </Badge>
-              </div>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={
+                            devedor.modalidade === "futebol"
+                              ? "bg-blue-50 text-blue-700 border-blue-200"
+                              : "bg-purple-50 text-purple-700 border-purple-200"
+                          }
+                        >
+                          {devedor.modalidade === "futebol" ? "⚽" : "🏋️"}
+                        </Badge>
+                      </TableCell>
 
-              <div className="flex gap-3 justify-center sm:justify-end">
-                <Button size="sm" variant="outline" className="px-3">
-                  <Phone className="h-4 w-4" />
-                </Button>
-                <Button size="sm" variant="outline" className="px-3">
-                  <Mail className="h-4 w-4" />
-                </Button>
-                <Button size="sm" className="bg-orange-600 hover:bg-orange-700 px-4">
-                  <Send className="h-4 w-4 mr-1" />
-                  Cobrar
-                </Button>
-              </div>
-            </div>
+                      <TableCell className="hidden md:table-cell text-gray-600">
+                        {devedor.responsavel}
+                      </TableCell>
+
+                      <TableCell className="hidden md:table-cell font-medium text-red-600">
+                        R$ {devedor.valorDevido.toLocaleString("pt-BR")}
+                      </TableCell>
+
+                      <TableCell className="hidden md:table-cell">
+                        <Badge variant="secondary">
+                          {devedor.mesesAtraso} {devedor.mesesAtraso === 1 ? "mês" : "meses"}
+                        </Badge>
+                      </TableCell>
+
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button size="sm" variant="outline" className="h-8 w-8 p-0">
+                            <Phone className="h-4 w-4" />
+                          </Button>
+                          <Button size="sm" variant="outline" className="h-8 w-8 p-0">
+                            <Mail className="h-4 w-4" />
+                          </Button>
+                          <Button size="sm" className="bg-orange-600 hover:bg-orange-700 h-8 px-4 text-xs">
+                            Cobrar
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           </div>
-        ))}
-      </div>
-    </CardContent>
-  </Card>
-</div>
-     );
-}
- 
+
+          {/* Paginação */}
+          {totalPaginas > 1 && (
+            <div className="flex items-center justify-center gap-4 mt-6">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPaginaAtual((prev) => Math.max(prev - 1, 1))}
+                disabled={paginaAtual === 1}
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Anterior
+              </Button>
+
+              <span className="text-sm text-gray-600">
+                Página {paginaAtual} de {totalPaginas}
+              </span>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPaginaAtual((prev) => Math.min(prev + 1, totalPaginas))}
+                disabled={paginaAtual === totalPaginas}
+              >
+                Próxima
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
 export default InadimplentesPage;
