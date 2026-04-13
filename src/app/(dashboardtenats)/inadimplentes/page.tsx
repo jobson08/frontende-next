@@ -46,19 +46,19 @@ interface Inadimplente {
 }
 
 const InadimplentesPage = () => {
-  const [mesSelecionado, setMesSelecionado] = useState("2025-12");
+  const [anoSelecionado, setAnoSelecionado] = useState(new Date().getFullYear().toString());
   const [paginaAtual, setPaginaAtual] = useState(1);
   const itensPorPagina = 10;
 
   const { data: response, isLoading, error, refetch } = useQuery({
-    queryKey: ["inadimplentes", mesSelecionado],
+    queryKey: ["inadimplentes", anoSelecionado],
     queryFn: async () => {
       const res = await api.get("/tenant/inadimplentes", {
-        params: { mes: mesSelecionado },
+        params: { ano: anoSelecionado },   // ← Mudado para 'ano'
       });
       return res.data;
     },
-    enabled: !!mesSelecionado,
+    enabled: !!anoSelecionado,
   });
 
   const inadimplentes: Inadimplente[] = response?.data || [];
@@ -69,7 +69,7 @@ const InadimplentesPage = () => {
   const inicio = (paginaAtual - 1) * itensPorPagina;
   const inadimplentesPaginados = inadimplentes.slice(inicio, inicio + itensPorPagina);
 
-  if (isLoading) {
+  if ( isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
@@ -95,40 +95,42 @@ const InadimplentesPage = () => {
 
   return (
     <div className="p-4 lg:p-8 space-y-6 md:space-y-8 min-h-screen bg-gray-50">
-      {/* Cabeçalho */}
+      {/* Cabeçalho com Filtro por Ano */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <Button variant="outline" asChild>
+        {/*    <Button variant="outline" asChild>
           <Link href="/financeiro" className="flex items-center gap-2">
             <ArrowLeft className="h-4 w-4" />
             Voltar ao Financeiro
           </Link>
-        </Button>
+        </Button>*/}
 
         <div className="text-center flex-1">
           <h1 className="text-2xl sm:text-3xl font-bold">Inadimplentes</h1>
           <p className="text-sm sm:text-base text-gray-600 mt-1">
-            Mensalidades pendentes — <span className="font-semibold text-orange-600">{mesSelecionado}</span>
+            Mensalidades pendentes — <span className="font-semibold text-orange-600">{anoSelecionado}</span>
           </p>
         </div>
 
-        <Select value={mesSelecionado} onValueChange={setMesSelecionado}>
-          <SelectTrigger className="w-full sm:w-60">
+        {/* Filtro por Ano */}
+        <Select value={anoSelecionado} onValueChange={setAnoSelecionado}>
+          <SelectTrigger className="w-full sm:w-48">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {Array.from({ length: 12 }, (_, i) => {
-              const year = 2025;
-              const month = String(12 - i).padStart(2, '0');
-              return { value: `${year}-${month}`, label: `${month}/${year}` };
-            }).map((m) => (
-              <SelectItem key={m.value} value={m.value}>
-                {m.label}
+            {Array.from({ length: 5 }, (_, i) => {
+              const year = new Date().getFullYear() - 2 + i; // Ex: 2023 até 2027
+              return {
+                value: year.toString(),
+                label: year.toString()
+              };
+            }).map((ano) => (
+              <SelectItem key={ano.value} value={ano.value}>
+                {ano.label}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
       </div>
-
       {/* Resumo */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card>

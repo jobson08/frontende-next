@@ -131,7 +131,7 @@ const FinanceiroPage = () => {
     },
   } as const; // ← Isso ajuda o TypeScript
 
-  if (isLoading || isLoading) {
+  if ( isLoading) {
     return (
       <div className="flex min-h-[70vh] items-center justify-center">
         <div className="text-center">
