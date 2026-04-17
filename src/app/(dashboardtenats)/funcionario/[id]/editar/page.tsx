@@ -20,10 +20,15 @@ import { Textarea } from "@/src/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/src/components/ui/avatar";
 import api from "@/src/lib/api";
 import InputTelefone from "@/src/components/common/InputTelefone";
+import ImageUploader from "@/src/components/ImageUploader";
+import InputTelefoneEdit from "@/src/components/common/inputsEdit/InputTelefoneEdit";
+import InputCPFEdit from "@/src/components/common/inputsEdit/InputCPFEdit";
 
 // Schema Zod para edição de funcionário
 const editarFuncionarioSchema = z.object({
   nome: z.string().min(3, "Nome completo é obrigatório"),
+  cpf: z.string().min(11, "CPF é obrigatório"),
+  email: z.string().email("E-mail inválido").optional(),
   telefone: z.string().min(10, "Telefone inválido").optional(),
   cargo: z.enum([
     "PROFESSOR",
@@ -46,12 +51,13 @@ interface FuncionarioDetalhe {
   cargo: "PROFESSOR" | "RECEPCAO" | "ADMINISTRATIVO" | "TREINADOR" | "GERENTE";
   salario: number | null;
   telefone: string | null;
+  cpf: string | null;
   email: string | null;
   observacoes: string | null;
-  fotoUrl: string | null;
   userId: string | null;
   createdAt: string;
   updatedAt: string;
+  fotoUrl?: string | null;
 }
 
 const EditarFuncionarioPage = () => {
@@ -60,8 +66,13 @@ const EditarFuncionarioPage = () => {
   const router = useRouter();
   const queryClient = useQueryClient();
 
+    const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [isRemovingImage, setIsRemovingImage] = useState(false);
+
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
 
   const {
     register,
@@ -90,34 +101,60 @@ const EditarFuncionarioPage = () => {
   // Pré-preenche o form quando os dados chegam
   useEffect(() => {
     if (funcionario) {
-      setPhotoPreview(funcionario.fotoUrl || null);
+      setCurrentImageUrl(funcionario.fotoUrl || null);
+      setSelectedFile(null);
+      setIsRemovingImage(false);
 
-      reset({
+      setValue("nome", funcionario.nome  || "");
+      setValue("email", funcionario.email || "");
+      setValue("cpf", funcionario.cpf || "");
+      setValue("telefone", funcionario.telefone || "");
+      setValue("cargo",funcionario.cargo || "TREINADOR");
+      setValue("salario", funcionario.salario || undefined);
+      setValue("observacoes", funcionario.observacoes || "");
+      
+
+   /*   reset({
         nome: funcionario.nome || "",
         telefone: funcionario.telefone || "",
         cargo: funcionario.cargo || "TREINADOR",
         salario: funcionario.salario || undefined,
         observacoes: funcionario.observacoes || "",
         fotoUrl: funcionario.fotoUrl || "",
-      });
+      });*/
     }
   }, [funcionario, reset]);
 
   // Mutation para atualizar funcionário
   const updateMutation = useMutation({
     mutationFn: async (data: FormData) => {
-      console.log("=== [UPDATE FUNCIONÁRIO] Iniciando salvamento ===");
-      console.log("ID do funcionário:", funcionarioId);
-      console.log("Dados do form:", data);
+    let novaFotoUrl = funcionario?.fotoUrl || null;
+
+     if (selectedFile) {
+        const formData = new FormData();
+        formData.append("file", selectedFile);
+
+        const res = await api.post(`/tenant/upload/funcionario/${funcionarioId}`, formData);
+        novaFotoUrl = res.data.url;
+      }
+
+      if (isRemovingImage && !selectedFile) {
+        novaFotoUrl = null;
+      }
 
       const payload = {
         nome: data.nome.trim(),
         telefone: data.telefone?.trim() || null,
+        cpf: data.cpf ? data.cpf.replace(/\D/g, "") : null,
+        email: data.email?.toLowerCase().trim(),
         cargo: data.cargo,
         salario: data.salario,
         observacoes: data.observacoes?.trim() || null,
         fotoUrl: data.fotoUrl?.trim() || null,
       };
+      console.log("=== PAYLOAD ENVIADO ===");
+      console.log("URL:", `/tenant/funcionario/${funcionarioId}`);
+      console.log("Payload:", JSON.stringify(payload, null, 2));
 
       const url = `/tenant/funcionarios/${funcionarioId}`;
       const res = await api.put(url, payload);
@@ -131,11 +168,21 @@ const EditarFuncionarioPage = () => {
         router.push("/funcionario");
       }, 1500);
     },
-    onError: (err: any) => {
-      console.error("=== [UPDATE FUNCIONÁRIO] Erro ===", err);
-      toast.error("Erro ao atualizar funcionário", {
-        description: err.response?.data?.error || err.message || "Tente novamente",
+      onError: (err: any) => {
+     const serverMessage = err.response?.data?.error || err.message || "Erro desconhecido";
+
+    console.error("❌ Erro ao atualizar funcionario:", err.response?.data || err);
+
+    // Tratamento inteligente por status
+    if (err.response?.status === 404) {
+      toast.error("funcionario não encontrado");
+    } else if (err.response?.status === 400) {
+      toast.error("Dados inválidos", { description: serverMessage });
+    } else {
+      toast.error("Erro ao atualizar funcionario", {
+        description: serverMessage,
       });
+    }
     },
   });
 
@@ -175,28 +222,26 @@ const EditarFuncionarioPage = () => {
     },
   });
 
-  const onSubmit = (data: FormData) => {
-    updateMutation.mutate(data);
+   const handleImageChange = (file: File | null, imageUrl?: string) => {
+    setSelectedFile(file);
+    if (imageUrl) setCurrentImageUrl(imageUrl);
+    setIsRemovingImage(false);
   };
 
-  const redefinirSenha = () => {
+  const handleRemoveImage = () => {
+    setSelectedFile(null);
+    setCurrentImageUrl(null);
+    setIsRemovingImage(true);
+  };
+
+    const redefinirSenha = () => {
     if (confirm("Tem certeza que deseja gerar uma nova senha temporária?")) {
       redefinirSenhaMutation.mutate();
     }
   };
 
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setPhotoPreview(reader.result as string);
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const removePhoto = () => {
-    setPhotoPreview(null);
-    if (fileInputRef.current) fileInputRef.current.value = "";
+    const onSubmit = (data: FormData) => {
+    updateMutation.mutate(data);
   };
 
   if (isLoading) {
@@ -221,20 +266,19 @@ const EditarFuncionarioPage = () => {
   }
 
   return (
-<div className="p-4 lg:p-8 max-w-4xl mx-auto space-y-8">
+    <div className="p-4 lg:p-8 max-w-4xl mx-auto space-y-8">
       {/* Cabeçalho */}
-      <div className="flex items-center gap-4 mb-8">
+           <div className="flex items-center gap-4 mb-8">
         <Button variant="ghost" size="icon" asChild>
-          <Link href="funcionario">
+          <Link href="/funcionario">
             <ChevronLeft className="h-5 w-5" />
-          </Link>
-        </Button>
-        <div>
-          <h1 className="text-3xl font-bold">Editar Funcionário</h1>
-          <p className="text-gray-600">Atualize as informações de {funcionario.nome}</p>
-        </div>
+           </Link>
+         </Button>
+          <div>
+            <h1 className="text-3xl font-bold">Editar Funcionario</h1>
+            <p className="text-gray-600">Atualize as informações de {funcionario.nome}</p>
+          </div>
       </div>
-
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-3 text-2xl">
@@ -245,35 +289,26 @@ const EditarFuncionarioPage = () => {
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
             {/* Foto */}
-            <div className="flex flex-col items-center gap-4 py-6 border-b">
-              <Avatar className="h-32 w-32 ring-4 ring-orange-100">
-                <AvatarImage src={photoPreview || funcionario.fotoUrl || undefined} />
-                <AvatarFallback className="bg-gradient-to-br from-orange-500 to-red-600 text-white text-3xl font-bold">
-                  {watchedName ? watchedName.split(" ").map(n => n[0]).join("").toUpperCase() : "?"}
-                </AvatarFallback>
-              </Avatar>
-
-              <div className="flex gap-3">
-                <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
-                  <Camera className="mr-2 h-4 w-4" />
-                  Alterar foto
-                </Button>
-                {photoPreview && (
-                  <Button type="button" variant="destructive" size="sm" onClick={removePhoto}>
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Remover
-                  </Button>
-                )}
-              </div>
-
-              <input
-                type="file"
-                accept="image/*"
-                ref={fileInputRef}
-                onChange={handlePhotoChange}
-                className="hidden"
-              />
-            </div>
+            <div suppressHydrationWarning={true} className="flex justify-center py-6 border-b">
+            <ImageUploader
+              currentImageUrl={currentImageUrl || undefined}
+              entityName={watchedName || "Funcionario"}
+              uploadEndpoint={`/tenant/upload/funcionario/${funcionarioId}`}
+              deleteEndpoint={`/tenant/upload/funcionario/${funcionarioId}`}
+              onUploadSuccess={(url) => {
+                setCurrentImageUrl(url);
+                setSelectedFile(null);
+                setIsRemovingImage(false);
+              }}
+              onRemove={() => {
+                setCurrentImageUrl(null);
+                setSelectedFile(null);
+                setIsRemovingImage(true);
+              }}
+              size="lg"
+              className="mx-auto"
+            />
+          </div>
 
             {/* Informações Pessoais */}
             <div className="space-y-6">
@@ -287,28 +322,24 @@ const EditarFuncionarioPage = () => {
                 </div>
 
                 {/* Cargo */}
-                <div className="space-y-2">
-                  <Label htmlFor="cargo">Cargo *</Label>
-                  <Controller
-                    name="cargo"
-                    control={control}
-                    render={({ field }) => (
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o cargo" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="PROFESSOR">Professor</SelectItem>
-                          <SelectItem value="RECEPCAO">Recepção</SelectItem>
-                          <SelectItem value="ADMINISTRATIVO">Administrativo</SelectItem>
-                          <SelectItem value="TREINADOR">Treinador</SelectItem>
-                          <SelectItem value="GERENTE">Gerente</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    )}
-                  />
-                  {errors.cargo && <p className="text-sm text-red-600">{errors.cargo.message}</p>}
-                </div>
+	              <div className="space-y-2">
+                <Label>Cargo</Label>
+                <Select
+                  defaultValue={funcionario.cargo}
+                  onValueChange={(value) => setValue("cargo", value as "PROFESSOR" | "RECEPCAO" | "ADMINISTRATIVO" | "TREINADOR")}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="PROFESSOR">Professor</SelectItem>
+                    <SelectItem value="RECEPCAO">Recepção</SelectItem>
+                    <SelectItem value="ADMINISTRATIVO">Administrativo</SelectItem>
+                    <SelectItem value="TREINADOR">Treinador</SelectItem>
+                    <SelectItem value="GERENTE">Gerente</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
                 {/* Salário */}
                 <div className="space-y-2">
@@ -325,12 +356,48 @@ const EditarFuncionarioPage = () => {
 
                 {/* Telefone */}
                 <div className="space-y-2">
-                  <Label htmlFor="telefone">Telefone</Label>
-                  <InputTelefone id="telefone" placeholder="(81) 99999-8888" {...register("telefone")} />
-                  {errors.telefone && <p className="text-sm text-red-600">{errors.telefone.message}</p>}
-                </div>
+                <Label htmlFor="telefone">Telefone *</Label>
+                <Controller
+                  name="telefone"
+                  control={control}
+                  render={({ field }) => (
+                    <InputTelefoneEdit
+                      id="telefone"
+                      placeholder="(xx) xxxxx-xxxx"
+                      value={field.value || ""}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => field.onChange(e.target.value)}
+                    />
+                  )}
+                />
+                {errors.telefone && <p className="text-sm text-red-600">{errors.telefone.message}</p>}
               </div>
-            </div>
+
+                  {/* Telefone */}
+               <div className="space-y-2">
+                 <Label htmlFor="cpf">CPF *</Label>
+                  <Controller
+                   name="cpf"
+                   control={control}
+                   render={({ field }) => (
+                    <InputCPFEdit
+                     id="cpf"
+                     placeholder="000.000.000-00"
+                     value={field.value || ""}
+                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => field.onChange(e.target.value)}
+                   />
+                  )}
+                />
+                {errors.cpf && <p className="text-sm text-red-600">{errors.cpf.message}</p>}
+              </div>
+              
+              {/* Email*/}
+                <div className="md:col-span-2 space-y-2">
+                  <Label htmlFor="email">email*</Label>
+                  <Input id="email" placeholder="exemplo@email.com" {...register("email")} />
+                  {errors.email && <p className="text-sm text-red-600">{errors.email.message}</p>}
+                </div>
+           </div>
+         </div>
 
             {/* Observações */}
             <div className="space-y-2">

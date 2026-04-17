@@ -4,7 +4,7 @@
 import { useQuery } from "@tanstack/react-query";
 import api from "@/src/lib/api";
 import { useParams, useRouter } from "next/navigation";
-import { Avatar, AvatarFallback } from "@/src/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/src/components/ui/avatar";
 import { Badge } from "@/src/components/ui/badge";
 import { Button } from "@/src/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/card";
@@ -30,6 +30,7 @@ interface Responsavel {
   cpf: string | null;
   observacoes: string | null;
   createdAt: string;
+  fotoUrl: string | null;
   filhos: { id: string; nome: string }[]; // alunos vinculados
 }
 
@@ -89,6 +90,7 @@ const ResponsavelDetalhePage = () => {
         <CardContent className="relative pt-0">
           <div className="flex flex-col sm:flex-row items-center sm:items-end gap-6 -mt-16">
             <Avatar className="h-32 w-32 ring-8 ring-white shadow-2xl">
+              <AvatarImage src={responsavel.fotoUrl|| undefined} />
               <AvatarFallback className="bg-gradient-to-br from-purple-600 to-pink-600 text-white text-4xl font-bold">
                 {responsavel.nome.split(" ").map(n => n[0]).join("")}
               </AvatarFallback>

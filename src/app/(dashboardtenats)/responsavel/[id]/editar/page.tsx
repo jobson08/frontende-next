@@ -21,6 +21,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/src/components/ui/avatar"
 import api from "@/src/lib/api";
 import InputCPFEdit from "@/src/components/common/inputsEdit/InputCPFEdit";
 import InputTelefoneEdit from "@/src/components/common/inputsEdit/InputTelefoneEdit";
+import ImageUploader from "@/src/components/ImageUploader";
 //import InputDataEdit from "@/src/components/common/inputsEdit/InputDataEdit";
 
 // Schema Zod corrigido e alinhado com DTO
@@ -47,11 +48,17 @@ interface ResponsavelDetalhe {
 }
 
 const EditarResponsavelPage = () => {
-  const { id } = useParams();
   const router = useRouter();
+   const params = useParams();
+   const responsavelId = params.id as string;
   const queryClient = useQueryClient();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isRemovingImage, setIsRemovingImage] = useState(false);
+
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const {
     register,
@@ -69,23 +76,22 @@ const EditarResponsavelPage = () => {
 
   // Busca o responsável
   const { data: responsavel, isLoading, error } = useQuery<ResponsavelDetalhe>({
-    queryKey: ["responsavel", id],
+    queryKey: ["responsavel", responsavelId ],
     queryFn: async () => {
-      const res = await api.get(`/tenant/responsaveis/${id}`);
+      const res = await api.get(`/tenant/responsaveis/${responsavelId }`);
       return res.data.data;
     },
-    enabled: !!id,
+    enabled: !!responsavelId ,
   });
 
   // Pré-preenche o form
   useEffect(() => {
     if (responsavel) {
-      console.log("Pré-preenchendo responsável:", {
-        telefone: responsavel.telefone,
-        cpf: responsavel.cpf,
-      });
+      setCurrentImageUrl(responsavel.fotoUrl || null);
+      setSelectedFile(null);
+      setIsRemovingImage(false);
 
-      setPhotoPreview(responsavel.fotoUrl || null);
+     // setPhotoPreview(responsavel.fotoUrl || null);
 
       setValue("nome", responsavel.nome || "");
       setValue("email", responsavel.email || "");
@@ -98,10 +104,20 @@ const EditarResponsavelPage = () => {
   // Mutation para atualizar
   const updateMutation = useMutation({
     mutationFn: async (data: FormData) => {
-      console.log("=== [UPDATE RESPONSÁVEL] Iniciando salvamento ===");
-      console.log("ID:", id);
-      console.log("Dados do form:", data);
 
+       let novaFotoUrl = responsavel?.fotoUrl || null;
+
+     if (selectedFile) {
+        const formData = new FormData();
+        formData.append("file", selectedFile);
+
+        const res = await api.post(`/tenant/upload/responsaveis/${responsavelId}`, formData);
+        novaFotoUrl = res.data.url;
+      }
+
+      if (isRemovingImage && !selectedFile) {
+        novaFotoUrl = null;
+      }
       const payload = {
         nome: data.nome?.trim(),
         email: data.email?.toLowerCase().trim() || null,
@@ -111,16 +127,16 @@ const EditarResponsavelPage = () => {
       };
 
       console.log("=== PAYLOAD ENVIADO ===");
-      console.log("URL:", `/tenant/responsavel/${id}`);
+      console.log("URL:", `/tenant/responsaveis/$responsavelId}`);
       console.log("Payload:", JSON.stringify(payload, null, 2));
 
-      const res = await api.patch(`/tenant/responsaveis/${id}`, payload);
+      const res = await api.patch(`/tenant/responsaveis/$responsavelId}`, payload);
       return res.data;
     },
 
     onSuccess: () => {
       toast.success("Responsável atualizado com sucesso!");
-      queryClient.invalidateQueries({ queryKey: ["responsavel", id] });
+      queryClient.invalidateQueries({ queryKey: ["responsavel", responsavelId] });
       queryClient.invalidateQueries({ queryKey: ["responsaveis"] });
 
       setTimeout(() => {
@@ -139,7 +155,7 @@ const EditarResponsavelPage = () => {
   // Mutation para redefinir senha
   const redefinirSenhaMutation = useMutation({
     mutationFn: async () => {
-      const res = await api.post(`/tenant/responsaveis/${id}/redefinir-senha`);
+      const res = await api.post(`/tenant/responsaveis/$responsavelId}/redefinir-senha`);
       return res.data;
     },
     onSuccess: (result) => {
@@ -172,9 +188,6 @@ const EditarResponsavelPage = () => {
     },
   });
 
-  const onSubmit = (data: FormData) => {
-    updateMutation.mutate(data);
-  };
 
   const redefinirSenha = () => {
     if (confirm("Tem certeza que deseja gerar uma nova senha temporária?")) {
@@ -194,6 +207,10 @@ const EditarResponsavelPage = () => {
   const removePhoto = () => {
     setPhotoPreview(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+    const onSubmit = (data: FormData) => {
+    updateMutation.mutate(data);
   };
 
   if (isLoading) {
@@ -249,35 +266,26 @@ const EditarResponsavelPage = () => {
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
             {/* Foto */}
-            <div className="flex flex-col items-center gap-4 py-6 border-b">
-              <Avatar className="h-32 w-32 ring-4 ring-blue-100">
-                <AvatarImage src={photoPreview || responsavel.fotoUrl || undefined} />
-                <AvatarFallback className="bg-linear-to-br from-blue-500 to-purple-600 text-white text-3xl font-bold">
-                  {watchedName ? watchedName.split(" ").map(n => n[0]).join("").toUpperCase() : "?"}
-                </AvatarFallback>
-              </Avatar>
-
-              <div className="flex gap-3">
-                <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
-                  <Camera className="mr-2 h-4 w-4" />
-                  Alterar foto
-                </Button>
-                {photoPreview && (
-                  <Button type="button" variant="destructive" size="sm" onClick={removePhoto}>
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Remover
-                  </Button>
-                )}
-              </div>
-
-              <input
-                type="file"
-                accept="image/*"
-                ref={fileInputRef}
-                onChange={handlePhotoChange}
-                className="hidden"
-              />
-            </div>
+           <div suppressHydrationWarning={true} className="flex justify-center py-6 border-b">
+            <ImageUploader
+              currentImageUrl={currentImageUrl || undefined}
+              entityName={watchedName || "responsavel"}
+              uploadEndpoint={`/tenant/upload/responsavel/${responsavelId}`}
+              deleteEndpoint={`/tenant/upload/responsavel/${responsavelId}`}
+              onUploadSuccess={(url) => {
+                setCurrentImageUrl(url);
+                setSelectedFile(null);
+                setIsRemovingImage(false);
+              }}
+              onRemove={() => {
+                setCurrentImageUrl(null);
+                setSelectedFile(null);
+                setIsRemovingImage(true);
+              }}
+              size="lg"
+              className="mx-auto"
+            />
+          </div>
 
             {/* Informações Pessoais */}
             <div className="space-y-6">

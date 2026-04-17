@@ -14,7 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from "@/src/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "../ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage  } from "../ui/avatar";
 import { Badge } from "@/src/components/ui/badge";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -33,9 +33,11 @@ interface NavbarProps {
   user: {
     name: string;
     email: string;
+    fotoUrl: string | null;
   };
   inadimplentesCount?: number;
   role?: string; // "treinador", "admin", "administrativo"
+  fotoUrl: string | null;
 }
 
 const Navbar = ({
@@ -190,6 +192,8 @@ const Navbar = ({
               <div className="border-t border-gray-200 p-4">
                 <div className="flex items-center gap-3">
                   <Avatar className="h-10 w-10">
+                    
+                    <AvatarImage src={user.fotoUrl|| undefined} />
                     <AvatarFallback className="bg-gradient-to-br from-blue-600 to-purple-600 text-white">
                       {user.name.split(" ").map((n) => n[0]).join("")}
                     </AvatarFallback>

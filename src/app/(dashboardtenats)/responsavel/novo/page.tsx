@@ -2,23 +2,26 @@
 // src/app/(dashboard)/responsavel/novo/page.tsx
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import Link from "next/link";
-import { ChevronLeft, Loader2 } from "lucide-react";
+import { Camera, ChevronLeft, Loader2, Trash2 } from "lucide-react";
 import { toast, Toaster } from "sonner";
+import { useMutation } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 
 import { Button } from "@/src/components/ui/button";
 import { Input } from "@/src/components/ui/input";
 import { Label } from "@/src/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/src/components/ui/avatar";
 import { Textarea } from "@/src/components/ui/textarea";
 import api from "@/src/lib/api";
 import InputCPF from "@/src/components/common/InputCPF";
 import InputTelefone from "@/src/components/common/InputTelefone";
-import { useRouter } from "next/navigation";
+
 
 // Função para gerar senha aleatória
 function gerarSenhaAleatoria(tamanho = 10) {
@@ -34,9 +37,9 @@ function gerarSenhaAleatoria(tamanho = 10) {
 const formSchema = z.object({
   nome: z.string().min(3, { message: "Nome completo é obrigatório" }),
   email: z.string().email({ message: "E-mail inválido" }).min(1, { message: "E-mail é obrigatório para envio do login" }),
-  phone: z.string().min(10, { message: "Telefone inválido" }),
+  telefone: z.string().min(10, { message: "Telefone inválido" }),
   cpf: z.string().optional(),
-  observations: z.string().optional(),
+  observacoes: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -44,80 +47,147 @@ type FormData = z.infer<typeof formSchema>;
 const NovoResponsavelPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter(); // ← adicionado para redirecionar
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const {
     register,
     handleSubmit,
     setValue,
+    watch,
+    control,
     formState: { errors },
   } = useForm<FormData>({
     resolver: zodResolver(formSchema),
   });
 
- const onSubmit = async (data: FormData) => {
-  setIsSubmitting(true);
-  try {
-    // Normaliza email para minúsculo
-    data.email = data.email.toLowerCase().trim();
+  const watchedName = watch("nome");
 
-    // Gera senha aleatória
-    const senhaTemporaria = gerarSenhaAleatoria(10);
+ const createMutation = useMutation({
+    mutationFn: async (data: FormData) => {
+      const formData = new FormData();
 
-    // Envia para o backend (rota corrigida)
-    const response = await api.post('/tenant/responsaveis', {
-      nome: data.nome,
-      email: data.email,
-      telefone: data.phone,
-      cpf: data.cpf ? data.cpf.replace(/\D/g, "") : null, // limpa máscara
-      observacoes: data.observations,
-      password: senhaTemporaria,
-    });
+      formData.append("nome", data.nome.trim());
+      formData.append("email", data.email.trim().toLowerCase());
 
-    toast.success("Responsável criado com sucesso!", {
-      description: (
-        <div className="space-y-3 text-sm">
-          <p className="font-medium">Responsável adicionado com login gerado.</p>
-          
-          <div className="bg-gray-100 p-3 rounded-md border border-gray-300">
-            <p className="font-semibold mb-1">Dados do login criado:</p>
-            <div className="space-y-1">
-              <p><span className="font-medium">Nome:</span> {data.nome || "Não informado"}</p>
-              <p><span className="font-medium">E-mail (usuário):</span> {data.email || "Não gerado"}</p>
-              <p className="font-bold text-blue-700">
-                <span className="font-medium">Senha temporária:</span> {senhaTemporaria || "Gerada automaticamente"}
-              </p>
+      // Campos opcionai
+      if (data.telefone?.trim()) {
+        formData.append("telefone", data.telefone.trim());
+      }
+      if (data.cpf?.trim()) {
+        formData.append("cpf", data.cpf.replace(/\D/g, ""));
+      }
+      if (data.observacoes?.trim()) {
+        formData.append("observacoes", data.observacoes.trim());
+      }
+
+      // Foto
+      if (selectedFile) {
+        formData.append("foto", selectedFile);
+        console.log("✅ Foto adicionada:", selectedFile.name);
+      } else {
+        console.log("⚠️ Nenhuma foto selecionada");
+      }
+
+      // Debug do FormData
+      console.log("📋 FormData enviado:");
+      for (const [key, value] of formData.entries()) {
+        if (value instanceof File) {
+          console.log(`   ${key} → FILE: ${value.name} (${value.size} bytes)`);
+        } else {
+          console.log(`   ${key} → ${value}`);
+        }
+      }
+
+      const response = await api.post("/tenant/responsaveis", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      return response.data;
+    },
+
+    onSuccess: (result) => {
+      toast.success("Responsavel  criado com sucesso!", {
+        description: (
+          <div className="space-y-3 text-sm">
+            <p>Responsavel  adicionado à escolinha.</p>
+            <div className="bg-gray-100 p-3 rounded-md border border-gray-300">
+              <p><strong>Nome:</strong> {result.data?.nome || result.nome}</p>
+              <p><strong>E-mail:</strong> {result.data?.email || result.email}</p>
+              {result.senhaTemporaria && (
+                <p><strong>Senha temporária:</strong> {result.senhaTemporaria}</p>
+              )}
             </div>
           </div>
-
-          <p className="text-xs text-gray-600 mt-2">
-            Copie a senha e envie ao responsável imediatamente. Ele deve trocar no primeiro acesso.
-          </p>
-        </div>
-      ),
-      duration: 30000, // tempo suficiente para copiar
-      action: {
-        label: "Copiar senha",
-        onClick: () => {
-          navigator.clipboard.writeText(senhaTemporaria || "");
-          toast("Usuario e Senha copiada para a área de transferência!");
+        ),
+        duration: 40000,
+        action: {
+          label: "Copiar senha",
+          onClick: () => {
+            if (result.senhaTemporaria) {
+              navigator.clipboard.writeText(result.senhaTemporaria);
+              toast.success("Senha copiada para a área de transferência!");
+            }
+          },
         },
-      },
-    });
+      });
 
-    // Redireciona automaticamente para a lista de responsáveis após 2 segundos
-    setTimeout(() => {
-      router.push("/responsavel");  // ← rota corrigida (plural)
-    }, 2000);
+      // Redireciona após sucesso
+      setTimeout(() => {
+        router.push("/responsavel");
+      }, 2000);
+    },
 
-  } catch (error: any) {
-    console.error("[Criar Responsável] Erro:", error);
-    toast.error("Erro ao criar responsável", {
-      description: error.response?.data?.error || error.response?.data?.details?.[0]?.message || error.message || "Verifique os dados e tente novamente",
-    });
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+    onError: (err: any) => {
+      console.error("❌ Erro ao criar funcionário:", err.response?.data || err);
+
+      const serverError = err.response?.data?.error || err.message || "Erro desconhecido";
+
+      if (err.response?.status === 409) {
+        toast.error("E-mail já cadastrado", { description: serverError });
+      } else if (err.response?.status === 400) {
+        toast.error("Dados inválidos", { description: serverError });
+      } else {
+        toast.error("Falha ao cadastrar responsvel", { description: serverError });
+      }
+    },
+  });
+
+  // Handler para seleção de imagem
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setSelectedFile(file);
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setCurrentImageUrl(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    console.log("📸 Imagem selecionada:", file.name);
+  };
+
+  // Remover imagem
+  const handleRemoveImage = () => {
+    setSelectedFile(null);
+    setCurrentImageUrl(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+    console.log("🗑️ Imagem removida");
+  };
+
+  const onSubmit = (data: FormData) => {
+    createMutation.mutate(data);
+  };
+
 
   return (
     <div className="p-4 lg:p-8 max-w-4xl mx-auto space-y-8">
@@ -140,6 +210,51 @@ const NovoResponsavelPage = () => {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                        {/* Upload de Foto */}
+            <div className="flex flex-col items-center gap-4 py-6 border-b">
+              <div className="relative">
+                <Avatar className="h-32 w-32 ring-4 ring-blue-100">
+                  <AvatarImage src={currentImageUrl || undefined} />
+                  <AvatarFallback className="bg-linear-to-br from-blue-500 to-purple-600 text-white text-3xl font-bold">
+                    {watchedName
+                      ? watchedName.split(" ").map((n) => n[0]).join("").toUpperCase()
+                      : "?"}
+                  </AvatarFallback>
+                </Avatar>
+              </div>
+
+              <div className="flex gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Camera className="mr-2 h-4 w-4" />
+                  Adicionar foto
+                </Button>
+
+                {currentImageUrl && (
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    onClick={handleRemoveImage}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Remover
+                  </Button>
+                )}
+              </div>
+
+              <input
+                ref={fileInputRef}
+                id="foto-input"
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                className="hidden"
+              />
+            </div>
+
             {/* Nome Completo */}
             <div className="space-y-2">
               <Label htmlFor="nome">Nome completo *</Label>
@@ -168,9 +283,9 @@ const NovoResponsavelPage = () => {
 
             {/* Telefone */}
             <div className="space-y-2">
-              <Label htmlFor="phone">Telefone *</Label>
-              <InputTelefone id="phone" placeholder="(11) 97777-6666" {...register("phone")} />
-              {errors.phone && <p className="text-sm text-red-600">{errors.phone.message}</p>}
+              <Label htmlFor="telefone">Telefone *</Label>
+              <InputTelefone id="telefone" placeholder="(11) 97777-6666" {...register("telefone")} />
+              {errors.telefone && <p className="text-sm text-red-600">{errors.telefone.message}</p>}
             </div>
 
             {/* CPF */}
@@ -187,7 +302,7 @@ const NovoResponsavelPage = () => {
                 placeholder="Informações adicionais sobre o responsável..."
                 className="resize-none"
                 rows={4}
-                {...register("observations")}
+                {...register("observacoes")}
               />
             </div>
 
@@ -196,7 +311,7 @@ const NovoResponsavelPage = () => {
               <Button 
                 type="submit" 
                 disabled={isSubmitting} 
-                className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+                className="flex-1 bg-linear-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
               >
                 {isSubmitting ? (
                   <>

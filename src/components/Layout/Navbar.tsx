@@ -8,7 +8,7 @@ import { BarChart3, BookOpen, Building2, Calendar, ChartPie, ChartSpline, Clock,
 import { Button } from "../ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "../ui/sheet";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "../ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "../ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage  } from "../ui/avatar";
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -19,6 +19,7 @@ interface NavbarProps {
   user: {
     name: string;
     email: string;
+    fotoUrl: string | null;
   };
 }
 
@@ -119,6 +120,7 @@ export function Navbar({ userType, user }: NavbarProps) {
               <div className="border-t border-gray-200 p-4">
                 <div className="flex items-center gap-3">
                   <Avatar className="h-10 w-10">
+                     <AvatarImage src={user.fotoUrl|| undefined} />
                     <AvatarFallback className="bg-gradient-to-br from-blue-600 to-purple-600 text-white">
                       {user.name.split(" ").map((n) => n[0]).join("").toUpperCase()}
                     </AvatarFallback>

@@ -1,12 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import Link from "next/link";
-import { ChevronLeft, Loader2, Mail, UserPlus } from "lucide-react";
+import { toast, Toaster } from "sonner";
+import { ChevronLeft, Loader2, Mail, UserPlus, Camera, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/src/components/ui/button";
@@ -14,77 +15,181 @@ import { Input } from "@/src/components/ui/input";
 import { Label } from "@/src/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/src/components/ui/select";
+import { Avatar, AvatarFallback, AvatarImage } from "@/src/components/ui/avatar";
 import { Textarea } from "@/src/components/ui/textarea";
 import api from "@/src/lib/api";
 import InputTelefone from "@/src/components/common/InputTelefone";
-import { useApiMutation } from "@/src/hooks/useApiMutation";
-import { Toaster } from "@/src/components/ui/sonner";
+import InputCPF from "@/src/components/common/InputCPF";
+import { useMutation } from "@tanstack/react-query";
 
-// Schema Zod
+// Schema Zod aprimorado
 const novoFuncionarioSchema = z.object({
   nome: z.string().min(3, "Nome completo é obrigatório"),
-  telefone: z.string().min(10, "Telefone inválido").optional(),
+  cpf: z.string().optional(),
+  telefone: z.string().optional(),
   cargo: z.enum(["PROFESSOR", "RECEPCAO", "ADMINISTRATIVO", "TREINADOR", "GERENTE"], {
-    message: "Cargo inválido",
+    message: "Selecione um cargo válido",
   }),
-  salario: z.number().positive("Salário deve ser positivo").optional(),
+  salario: z
+    .number()
+    .positive("Salário deve ser maior que zero")
+    .nullable()
+    .optional(),
   observacoes: z.string().optional(),
-  email: z.string().email("E-mail inválido").min(1, "E-mail é obrigatório"),
+  email: z
+    .string()
+    .email("E-mail inválido")
+    .min(1, "E-mail é obrigatório"),
 });
 
 type FormData = z.infer<typeof novoFuncionarioSchema>;
 
-// Função para gerar senha aleatória
-function gerarSenhaAleatoria(tamanho = 12): string {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?";
-  let senha = "";
-  for (let i = 0; i < tamanho; i++) {
-    senha += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return senha;
-}
-
 const NovoFuncionarioPage = () => {
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const {
     register,
     handleSubmit,
+    setValue,
+    watch,
     control,
     formState: { errors },
   } = useForm<FormData>({
     resolver: zodResolver(novoFuncionarioSchema),
     defaultValues: {
       cargo: "TREINADOR",
+      salario: null,
     },
   });
 
-  // Mutation usando o hook reutilizável
-  const createMutation = useApiMutation(
-    async (data: FormData) => {
-      const senhaGerada = gerarSenhaAleatoria(12);
+  const watchedName = watch("nome");
 
-      const payload = {
-        nome: data.nome.trim(),
-        telefone: data.telefone,
-        cargo: data.cargo,
-        salario: data.salario,
-        observacoes: data.observacoes,
-        email: data.email.toLowerCase().trim(),
-        password: senhaGerada,
-      };
+  // Mutation para criar funcionário
+  const createMutation = useMutation({
+    mutationFn: async (data: FormData) => {
+      const formData = new FormData();
 
-      return api.post("/tenant/funcionarios", payload);
+      formData.append("nome", data.nome.trim());
+      formData.append("cargo", data.cargo);
+      formData.append("email", data.email.trim().toLowerCase());
+
+      // Campos opcionais
+      if (data.salario !== undefined && data.salario !== null) {
+        formData.append("salario", data.salario.toString());
+      }
+      if (data.telefone?.trim()) {
+        formData.append("telefone", data.telefone.trim());
+      }
+      if (data.cpf?.trim()) {
+        formData.append("cpf", data.cpf.replace(/\D/g, ""));
+      }
+      if (data.observacoes?.trim()) {
+        formData.append("observacoes", data.observacoes.trim());
+      }
+
+      // Foto
+      if (selectedFile) {
+        formData.append("foto", selectedFile);
+        console.log("✅ Foto adicionada:", selectedFile.name);
+      } else {
+        console.log("⚠️ Nenhuma foto selecionada");
+      }
+
+      // Debug do FormData
+      console.log("📋 FormData enviado:");
+      for (const [key, value] of formData.entries()) {
+        if (value instanceof File) {
+          console.log(`   ${key} → FILE: ${value.name} (${value.size} bytes)`);
+        } else {
+          console.log(`   ${key} → ${value}`);
+        }
+      }
+
+      const response = await api.post("/tenant/funcionarios", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      return response.data;
     },
-    {
-      successMessage: "Funcionário criado com sucesso!",
-      invalidateQueries: ["funcionarios"],
-      onSuccessCallback: () => {
-        // Redireciona após sucesso
-        setTimeout(() => router.push("/funcionario"), 1800);
-      },
+
+    onSuccess: (result) => {
+      toast.success("Funcionário criado com sucesso!", {
+        description: (
+          <div className="space-y-3 text-sm">
+            <p>Funcionário adicionado à escolinha.</p>
+            <div className="bg-gray-100 p-3 rounded-md border border-gray-300">
+              <p><strong>Nome:</strong> {result.data?.nome || result.nome}</p>
+              <p><strong>E-mail:</strong> {result.data?.email || result.email}</p>
+              {result.senhaTemporaria && (
+                <p><strong>Senha temporária:</strong> {result.senhaTemporaria}</p>
+              )}
+            </div>
+          </div>
+        ),
+        duration: 40000,
+        action: {
+          label: "Copiar senha",
+          onClick: () => {
+            if (result.senhaTemporaria) {
+              navigator.clipboard.writeText(result.senhaTemporaria);
+              toast.success("Senha copiada para a área de transferência!");
+            }
+          },
+        },
+      });
+
+      // Redireciona após sucesso
+      setTimeout(() => {
+        router.push("/funcionario");
+      }, 2000);
+    },
+
+    onError: (err: any) => {
+      console.error("❌ Erro ao criar funcionário:", err.response?.data || err);
+
+      const serverError = err.response?.data?.error || err.message || "Erro desconhecido";
+
+      if (err.response?.status === 409) {
+        toast.error("E-mail já cadastrado", { description: serverError });
+      } else if (err.response?.status === 400) {
+        toast.error("Dados inválidos", { description: serverError });
+      } else {
+        toast.error("Falha ao cadastrar funcionário", { description: serverError });
+      }
+    },
+  });
+
+  // Handler para seleção de imagem
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setSelectedFile(file);
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setCurrentImageUrl(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    console.log("📸 Imagem selecionada:", file.name);
+  };
+
+  // Remover imagem
+  const handleRemoveImage = () => {
+    setSelectedFile(null);
+    setCurrentImageUrl(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
-  );
+    console.log("🗑️ Imagem removida");
+  };
 
   const onSubmit = (data: FormData) => {
     createMutation.mutate(data);
@@ -100,7 +205,7 @@ const NovoFuncionarioPage = () => {
         </Button>
         <div>
           <h1 className="text-3xl font-bold">Novo Funcionário</h1>
-          <p className="text-gray-600">Preencha os dados do funcionário</p>
+          <p className="text-gray-600">Preencha os dados abaixo</p>
         </div>
       </div>
 
@@ -114,11 +219,71 @@ const NovoFuncionarioPage = () => {
 
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            {/* Upload de Foto */}
+            <div className="flex flex-col items-center gap-4 py-6 border-b">
+              <div className="relative">
+                <Avatar className="h-32 w-32 ring-4 ring-blue-100">
+                  <AvatarImage src={currentImageUrl || undefined} />
+                  <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-3xl font-bold">
+                    {watchedName
+                      ? watchedName.split(" ").map((n) => n[0]).join("").toUpperCase()
+                      : "?"}
+                  </AvatarFallback>
+                </Avatar>
+              </div>
+
+              <div className="flex gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Camera className="mr-2 h-4 w-4" />
+                  Adicionar foto
+                </Button>
+
+                {currentImageUrl && (
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    onClick={handleRemoveImage}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Remover
+                  </Button>
+                )}
+              </div>
+
+              <input
+                ref={fileInputRef}
+                id="foto-input"
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                className="hidden"
+              />
+            </div>
+
             {/* Nome */}
             <div className="space-y-2">
               <Label htmlFor="nome">Nome completo *</Label>
-              <Input id="nome" placeholder="Lucas Silva Santos" {...register("nome")} />
+              <Input
+                id="nome"
+                placeholder="Ex: Breno Silva Santos"
+                {...register("nome")}
+              />
               {errors.nome && <p className="text-sm text-red-600">{errors.nome.message}</p>}
+            </div>
+
+            {/* CPF */}
+            <div className="space-y-2">
+              <Label htmlFor="cpf">CPF (opcional)</Label>
+              <InputCPF
+                id="cpf"
+                placeholder="123.456.789-00"
+                {...register("cpf")}
+              />
+              {errors.cpf && <p className="text-sm text-red-600">{errors.cpf.message}</p>}
             </div>
 
             {/* Cargo */}
@@ -148,12 +313,22 @@ const NovoFuncionarioPage = () => {
             {/* Salário */}
             <div className="space-y-2">
               <Label htmlFor="salario">Salário (opcional)</Label>
-              <Input
-                id="salario"
-                type="number"
-                step="0.01"
-                placeholder="3500.00"
-                {...register("salario", { valueAsNumber: true })}
+              <Controller
+                name="salario"
+                control={control}
+                render={({ field }) => (
+                  <Input
+                    id="salario"
+                    type="number"
+                    step="0.01"
+                    placeholder="3500.00"
+                    value={field.value ?? ""}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      field.onChange(val === "" ? null : parseFloat(val));
+                    }}
+                  />
+                )}
               />
               {errors.salario && <p className="text-sm text-red-600">{errors.salario.message}</p>}
             </div>
@@ -161,7 +336,11 @@ const NovoFuncionarioPage = () => {
             {/* Telefone */}
             <div className="space-y-2">
               <Label htmlFor="telefone">Telefone</Label>
-              <InputTelefone id="telefone" placeholder="(81) 99999-8888" {...register("telefone")} />
+              <InputTelefone
+                id="telefone"
+                placeholder="(81) 98765-4321"
+                {...register("telefone")}
+              />
               {errors.telefone && <p className="text-sm text-red-600">{errors.telefone.message}</p>}
             </div>
 
@@ -180,7 +359,7 @@ const NovoFuncionarioPage = () => {
               </div>
               {errors.email && <p className="text-sm text-red-600">{errors.email.message}</p>}
               <p className="text-xs text-gray-500">
-                O login será criado automaticamente com senha gerada.
+                O login será criado automaticamente com uma senha temporária.
               </p>
             </div>
 
@@ -189,7 +368,7 @@ const NovoFuncionarioPage = () => {
               <Label htmlFor="observacoes">Observações</Label>
               <Textarea
                 id="observacoes"
-                placeholder="Horário de trabalho, especialidade, etc..."
+                placeholder="Horário de trabalho, especialidades, informações adicionais..."
                 rows={4}
                 {...register("observacoes")}
               />

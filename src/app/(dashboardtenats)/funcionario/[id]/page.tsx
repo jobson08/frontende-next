@@ -9,7 +9,7 @@ import { useState } from "react";
 import { Button } from "@/src/components/ui/button";
 import { ChevronLeft, Edit, Phone, Shield, Loader2, AlertCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/card";
-import { Avatar, AvatarFallback } from "@/src/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/src/components/ui/avatar";
 import { Badge } from "@/src/components/ui/badge";
 import { toast } from "sonner";
 import CreateLoginModal from "@/src/components/common/CreateLoginModal";
@@ -24,6 +24,7 @@ interface Funcionario {
   createdAt: string;
   updatedAt: string;
   userId?: string | null; // ← opcional, para verificar se tem login
+  fotoUrl?: string | null;
 }
 
 const FuncionarioDetalhePage = () => {
@@ -106,11 +107,12 @@ const handleCreateOrUpdateLogin = async (email: string, password: string) => {
 
       {/* Perfil Principal */}
       <Card className="overflow-hidden">
-        <div className="bg-gradient-to-r from-orange-600 to-red-600 h-32" />
+        <div className="bg-linear-to-r from-orange-600 to-red-600 h-32" />
         <CardContent className="relative pt-0">
           <div className="flex flex-col sm:flex-row items-center sm:items-end gap-6 -mt-16">
             <Avatar className="h-32 w-32 ring-8 ring-white shadow-2xl">
-              <AvatarFallback className="bg-gradient-to-r from-orange-600 to-red-600 text-white text-4xl font-bold">
+              <AvatarImage src={funcionario.fotoUrl|| undefined} />
+              <AvatarFallback className="bg-linear-to-r from-orange-600 to-red-600 text-white text-4xl font-bold">
                 {funcionario.nome.split(" ").map(n => n[0]).join("")}
               </AvatarFallback>
             </Avatar>

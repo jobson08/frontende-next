@@ -43,7 +43,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/src/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/src/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/src/components/ui/avatar";
 import Link from "next/link";
 import {
   AlertDialog,
@@ -77,6 +77,7 @@ interface Funcionario {
   cargo: "PROFESSOR" | "RECEPCAO" | "ADMINISTRATIVO" | "TREINADOR" | "GERENTE";
   observacoes: string | null;
   createdAt: string;
+  fotoUrl: string | null;
   // Adicione mais campos se quiser (ex: salario, status, temLogin)
 }
 
@@ -242,6 +243,7 @@ const FuncionariosPage = () => {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <Avatar className="h-12 w-12">
+                      <AvatarImage src={r.fotoUrl|| undefined} />
                       <AvatarFallback className="bg-purple-600 text-white">
                         {r.nome.split(" ").map(n => n[0]).join("")}
                       </AvatarFallback>
@@ -335,6 +337,7 @@ const FuncionariosPage = () => {
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-3">
                         <Avatar className="h-10 w-10">
+                          <AvatarImage src={r.fotoUrl|| undefined} />
                           <AvatarFallback className="bg-purple-600 text-white">
                             {r.nome.split(" ").map(n => n[0]).join("")}
                           </AvatarFallback>
