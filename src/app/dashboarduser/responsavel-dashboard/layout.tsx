@@ -1,24 +1,31 @@
 // src/app/dashboarduser/responsavel-dashboard/layout.tsx
 "use client";
 
-import { QueryProvider } from "@/src/components/QueryProvider";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-import { Navbar } from "@/src/components/Layout/Navbar";
-import { Sidebar } from "@/src/components/Layout/Sidebar";
-import { EscolinhaConfigProvider } from "@/src/context/EscolinhaConfigContext";
 import { useAuth } from "@/src/hooks/useAuth";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import Header from "@/src/components/Layout/Header";
-import { SidebarOutros } from "@/src/components/Layout/SidebarOutos";
+import { NavbarUser } from "@/src/components/Layout/NavbarUser";
+import { SidebarUser } from "@/src/components/Layout/SidebarUser";
+
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      staleTime: 5 * 60 * 1000,
+    },
+  },
+});
 
 const ResponsavelDashboardLayout = ({ children }: { children: React.ReactNode }) => {
   return (
-    <QueryProvider> {/* ENVOLVE TODO O LAYOUT */}
+    <QueryClientProvider client={queryClient}>{/* ENVOLVE TODO O LAYOUT */}
       <InnerResponsavelDashboardLayout>{children}</InnerResponsavelDashboardLayout>
-    </QueryProvider>
+    </QueryClientProvider>
   );
 };
 
@@ -30,9 +37,7 @@ function InnerResponsavelDashboardLayout({ children }: { children: React.ReactNo
   // Proteção: só RESPONSAVEL
   useEffect(() => {
     if (!isLoading) {
-      if (!user) {
-        router.push("/login");
-      } else if (user.role !== "RESPONSAVEL") {
+      if (!user || user.role?.toUpperCase() !== "RESPONSAVEL") {
         router.push("/login");
       }
     }
@@ -76,18 +81,28 @@ function InnerResponsavelDashboardLayout({ children }: { children: React.ReactNo
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-        <Navbar userType="RESPONSAVEL" user={safeUser} />
-        <div className="flex">
-          <div className="hidden lg:flex lg:w-64 lg:fixed lg:inset-y-0 lg:pt-16">
-            <SidebarOutros userType="RESPONSAVEL" userName={safeUser.name} />
-          </div>
-          <main className="flex-1 pt-16 lg:ml-64">
-            <div className="p-4 lg:p-8">
-              {children}
-            </div>
-          </main>
+  <div className="min-h-screen bg-gray-50">
+      <NavbarUser
+        userType="RESPONSAVEL"
+        name={user.name || user.email?.split("@")[0] || "Aluno"} 
+        email={user.email || ""} 
+       // fotoUrl={user.fotoUrl || ""}
+      />
+
+      <div className="flex">
+        <div className="hidden lg:flex lg:w-64 lg:fixed lg:inset-y-0 lg:pt-16 bg-white border-r shadow-sm">
+          <SidebarUser 
+            userType="RESPONSAVEL" 
+            userName={user.name || user.email?.split("@")[0] || "Aluno"} 
+          />
         </div>
+
+        <main className="flex-1 pt-16 lg:ml-64">
+          <div className="p-4 lg:p-8">
+            {children}
+          </div>
+        </main>
+      </div>
     </div>
   );
 }

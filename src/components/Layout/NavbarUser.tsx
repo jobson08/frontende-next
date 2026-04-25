@@ -4,7 +4,7 @@
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
-import { BarChart3, BookOpen, Building2, Calendar, ChartPie, ChartSpline, Clock, CreditCard, DollarSign, Home, LifeBuoy, LogOut, Menu, MessageSquare, Settings, Trophy, User, UserPlus, Users } from "lucide-react";
+import { BarChart3, BookOpen, Building2,CreditCard, DollarSign, Home, LifeBuoy, LogOut, Menu, MessageSquare, Settings, Trophy, User, UserPlus, Users } from "lucide-react";
 import { Button } from "../ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "../ui/sheet";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "../ui/dropdown-menu";
@@ -15,12 +15,10 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "@/src/hooks/useAuth";
 
 interface NavbarProps {
-  userType: "ADMIN" | "SUPERADMIN" | "ALUNO" | "RESPONSAVEL" | "FUNCIONARIO" | "CROSSFIT";
-  user: {
+  userType: "SUPERADMIN" | "ALUNO_FUTEBOL" | "ALUNO_CROSSFIT" | "RESPONSAVEL"
     name: string;
     email: string;
-   // fotoUrl: string | null;
-  };
+    //fotoUrl: string | null;
 }
 
 const menuItems = {
@@ -34,21 +32,15 @@ const menuItems = {
     { icon: Settings, label: "Configurações SaaS", href: "/superadmin/configuracoes" },
     { icon: LifeBuoy, label: "Suporte", href: "/superadmin/suporte" },
   ],
-  ADMIN: [
-   { icon: Home, label: "Dashboard", href: "/admin" },
-      { icon: Users, label: "Alunos Futebol", href: "/aluno" },
-      { icon: User, label: "Responsáveis", href: "/responsavel" },
-      { icon: Users, label: "Funcionários", href: "/funcionario" },
-      { icon: Calendar, label: "Treinos", href: "/treinos" },
-      { icon: ChartSpline, label: "Financeiro", href: "/financeiro" },
-      { icon: DollarSign, label: "Inadimplentes", href: "/inadimplentes" },
-      { icon: Settings, label: "Configurações", href: "/configuracoes" },
+  ALUNO_FUTEBOL: [
+    { icon: Home, label: "Meu Dashboard", href: "/dashboarduser/aluno-futebol" },
+    { icon: Trophy, label: "Meu Progresso", href: "/dashboarduser/aluno-futebol/progresso" },
+    { icon: BookOpen, label: "Treinos", href: "/dashboarduser/aluno-futebol/treinos" },
+    { icon: MessageSquare, label: "Mensagens", href: "/dashboarduser/aluno-futebol/mensagens" },
   ],
-  ALUNO: [
-    { icon: Home, label: "Meu Dashboard", href: "/dashboarduser/aluno-dashboard" },
-    { icon: Trophy, label: "Meu Progresso", href: "/dashboarduser/aluno-dashboard/progresso" },
-    { icon: BookOpen, label: "Treinos", href: "/dashboarduser/aluno-dashboard/treinos" },
-    { icon: MessageSquare, label: "Mensagens", href: "/dashboarduser/aluno-dashboard/mensagens" },
+  ALUNO_CROSSFIT: [
+    { icon: Home, label: "Meu Dashboard", href: "/dashboarduser/crossfit-crossfit" },
+    { icon: DollarSign, label: "Pagamentos", href: "/dashboarduser/crossfit-crossfit/pagamentos" },
   ],
   RESPONSAVEL: [
     { icon: Home, label: "Meu Dashboard", href: "/dashboarduser/responsavel-dashboard" },
@@ -56,20 +48,10 @@ const menuItems = {
     { icon: DollarSign, label: "Pagamentos", href: "/dashboarduser/responsavel-dashboard/pagamentos" },
     { icon: MessageSquare, label: "Comunicados", href: "/dashboarduser/responsavel-dashboard/comunicados" },
   ],
-  FUNCIONARIO: [
-    { icon: Home, label: "Meu Dashboard", href: "/dashboarduser/funcionario-dashboard" },
-    { icon: Calendar, label: "Minhas Aulas", href: "/dashboarduser/funcionario-dashboard/aulas" },
-    { icon: Users, label: "Meus Alunos", href: "/dashboarduser/funcionario-dashboard/alunos" },
-    { icon: Clock, label: "Horário", href: "/dashboarduser/funcionario-dashboard/horario" },
-    { icon: MessageSquare, label: "Mensagens", href: "/dashboarduser/funcionario-dashboard/mensagens" },
-  ],
-  CROSSFIT: [
-    { icon: Home, label: "Meu Dashboard", href: "/dashboarduser/crossfit-dashboard" },
-    { icon: DollarSign, label: "Pagamentos", href: "/dashboarduser/crossfit-dashboard/pagamentos" },
-  ],
+
 };
 
-export function Navbar({ userType, user }: NavbarProps) {
+export function NavbarUser({ userType, name, email }: NavbarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
   const { logout } = useAuth(); // ← USA O LOGOUT DO HOOK (limpa tudo!)
@@ -77,10 +59,7 @@ export function Navbar({ userType, user }: NavbarProps) {
   const items = menuItems[userType] || [];
 
   return (
-  <header 
-      className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm"
-      suppressHydrationWarning={true}   // ← Mova para cá (no elemento raiz)
-    >
+    <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm">
       <div className="flex items-center justify-between h-16 px-4 lg:px-8">
         {/* MOBILE MENU */}
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
@@ -91,7 +70,58 @@ export function Navbar({ userType, user }: NavbarProps) {
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="p-0 w-72 bg-white">
-            {/* ... resto do Sheet mantido igual ... */}
+            <div className="flex flex-col h-full">
+              {/* Logo no mobile */}
+              <div className="flex items-center justify-center h-16 border-b border-gray-200">
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  EDUPAY
+                </h1>
+              </div>
+
+              {/* Menu mobile */}
+              <nav className="flex-1 overflow-y-auto py-4">
+                <div className="px-3 space-y-1">
+                  {items.map((item) => (
+                    <Button
+                      key={item.href}
+                      asChild
+                      variant={pathname.startsWith(item.href) ? "secondary" : "ghost"}
+                      className="w-full justify-start h-11"
+                      onClick={() => setMobileOpen(false)}
+                    >
+                      <Link href={item.href}>
+                        <item.icon className="mr-3 h-5 w-5 text-gray-700" />
+                        <span className="text-gray-900">{item.label}</span>
+                      </Link>
+                    </Button>
+                  ))}
+                </div>
+              </nav>
+
+              {/* Perfil + Logout no mobile */}
+              <div className="border-t border-gray-200 p-4">
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-10 w-10">
+                    {/*} <AvatarImage src={fotoUrl|| undefined} />*/}
+                    <AvatarFallback className="bg-gradient-to-br from-blue-600 to-purple-600 text-white">
+                      {name.split(" ").map((n) => n[0]).join("").toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">{name}</p>
+                    <p className="text-xs text-gray-500">{userType}</p>
+                  </div>
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    onClick={logout} // ← CHAMA O LOGOUT DO HOOK (LIMPA TUDO!)
+                    className="text-gray-600 hover:text-red-600 hover:bg-red-50"
+                  >
+                    <LogOut className="h-5 w-5" />
+                  </Button>
+                </div>
+              </div>
+            </div>
           </SheetContent>
         </Sheet>
 
@@ -109,12 +139,12 @@ export function Navbar({ userType, user }: NavbarProps) {
               <Button variant="ghost" className="flex items-center gap-3 rounded-full hover:bg-gray-100">
                 <Avatar className="h-9 w-9 ring-2 ring-offset-2 ring-purple-400">
                   <AvatarFallback className="bg-gradient-to-br from-blue-600 to-purple-600 text-white text-sm font-medium">
-                    {user.name.split(" ").map((n) => n[0]).join("").toUpperCase()}
+                    {name.split(" ").map((n) => n[0]).join("").toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <div className="text-left">
-                  <p className="text-sm font-medium leading-none">{user.name}</p>
-                  <p className="text-xs text-gray-500">{user.email}</p>
+                  <p className="text-sm font-medium leading-none">{name}</p>
+                  <p className="text-xs text-gray-500">{email}</p>
                 </div>
               </Button>
             </DropdownMenuTrigger>
@@ -133,7 +163,7 @@ export function Navbar({ userType, user }: NavbarProps) {
               <DropdownMenuSeparator />
               <DropdownMenuItem 
                 className="text-red-600 focus:text-red-600 focus:bg-red-50"
-                onClick={logout}
+                onClick={logout} // ← CHAMA O LOGOUT DO HOOK (LIMPA TUDO!)
               >
                 <LogOut className="mr-2 h-4 w-4" />
                 Sair

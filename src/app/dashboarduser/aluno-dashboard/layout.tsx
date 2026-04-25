@@ -1,94 +1,67 @@
 // src/app/dashboarduser/aluno-dashboard/layout.tsx
 "use client";
 
-import { QueryProvider } from "@/src/components/QueryProvider"; // ← Certifique-se de que esse wrapper existe
-
-import { Navbar } from "@/src/components/Layout/Navbar";
-import { Sidebar } from "@/src/components/Layout/Sidebar";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useAuth } from "@/src/hooks/useAuth";
-import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { SidebarOutros } from "@/src/components/Layout/SidebarOutos";
+import Link from "next/link";
 
-const AlunoDashboardLayout = ({ children }: { children: React.ReactNode }) => {
+const queryClient = new QueryClient();
+
+export default function AlunoDashboardLayout({ children }: { children: React.ReactNode }) {
   return (
-    <QueryProvider> {/* ← ENVOLVE TUDO */}
+    <QueryClientProvider client={queryClient}>
       <InnerAlunoDashboardLayout>{children}</InnerAlunoDashboardLayout>
-    </QueryProvider>
+    </QueryClientProvider>
   );
-};
+}
 
-// Componente interno (onde o useAuth roda — AGORA FUNCIONA!)
 function InnerAlunoDashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
   const router = useRouter();
 
-  // Proteção: só ALUNO (ou ALUNO_FUTEBOL se tiver role específico)
   useEffect(() => {
-    if (!isLoading) {
-      if (!user) {
-        router.push("/login");
-      } else if (user.role !== "ALUNO") { // ajuste se tiver "ALUNO_FUTEBOL"
-        router.push("/login");
-      }
+    if (!isLoading && (!user || !user.role?.toUpperCase().includes("ALUNO"))) {
+      router.push("/login");
     }
   }, [user, isLoading, router]);
 
- if (isLoading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
         <Loader2 className="h-16 w-16 animate-spin text-blue-600 mb-6" />
-        <p className="text-xl font-medium text-gray-700">Carregando sua conta...</p>
-        <p className="text-sm text-gray-500 mt-2">Aguarde um instante...</p>
+        <p className="text-xl font-medium text-gray-700">Carregando...</p>
       </div>
     );
   }
 
-  // Após carregar: se user OK → renderiza dashboard
-    if (!user || user.role.toUpperCase() !== "ALUNO") {
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-          <div className="text-red-600 text-center p-8">
-            <p className="text-2xl font-bold mb-4">Acesso negado</p>
-            <p className="text-lg">Usuário autenticado, mas sem permissão para esta área</p>
-            <p className="mt-4 text-sm">Role recebido: {user?.role || 'Nenhum'}</p>
-            <Button className="mt-6" onClick={() => router.push("/login")}>
-              Voltar ao login
-            </Button>
-          </div>
-        </div>
-      );
-    }
-
-  if (!user) return null;
-
-  const safeUser = {
-    name: user.name || user.email || "Aluno",
-    email: user.email || "",
-  };
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* NAVBAR COM MOBILE SIDEBAR */}
-      <Navbar userType="ALUNO" user={safeUser} />
+    <div className="min-h-screen bg-gray-50 p-8">
+      <div className="max-w-2xl mx-auto text-center">
+        <h1 className="text-4xl font-bold mb-2">Bem-vindo, {user?.name?.split(" ")[0]}!</h1>
+        <p className="text-gray-600 mb-10">Escolha sua modalidade para continuar</p>
 
-      <div className="flex">
-        {/* SIDEBAR DESKTOP — SÓ NO LG+ */}
-        <div className="hidden lg:flex lg:w-64 lg:fixed lg:inset-y-0 lg:pt-16">
-          <SidebarOutros userType="ALUNO" userName={safeUser.name} />
+        <div className="grid gap-6 md:grid-cols-2">
+          <Link href="/dashboarduser/aluno-futebol">
+            <div className="bg-white p-10 rounded-2xl shadow hover:shadow-xl transition-all cursor-pointer border-2 border-transparent hover:border-green-500">
+              <div className="text-6xl mb-6">⚽</div>
+              <h2 className="text-2xl font-semibold mb-2">Futebol</h2>
+              <p className="text-gray-600">Treinos, jogos e progresso no futebol</p>
+            </div>
+          </Link>
+
+          <Link href="/dashboarduser/aluno-crossfit">
+            <div className="bg-white p-10 rounded-2xl shadow hover:shadow-xl transition-all cursor-pointer border-2 border-transparent hover:border-orange-500">
+              <div className="text-6xl mb-6">🏋️</div>
+              <h2 className="text-2xl font-semibold mb-2">CrossFit</h2>
+              <p className="text-gray-600">Treinos funcionais e performance</p>
+            </div>
+          </Link>
         </div>
-
-        {/* CONTEÚDO PRINCIPAL */}
-        <main className="flex-1 pt-16 lg:ml-64">
-          <div className="p-4 lg:p-8">
-            {children}
-          </div>
-        </main>
       </div>
     </div>
   );
 }
-
-export default AlunoDashboardLayout;

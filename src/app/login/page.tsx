@@ -111,10 +111,10 @@ const LoginPage = () => {
           redirectTo = from?.includes("/dashboarduser/responsavel-dashboard") ? from : "/dashboarduser/responsavel-dashboard";
           break;
         case "ALUNO_FUTEBOL":
-          redirectTo = from?.includes("/dashboarduser/aluno-dashboard") ? from : "/dashboarduser/aluno-dashboard";
+          redirectTo = from?.includes("/dashboarduser/aluno-futebol") ? from : "/dashboarduser/aluno-futebol";
           break;
         case "ALUNO_CROSSFIT":
-          redirectTo = from?.includes("/dashboarduser/crossfit-dashboard") ? from : "/dashboarduser/crossfit-dashboard";
+          redirectTo = from?.includes("/dashboarduser/aluno-crossfit") ? from : "/dashboarduser/aluno-crossfit";
           break;
         default:
           redirectTo = "/dashboard";

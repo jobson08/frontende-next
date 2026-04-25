@@ -1,30 +1,24 @@
-// src/app/dashboarduser/aluno-dashboard/page.tsx
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// src/app/dashboarduser/aluno-futebol/page.tsx
 "use client";
 
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { 
-  Calendar, 
-  Trophy, 
-  Target, 
-  MessageSquare, 
-  Star, 
-  Key 
-} from "lucide-react";
-import Link from "next/link";
-import { toast } from "sonner";
-
-import { Avatar, AvatarFallback } from "@/src/components/ui/avatar";
+import { useQuery } from "@tanstack/react-query";
+import api from "@/src/lib/api";
+import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/card";
 import { Badge } from "@/src/components/ui/badge";
 import { Button } from "@/src/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/src/components/ui/avatar";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/src/components/ui/dialog";
 import { Input } from "@/src/components/ui/input";
 import { Label } from "@/src/components/ui/label";
+import { Trophy, Calendar, Target, Star, MessageSquare, Key } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { toast } from "sonner";
+import { useState } from "react";
+import { useParams } from "next/navigation";
 
-// Schema para troca de senha
 const senhaSchema = z.object({
   senhaAtual: z.string().min(1, "Senha atual é obrigatória"),
   novaSenha: z.string().min(8, "Nova senha deve ter no mínimo 8 caracteres"),
@@ -34,10 +28,36 @@ const senhaSchema = z.object({
   path: ["confirmarSenha"],
 });
 
+
 type SenhaFormData = z.infer<typeof senhaSchema>;
 
-const AlunoDashboardPage = () => {
-  const [openModalSenha, setOpenModalSenha] = useState(false);
+const AlunoFutebolPage =() => {
+ const [openModalSenha, setOpenModalSenha] = useState(false);
+
+  // Busca dados do aluno logado
+  const { data: response, isLoading: alunoLoading, error: alunoError } = useQuery({
+    queryKey: ["aluno-futebol-me"],
+    queryFn: async () => {
+      const res = await api.get("/tenant/aluno-futebol/me");
+      console.log("✅ Dados do aluno recebidos:", res.data);
+      return res.data; // { success: true, data: { ... } }
+    },
+  });
+
+  const aluno = response?.data; // ← Aqui está a correção principal
+
+  // Busca próximos treinos
+  const { data: proximosTreinosResponse = [] } = useQuery({
+    queryKey: ["proximos-treinos"],
+    queryFn: async () => {
+      const res = await api.get("/tenant/aluno-futebol/proximos-treinos");
+      console.log("✅ Próximos treinos recebidos:", res.data);
+      return res.data;
+    },
+    enabled: !!aluno,
+  });
+
+  const proximosTreinos = proximosTreinosResponse?.data || proximosTreinosResponse;
 
   const {
     register,
@@ -50,61 +70,58 @@ const AlunoDashboardPage = () => {
 
   const onSubmitSenha = async (data: SenhaFormData) => {
     try {
-      // TODO: Integrar com API real
-      await new Promise(resolve => setTimeout(resolve, 1200));
-      
-      toast.success("Senha alterada com sucesso!", {
-        description: "Sua senha foi atualizada. Use a nova senha no próximo login."
-      });
-      
+      await api.post("/tenant/aluno-futebol/trocar-senha", data);
+      toast.success("Senha alterada com sucesso!");
       reset();
       setOpenModalSenha(false);
-    } catch (error) {
-      toast.error("Erro ao alterar senha. Tente novamente.");
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || "Erro ao alterar senha");
     }
   };
 
-  // Dados do aluno (virão da API depois)
-  const aluno = {
-    name: "Pedro Henrique Silva",
-    idade: 12,
-    categoria: "Sub-13",
-    frequenciaMes: 18,
-    metaSemanal: 4,
-    treinosFeitosSemana: 3,
-    proximosTreinos: 5,
-    nivel: "Avançado",
-  };
+  if (alunoLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20">
+        <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mb-6" />
+        <p className="text-xl font-medium text-gray-700">Carregando seu perfil...</p>
+      </div>
+    );
+  }
 
-  const proximosTreinos = [
-    { dia: "Quarta", hora: "18:00", treino: "Técnica Individual", treinador: "Rafael Lima" },
-    { dia: "Quinta", hora: "17:30", treino: "Jogo Coletivo", treinador: "Mariana Costa" },
-    { dia: "Sábado", hora: "09:00", treino: "Preparação Física", treinador: "Carlos Souza" },
-  ];
+  if (alunoError || !aluno) {
+    return (
+      <div className="text-center py-20 text-red-600">
+        Erro ao carregar dados do aluno. Tente novamente.
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
       {/* Cabeçalho */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
         <div className="flex items-center gap-4">
-          <Avatar className="h-24 w-24 ring-4 ring-green-400">
+        <Avatar className="h-24 w-24 ring-4 ring-green-400">
+            <AvatarImage src={aluno.fotoUrl} onError={(e) => e.currentTarget.style.display = 'none'}/>
             <AvatarFallback className="bg-gradient-to-br from-green-500 to-emerald-600 text-white text-4xl font-bold">
-              {aluno.name.split(" ").map(n => n[0]).join("")}
+              {aluno.name ? aluno.name.split(" ").map((n: string) => n[0]).join("") : "A"}
             </AvatarFallback>
           </Avatar>
 
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Olá, {aluno.name.split(" ")[0]}!</h1>
+            <h1 className="text-3xl font-bold text-gray-900">
+              Olá, {aluno.name ? aluno.name.split(" ")[0] : "Aluno"}!
+            </h1>
             <div className="flex items-center gap-3 mt-2">
-              <Badge className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-1">
-                {aluno.categoria}
+              <Badge className="bg-green-600 text-white px-4 py-1">
+                {aluno.categoria || "Sub-13"}
               </Badge>
               <Badge variant="secondary" className="px-4 py-1">
-                {aluno.nivel}
+                {aluno.nivel || "Avançado"}
               </Badge>
             </div>
             <p className="text-gray-600 mt-1">
-              {aluno.idade} anos • {aluno.frequenciaMes} treinos este mês
+              {aluno.idade || "?"} anos • {aluno.frequenciaMes || 0} treinos este mês
             </p>
           </div>
         </div>
@@ -121,7 +138,7 @@ const AlunoDashboardPage = () => {
             <DialogHeader>
               <DialogTitle>Trocar Senha</DialogTitle>
               <DialogDescription>
-                Para maior segurança, troque sua senha temporária.
+                Para maior segurança, troque sua senha.
               </DialogDescription>
             </DialogHeader>
 
@@ -165,7 +182,7 @@ const AlunoDashboardPage = () => {
             <Trophy className="h-5 w-5 text-amber-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-4xl font-bold">{aluno.treinosFeitosSemana}/{aluno.metaSemanal}</div>
+            <div className="text-4xl font-bold">4/5</div>
             <p className="text-xs text-gray-500 mt-1">Meta semanal</p>
           </CardContent>
         </Card>
@@ -176,7 +193,7 @@ const AlunoDashboardPage = () => {
             <Calendar className="h-5 w-5 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-4xl font-bold">{aluno.proximosTreinos}</div>
+            <div className="text-4xl font-bold">{proximosTreinos.length}</div>
             <p className="text-xs text-gray-500 mt-1">esta semana</p>
           </CardContent>
         </Card>
@@ -187,7 +204,7 @@ const AlunoDashboardPage = () => {
             <Target className="h-5 w-5 text-emerald-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-4xl font-bold">{aluno.frequenciaMes}</div>
+            <div className="text-4xl font-bold">{aluno.frequenciaMes || 0}</div>
             <p className="text-xs text-gray-500 mt-1">treinos realizados</p>
           </CardContent>
         </Card>
@@ -210,46 +227,27 @@ const AlunoDashboardPage = () => {
           <CardTitle>Próximos Treinos</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {proximosTreinos.map((treino, i) => (
-              <div key={i} className="flex items-center justify-between p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-100">
-                <div>
-                  <p className="font-semibold text-gray-900">{treino.treino}</p>
-                  <p className="text-sm text-gray-600 mt-1">
-                    {treino.dia} • {treino.hora} • {treino.treinador}
-                  </p>
+          {proximosTreinos.length > 0 ? (
+            <div className="space-y-4">
+              {proximosTreinos.map((treino: any, i: number) => (
+                <div key={i} className="flex items-center justify-between p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl">
+                  <div>
+                    <p className="font-semibold text-gray-900">{treino.treino}</p>
+                    <p className="text-sm text-gray-600 mt-1">
+                      {treino.dia} • {treino.hora} • {treino.treinador}
+                    </p>
+                  </div>
+                  <Badge>Confirmado</Badge>
                 </div>
-                <Badge variant="default" className="bg-green-600">Confirmado</Badge>
-              </div>
-            ))}
-          </div>
-
-          <Button variant="outline" className="w-full mt-6" asChild>
-            <Link href="/dashboarduser/aluno-dashboard/treinos">
-              Ver todos os treinos →
-            </Link>
-          </Button>
-        </CardContent>
-      </Card>
-
-      {/* Comunicado */}
-      <Card className="bg-gradient-to-r from-blue-50 to-cyan-50 border-blue-200">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MessageSquare className="h-5 w-5 text-blue-600" />
-            Comunicado do Treinador
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-gray-700 italic leading-relaxed">
-            Parabéns pelo ótimo desempenho no último treino, Pedro! 
-            Continue assim que você vai chegar longe. Foco na finalização essa semana.
-          </p>
-          <p className="text-sm text-gray-600 mt-4 font-medium">- Rafael Lima</p>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-500 py-8 text-center">Nenhum treino agendado para os próximos dias.</p>
+          )}
         </CardContent>
       </Card>
     </div>
   );
 };
 
-export default AlunoDashboardPage;
+export default AlunoFutebolPage;

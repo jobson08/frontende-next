@@ -33,11 +33,11 @@ interface NavbarProps {
   user: {
     name: string;
     email: string;
-    fotoUrl: string | null;
+   // fotoUrl: string | null;
   };
   inadimplentesCount?: number;
   role?: string; // "treinador", "admin", "administrativo"
-  fotoUrl: string | null;
+ // fotoUrl: string | null;
 }
 
 const Navbar = ({
@@ -193,8 +193,8 @@ const Navbar = ({
                 <div className="flex items-center gap-3">
                   <Avatar className="h-10 w-10">
                     
-                    <AvatarImage src={user.fotoUrl|| undefined} />
-                    <AvatarFallback className="bg-gradient-to-br from-blue-600 to-purple-600 text-white">
+                  { /*  <AvatarImage src={user.fotoUrl|| undefined} />*/}
+                   <AvatarFallback className="bg-gradient-to-br from-blue-600 to-purple-600 text-white">
                       {user.name.split(" ").map((n) => n[0]).join("")}
                     </AvatarFallback>
                   </Avatar>

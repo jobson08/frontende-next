@@ -66,6 +66,7 @@ const EditarResponsavelPage = () => {
     setValue,
     watch,
     control,
+    reset,
     formState: { errors, isValid },
   } = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -99,7 +100,7 @@ const EditarResponsavelPage = () => {
       setValue("telefone", responsavel.telefone || "");
       setValue("observacoes", responsavel.observacoes || "");
     }
-  }, [responsavel, setValue]);
+  }, [responsavel, reset]);
 
   // Mutation para atualizar
   const updateMutation = useMutation({
@@ -130,7 +131,7 @@ const EditarResponsavelPage = () => {
       console.log("URL:", `/tenant/responsaveis/$responsavelId}`);
       console.log("Payload:", JSON.stringify(payload, null, 2));
 
-      const res = await api.patch(`/tenant/responsaveis/$responsavelId}`, payload);
+      const res = await api.patch(`/tenant/responsaveis/${responsavelId}`, payload);
       return res.data;
     },
 
@@ -155,7 +156,7 @@ const EditarResponsavelPage = () => {
   // Mutation para redefinir senha
   const redefinirSenhaMutation = useMutation({
     mutationFn: async () => {
-      const res = await api.post(`/tenant/responsaveis/$responsavelId}/redefinir-senha`);
+      const res = await api.post(`/tenant/responsaveis/${responsavelId }/redefinir-senha`);
       return res.data;
     },
     onSuccess: (result) => {
