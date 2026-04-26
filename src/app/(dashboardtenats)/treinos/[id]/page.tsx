@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import api from "@/src/lib/api";
 
@@ -11,7 +11,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/ca
 import { Avatar, AvatarFallback } from "@/src/components/ui/avatar";
 import { Badge } from "@/src/components/ui/badge";
 import { Checkbox } from "@/src/components/ui/checkbox";
-import { ChevronLeft, Calendar, Users, CheckCircle, XCircle, Edit, Save, Loader2, AlertCircle } from "lucide-react";
+import { ChevronLeft, Calendar, Users, CheckCircle, XCircle, Edit, Save, Loader2, AlertCircle, Trash2 } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/src/components/ui/table";
 import Link from "next/link";
 import { toast } from "sonner";
 
@@ -42,6 +43,8 @@ interface AlunoPresenca {
 
 const TreinoDetalhePage = () => {
 const { id } = useParams();
+const router = useRouter();
+
   //Data formatada
   const formatDate = (dateStr: string) => {
   if (!dateStr) return "—";
@@ -63,15 +66,28 @@ const { id } = useParams();
     enabled: !!id,
   });
 
-  // Inicializa com mock (ou vazio) - sem useEffect
-  const [alunosPresenca, setAlunosPresenca] = useState<AlunoPresenca[]>(() => [
-    { id: "1", nome: "Pedro Henrique Silva", idade: 10, presente: true },
-    { id: "2", nome: "Lucas Oliveira", idade: 11, presente: true },
-    { id: "3", nome: "Gabriel Santos", idade: 10, presente: false, observacao: "Lesão no tornozelo" },
-    { id: "4", nome: "Matheus Costa", idade: 11, presente: true },
-    { id: "5", nome: "João Pedro Alves", idade: 10, presente: true },
-    { id: "6", nome: "Enzo Gabriel", idade: 11, presente: false },
-  ]);
+ const handleDelete = async () => {
+    if (!confirm("Deseja realmente excluir este treino ?")) return;
+
+    try {
+      await api.delete(`/tenant/treinos-futebol/${id}`);
+      toast.success("Treino  excluído com sucesso!");
+      router.push("/treinos");
+    } catch (err: any) {
+      toast.error("Erro ao excluir treino ");
+    }
+  };
+
+  // Busca alunos da mesma categoria
+  const { data: alunosDaCategoria = [], isLoading: loadingAlunos } = useQuery<Aluno[]>({
+    queryKey: ["alunos-categoria", treino?.categoria],
+    queryFn: async () => {
+      const res = await api.get(`/tenant/alunos?categoria=${treino?.categoria}`);
+      return res.data.data || [];
+    },
+    enabled: !!treino?.categoria,
+  });
+
 
   const togglePresenca = (alunoId: string) => {
     setAlunosPresenca(prev =>
@@ -110,9 +126,6 @@ const { id } = useParams();
     );
   }
 
-  const presentes = alunosPresenca.filter(a => a.presente).length;
-  const ausentes = alunosPresenca.filter(a => !a.presente).length;
-
   return (
     <div className="p-4 lg:p-8 max-w-6xl mx-auto space-y-8">
       {/* Cabeçalho */}
@@ -126,12 +139,16 @@ const { id } = useParams();
           <h1 className="text-3xl font-bold">{treino.nome}</h1>
           <p className="text-gray-600">{treino.categoria} • {treino.data} • {treino.horaInicio} às {treino.horaFim}</p>
         </div>
-        <div className="ml-auto">
-          <Button asChild className="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700">
-            <Link href={`/treinos/${treino.id}/editar`}>
-              <Edit className="mr-2 h-5 w-5" />
-              Editar Treino
+        <div className="flex gap-3">
+          <Button asChild variant="outline">
+            <Link href={`/treinos/recorrentes/${id}/editar`}>
+              <Edit className="mr-2 h-4 w-4" />
+              Editar
             </Link>
+          </Button>
+          <Button variant="destructive" onClick={handleDelete}>
+            <Trash2 className="mr-2 h-4 w-4" />
+            Excluir
           </Button>
         </div>
       </div>
@@ -151,7 +168,7 @@ const { id } = useParams();
           </CardContent>
         </Card>
 
-        <Card>
+        {/*<Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Users className="h-5 w-5" />
@@ -179,7 +196,7 @@ const { id } = useParams();
               </p>
             </div>
           </CardContent>
-        </Card>
+        </Card>*/}
 
         <Card>
           <CardHeader>
@@ -216,57 +233,34 @@ const { id } = useParams();
         </CardContent>
       </Card>
 
-      {/* Lista de Presença COM CHECKBOX */}
+     {/* Alunos da Categoria */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Lista de Presença ({alunosPresenca.length} alunos)</CardTitle>
-          <Button onClick={salvarPresenca} className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700">
-            <Save className="mr-2 h-4 w-4" />
-            Salvar Presença
-          </Button>
+        <CardHeader>
+          <CardTitle>Alunos da Categoria {treino.categoria}</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {alunosPresenca.length === 0 ? (
-              <p className="text-center text-gray-500 py-8">Nenhum aluno cadastrado neste treino</p>
-            ) : (
-              alunosPresenca.map((aluno) => (
-                <div key={aluno.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
-                  <div className="flex items-center gap-4">
-                    <Avatar>
-                      <AvatarFallback className="bg-gradient-to-br from-blue-600 to-purple-600 text-white">
-                        {aluno.nome.split(" ").map(n => n[0]).join("")}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-medium">{aluno.nome}</p>
-                      <p className="text-sm text-gray-600">{aluno.idade} anos</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-6">
-                    {aluno.observacao && (
-                      <p className="text-sm text-orange-600 italic max-w-xs">{aluno.observacao}</p>
-                    )}
-                    <div className="flex items-center gap-3">
-                      <Checkbox
-                        id={`presenca-${aluno.id}`}
-                        checked={aluno.presente}
-                        onCheckedChange={() => togglePresenca(aluno.id)}
-                        className="h-6 w-6 rounded"
-                      />
-                      <label
-                        htmlFor={`presenca-${aluno.id}`}
-                        className="text-sm font-medium cursor-pointer select-none"
-                      >
-                        {aluno.presente ? "Presente" : "Ausente"}
-                      </label>
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
+          {loadingAlunos ? (
+            <p>Carregando alunos...</p>
+          ) : alunosDaCategoria.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Idade</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {alunosDaCategoria.map((aluno) => (
+                  <TableRow key={aluno.id}>
+                    <TableCell className="font-medium">{aluno.nome}</TableCell>
+                    <TableCell>{aluno.idade || "?"} anos</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <p className="text-gray-500 py-8 text-center">Nenhum aluno encontrado nesta categoria.</p>
+          )}
         </CardContent>
       </Card>
     </div>

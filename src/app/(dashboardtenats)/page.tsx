@@ -31,7 +31,7 @@ const  AdminDashboard = () => {   //inicio da função
   <div className="p-4 lg:p-8 space-y-8">
       {/* Cabeçalho */}
       <div>
-        <h1 className="text-4xl font-bold">Dashboard da Academia</h1>
+        <h1 className="text-4xl font-bold">Dashboard da Escolina</h1>
         <p className="text-gray-600 text-lg mt-2">Visão geral da sua unidade - Dezembro 2025</p>
       </div>
 

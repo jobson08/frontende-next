@@ -180,9 +180,9 @@ const MeuProgressoPage = ()=> {
             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
               <div className="font-medium">Novembro 2025</div>
               <div className="flex gap-8 text-sm">
-                <div>Frequência: <span className="font-bold">92%</span></div>
-                <div>Gols: <span className="font-bold text-yellow-600">6</span></div>
-                <div>Assistências: <span className="font-bold text-green-600">4</span></div>
+                <div>Frequência: <span className="font-bold">{taxaFrequencia}%</span></div>
+                <div>Gols: <span className="font-bold text-yellow-600">{golsMarcados}</span></div>
+                <div>Assistências: <span className="font-bold text-green-600">{assistencias}</span></div>
               </div>
             </div>
           </div>
