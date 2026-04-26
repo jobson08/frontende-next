@@ -33,13 +33,13 @@ interface Treino {
   updatedAt: string;
 }
 
-interface AlunoPresenca {
+interface Aluno {
   id: string;
   nome: string;
-  idade: number;
-  presente: boolean;
-  observacao?: string | null;
+  idade: number | null;
+  categoria: string;
 }
+
 
 const TreinoDetalhePage = () => {
 const { id } = useParams();
@@ -88,21 +88,6 @@ const router = useRouter();
     enabled: !!treino?.categoria,
   });
 
-
-  const togglePresenca = (alunoId: string) => {
-    setAlunosPresenca(prev =>
-      prev.map(aluno =>
-        aluno.id === alunoId ? { ...aluno, presente: !aluno.presente } : aluno
-      )
-    );
-  };
-
-  const salvarPresenca = () => {
-    console.log("Presença salva:", alunosPresenca);
-    toast.success("Presença salva com sucesso!", {
-      description: `${alunosPresenca.filter(a => a.presente).length} presentes • ${alunosPresenca.filter(a => !a.presente).length} ausentes`,
-    });
-  };
 
   if (isLoading) {
     return (
