@@ -4,7 +4,7 @@
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { toast } from "sonner";
+//import { toast } from "sonner";
 
 import {
   Home,
@@ -14,16 +14,10 @@ import {
   DollarSign,
   Settings,
   LogOut,
-  BookOpen,
   MessageSquare,
   Trophy,
   Activity,
-  Building2,
-  BarChart3,
-  UserPlus,
-  CreditCard,
-  LifeBuoy,
-  ChartPie,
+
   ChartSpline,
 } from "lucide-react";
 
@@ -52,7 +46,7 @@ export function Sidebar({ userType, userName, role }: SidebarProps) {
   
 
   // HOOK SEMPRE NO TOPO - nunca condicional
-  const { config, isLoading } = useEscolinhaConfig();
+  const { config } = useEscolinhaConfig();
 
   const menuKey = JSON.stringify(config);
 
@@ -72,6 +66,7 @@ export function Sidebar({ userType, userName, role }: SidebarProps) {
       { icon: Users, label: "Alunos Futebol", href: "/aluno" },
       { icon: User, label: "Responsáveis", href: "/responsavel" },
       { icon: Users, label: "Funcionários", href: "/funcionario" },
+      { icon: Users, label: "Treinador", href: "/treinador" },
       { icon: Calendar, label: "Treinos", href: "/treinos" },
       { icon: ChartSpline, label: "Financeiro", href: "/financeiro" },
       { icon: DollarSign, label: "Inadimplentes", href: "/inadimplentes" },
@@ -97,69 +92,28 @@ export function Sidebar({ userType, userName, role }: SidebarProps) {
   }
 
   // === TREINADOR ===
-  else if (userType === "FUNCIONARIO" && role === "treinador") {
-    items = [
-      { icon: Home, label: "Meu Dashboard", href: "/treinador" },
-      { icon: Calendar, label: "Planos de Treinos", href: "/treinador/plano-treino" },
-      { icon: Users, label: "Marcar Presença", href: "/treinador/marcar-presenca" },
-      { icon: Users, label: "Meus Alunos", href: "/treinador/meus-alunos" },
-      { icon: MessageSquare, label: "Mensagens", href: "/treinador/mensagens" },
-    ];
+  else if (userType === "FUNCIONARIO" && (role === "treinador" || role === "TREINADOR")) {
+  items = [
+    { icon: Home, label: "Meu Dashboard", href: "/treinador" },
+    { icon: Calendar, label: "Meus Treinos", href: "/treinos" },
+    { icon: Users, label: "Meus Alunos", href: "/treinador/meus-alunos" },
+    { icon: Users, label: "Marcar Presença", href: "/treinador/marcar-presenca" },
+    { icon: MessageSquare, label: "Mensagens", href: "/treinador/mensagens" },
+  ];
 
     // Aulas Extras para treinador (se ativado)
     if (aulasExtrasAtivas) {
       items.splice(4, 0, { icon: Trophy, label: "Aulas Extras", href: "/treinador/aulas-extras" });
     }
-  }
-/*
-  // === ALUNO ===
-  else if (userType === "ALUNO") {
-    items = [
-      { icon: Home, label: "Meu Dashboard", href: "/dashboarduser/aluno-dashboard" },
-      { icon: Trophy, label: "Meu Progresso", href: "/dashboarduser/aluno-dashboard/progresso" },
-      { icon: BookOpen, label: "Treinos", href: "/dashboarduser/aluno-dashboard/treinos" },
-      { icon: MessageSquare, label: "Mensagens", href: "/dashboarduser/aluno-dashboard/mensagens" },
-    ];
+    items.push({ icon: MessageSquare, label: "Mensagens", href: "/treinador/mensagens" });
   }
 
-  // === RESPONSÁVEL ===
-  else if (userType === "RESPONSAVEL") {
-    items = [
-      { icon: Home, label: "Meu Dashboard", href: "/dashboarduser/responsavel-dashboard" },
-      { icon: Users, label: "Meus Filhos", href: "/dashboarduser/responsavel-dashboard/filhos" },
-      { icon: DollarSign, label: "Pagamentos", href: "/dashboarduser/responsavel-dashboard/pagamentos" },
-      { icon: MessageSquare, label: "Comunicados", href: "/dashboarduser/responsavel-dashboard/comunicados" },
-    ];
-  }
-
-  // === CROSSFIT ===
-  else if (userType === "CROSSFIT") {
-    items = [
-      { icon: Home, label: "Meu Dashboard", href: "/dashboarduser/crossfit-dashboard" },
-      { icon: DollarSign, label: "Pagamentos", href: "/dashboarduser/crossfit-dashboard/pagamentos" },
-    ];
-  }
-
-  // === SUPERADMIN ===
-  else if (userType === "SUPERADMIN") {
-    items = [
-      { icon: Home, label: "Dashboard", href: "/superadmin" },
-      { icon: Building2, label: "Escolinhas", href: "/superadmin/tenants" },
-      { icon: UserPlus, label: "Criar Nova Escolinha", href: "/superadmin/tenants/novo" },
-      { icon: DollarSign, label: "Pagamentos SaaS", href: "/superadmin/pagamentos" },
-      { icon: CreditCard, label: "Assinaturas", href: "/superadmin/assinaturas" },
-      { icon: BarChart3, label: "Relatórios Globais", href: "/superadmin/relatorios" },
-      { icon: Settings, label: "Configurações SaaS", href: "/superadmin/configuracoes" },
-      { icon: LifeBuoy, label: "Suporte", href: "/superadmin/suporte" },
-    ];
-  }
-*/
   return (
     <div key={menuKey} className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 bg-slate-900 text-white lg:border-r lg:border-gray-200">
       <div className="flex flex-col h-full">
         {/* Logo */}
         <div className="flex items-center justify-center h-16 border-b border-gray-700">
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <h1 className="text-2xl font-bold bg-linear-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
             EDUPAY
           </h1>
         </div>
@@ -187,7 +141,7 @@ export function Sidebar({ userType, userName, role }: SidebarProps) {
         <div className="border-t border-gray-700 p-4">
           <div className="flex items-center gap-3">
             <Avatar>
-              <AvatarFallback className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+              <AvatarFallback className="bg-linear-to-r from-blue-600 to-purple-600 text-white">
                 {userName.split(" ").map((n) => n[0]).join("").toUpperCase()}
               </AvatarFallback>
             </Avatar>

@@ -26,7 +26,7 @@ function InnerDashboardLayout({ children }: { children: React.ReactNode }) {
   // Redirecionamento apenas no cliente
   useEffect(() => {
     if (!isLoading && user) {
-      if (!["ADMIN", "FUNCIONARIO"].includes(user.role?.toUpperCase() || "")) {
+      if (!["ADMIN", "FUNCIONARIO"].includes(user.role?.toUpperCase()  || "")) {
         router.push("/login");
       }
     }

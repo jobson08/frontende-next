@@ -2,8 +2,6 @@
 "use client";
 
 import { QueryProvider } from "@/src/components/QueryProvider";
-
-import { Navbar } from "@/src/components/Layout/Navbar";
 import { Sidebar } from "@/src/components/Layout/Sidebar";
 import { useAuth } from "@/src/hooks/useAuth";
 import { useEffect } from "react";

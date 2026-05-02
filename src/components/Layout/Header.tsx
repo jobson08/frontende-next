@@ -2,7 +2,7 @@
 // src/components/layout/Navbar.tsx
 "use client";
 
-import { useRouter } from "next/navigation";
+//import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "../ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "../ui/sheet";
@@ -14,15 +14,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from "@/src/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage  } from "../ui/avatar";
+import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Badge } from "@/src/components/ui/badge";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Calendar, DollarSign, Home, LogOut, Menu, Trophy, User, Users,
-  Bell, Activity, BookOpen, MessageSquare,
-  Building2, BarChart3, Settings, UserPlus, CreditCard, LifeBuoy,
-  ChartPie,
+  Bell, Activity,  MessageSquare,
+  Settings,
+  
   ChartSpline
 } from "lucide-react";
 import { useAuth } from "@/src/hooks/useAuth";
@@ -50,7 +50,7 @@ const Navbar = ({
   const pathname = usePathname();
   const { logout } = useAuth();
   // HOOK SEMPRE NO TOPO - nunca condicional
-  const { config, isLoading } = useEscolinhaConfig();
+  const { config } = useEscolinhaConfig();
 
   const menuKey = JSON.stringify(config); // ou use um contador se preferir
 
@@ -71,6 +71,7 @@ const Navbar = ({
       { icon: Users, label: "Alunos Futebol", href: "/aluno" },
       { icon: User, label: "Responsáveis", href: "/responsavel" },
       { icon: Users, label: "Funcionários", href: "/funcionario" },
+      { icon: Users, label: "Treinador", href: "/treinador" },
       { icon: Calendar, label: "Treinos", href: "/treinos" },
       { icon: ChartSpline, label: "Financeiro", href: "/financeiro" },
       { icon: DollarSign, label: "Inadimplentes", href: "/inadimplentes" },
@@ -96,54 +97,21 @@ const Navbar = ({
   }
 
   // TREINADOR
-  else if (userType === "FUNCIONARIO" && role === "treinador") {
-    items = [
-      { icon: Home, label: "Meu Dashboard", href: "/treinador" },
-      { icon: Calendar, label: "Planos de Treinos", href: "/treinador/plano-treino" },
-      { icon: Users, label: "Marcar Presença", href: "/treinador/marcar-presenca" },
-      { icon: Users, label: "Meus Alunos", href: "/treinador/meus-alunos" },
-      { icon: MessageSquare, label: "Mensagens", href: "/treinador/mensagens" },
-    ];
+  else if (userType === "FUNCIONARIO" && (role === "treinador" || role === "TREINADOR")) {
+  items = [
+    { icon: Home, label: "Meu Dashboard", href: "/treinador" },
+    { icon: Calendar, label: "Meus Treinos", href: "/treinos" },
+    { icon: Users, label: "Meus Alunos", href: "/treinador/meus-alunos" },
+    { icon: Users, label: "Marcar Presença", href: "/treinador/marcar-presenca" },
+    { icon: MessageSquare, label: "Mensagens", href: "/treinador/mensagens" },
+  ];
 
     // Aulas Extras para treinador (se ativado)
     if (aulasExtrasAtivas) {
       items.splice(3, 0, { icon: Trophy, label: "Aulas Extras", href: "/treinador/aulas-extras" });
     }
+     items.push({ icon: MessageSquare, label: "Mensagens", href: "/treinador/mensagens" });
   }
-
-  /* // ALUNO
-   else if (userType === "ALUNO") {
-     items = [
-       { icon: Home, label: "Meu Dashboard", href: "/dashboarduser/aluno-dashboard" },
-       { icon: Trophy, label: "Meu Progresso", href: "/dashboarduser/aluno-dashboard/progresso" },
-       { icon: BookOpen, label: "Treinos", href: "/dashboarduser/aluno-dashboard/treinos" },
-       { icon: MessageSquare, label: "Mensagens", href: "/dashboarduser/aluno-dashboard/mensagens" },
-     ];
-   }
- 
-   // RESPONSÁVEL
-   else if (userType === "RESPONSAVEL") {
-     items = [
-       { icon: Home, label: "Meu Dashboard", href: "/dashboarduser/responsavel-dashboard" },
-       { icon: Users, label: "Meus Filhos", href: "/dashboarduser/responsavel-dashboard/filhos" },
-       { icon: DollarSign, label: "Pagamentos", href: "/dashboarduser/responsavel-dashboard/pagamentos" },
-       { icon: MessageSquare, label: "Comunicados", href: "/dashboarduser/responsavel-dashboard/comunicados" },
-     ];
-   }
- 
-   // SUPERADMIN
-   else if (userType === "SUPERADMIN") {
-     items = [
-       { icon: Home, label: "Dashboard", href: "/superadmin" },
-       { icon: Building2, label: "Escolinhas", href: "/superadmin/tenants" },
-       { icon: UserPlus, label: "Criar Nova Escolinha", href: "/superadmin/tenants/novo" },
-       { icon: DollarSign, label: "Pagamentos SaaS", href: "/superadmin/pagamentos" },
-       { icon: CreditCard, label: "Assinaturas", href: "/superadmin/assinaturas" },
-       { icon: BarChart3, label: "Relatórios Globais", href: "/superadmin/relatorios" },
-       { icon: Settings, label: "Configurações SaaS", href: "/superadmin/configuracoes" },
-       { icon: LifeBuoy, label: "Suporte", href: "/superadmin/suporte" },
-     ];
-   }*/
 
   // Sino de inadimplentes (só ADMIN)
   const isAdmin = userType === "ADMIN" || role === "admin";
@@ -163,7 +131,7 @@ const Navbar = ({
             <div className="flex flex-col h-full">
               {/* LOGO */}
               <div className="flex items-center justify-center h-16 border-b border-gray-200">
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                <h1 className="text-2xl font-bold bg-linear-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                   EDUPAY
                 </h1>
               </div>
@@ -194,7 +162,7 @@ const Navbar = ({
                   <Avatar className="h-10 w-10">
                     
                   { /*  <AvatarImage src={user.fotoUrl|| undefined} />*/}
-                   <AvatarFallback className="bg-gradient-to-br from-blue-600 to-purple-600 text-white">
+                   <AvatarFallback className="bg-linear-to-br from-blue-600 to-purple-600 text-white">
                       {user.name.split(" ").map((n) => n[0]).join("")}
                     </AvatarFallback>
                   </Avatar>
@@ -220,7 +188,7 @@ const Navbar = ({
 
         {/* LOGO CENTRAL */}
         <div className="flex items-center">
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <h1 className="text-2xl font-bold bg-linear-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
             EDUPAY
           </h1>
         </div>
@@ -243,7 +211,7 @@ const Navbar = ({
           <DropdownMenu>
             <DropdownMenuTrigger className="flex items-center gap-3 rounded-full focus:outline-none">
               <Avatar className="h-9 w-9 ring-2 ring-offset-2 ring-purple-400">
-                <AvatarFallback className="bg-gradient-to-br from-blue-600 to-purple-600 text-white text-sm font-medium">
+                <AvatarFallback className="bg-linear-to-br from-blue-600 to-purple-600 text-white text-sm font-medium">
                   {user.name.split(" ").map((n) => n[0]).join("").toUpperCase()}
                 </AvatarFallback>
               </Avatar>
