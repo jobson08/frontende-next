@@ -29,7 +29,7 @@ import { useAuth } from "@/src/hooks/useAuth";
 import { useEscolinhaConfig } from "@/src/context/EscolinhaConfigContext";
 
 interface NavbarProps {
-  userType: "ADMIN" | "SUPERADMIN" | "ALUNO" | "RESPONSAVEL" | "FUNCIONARIO";
+  userType: "ADMIN" | "SUPERADMIN" | "ALUNO" | "TREINADOR" | "FUNCIONARIO";
   user: {
     name: string;
     email: string;
@@ -65,7 +65,7 @@ const Navbar = ({
   let items: Array<{ icon: any; label: string; href: string }> = [];
 
   // ADMIN (DONO DA ESCOLINHA)
-  if (userType === "ADMIN" || (userType === "FUNCIONARIO" && role === "admin")) {
+   if (userType === "ADMIN" ||  role === "admin") {
     const baseItems = [
       { icon: Home, label: "Dashboard", href: "/admin" },
       { icon: Users, label: "Alunos Futebol", href: "/aluno" },
@@ -96,23 +96,31 @@ const Navbar = ({
     console.log('Sidebar ADMIN montada:', items.map(i => i.label));
   }
 
-  // TREINADOR
-  else if (userType === "FUNCIONARIO" && (role === "treinador" || role === "TREINADOR")) {
+  // === TREINADOR ===
+  else if (userType === "TREINADOR" || role === "treinador") {
   items = [
-    { icon: Home, label: "Meu Dashboard", href: "/treinador" },
-    { icon: Calendar, label: "Meus Treinos", href: "/treinos" },
+    { icon: Home, label: "Meu Dashboard", href: "/treinador/dashboard-treinador" },
     { icon: Users, label: "Meus Alunos", href: "/treinador/meus-alunos" },
+    { icon: Calendar, label: "Meus Treinos", href: "/treinador/planos-treinos" },
     { icon: Users, label: "Marcar Presença", href: "/treinador/marcar-presenca" },
     { icon: MessageSquare, label: "Mensagens", href: "/treinador/mensagens" },
+    { icon: Settings, label: "Configurações", href: "/treinador/config-treinador" }
   ];
 
     // Aulas Extras para treinador (se ativado)
     if (aulasExtrasAtivas) {
-      items.splice(3, 0, { icon: Trophy, label: "Aulas Extras", href: "/treinador/aulas-extras" });
+      items.splice(4, 0, { icon: Trophy, label: "Aulas Extras", href: "/treinador/aulas-extras" });
     }
-     items.push({ icon: MessageSquare, label: "Mensagens", href: "/treinador/mensagens" });
   }
 
+  // ==================== FUNCIONÁRIO COMUM (opcional) ====================
+  else if (userType === "FUNCIONARIO") {
+    items = [
+      { icon: Home, label: "Dashboard", href: "/funcionario/dashboard-funcionario" },
+      { icon: Users, label: "Alunos", href: "/aluno" },
+      { icon: Calendar, label: "Treinos", href: "/treinos" },
+    ];
+  }
   // Sino de inadimplentes (só ADMIN)
   const isAdmin = userType === "ADMIN" || role === "admin";
 

@@ -140,8 +140,8 @@ const TreinadorDashboardPage = () => {
   const comLogin = filtered.filter(r => r.email).length;
   const semLogin = totalResponsaveis - comLogin;
 
-   const handleRemover = (funcionario: Treinador) => {
-    setTreinadorParaRemover(funcionario);
+   const handleRemover = (treinador: Treinador) => {
+    setTreinadorParaRemover(treinador);
   };
 
   const confirmarRemocao = () => {
@@ -257,7 +257,7 @@ const TreinadorDashboardPage = () => {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem asChild>
-                        <Link href={`/funcionario/${r.id}`}>
+                        <Link href={`/treinador/${r.id}`}>
                           <Edit className="mr-2 h-4 w-4" />
                           Ver detalhes / Editar
                         </Link>
@@ -318,7 +318,7 @@ const TreinadorDashboardPage = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Funcionario</TableHead>
+                  <TableHead>Treinador</TableHead>
                   <TableHead className="hidden md:table-cell">Contato</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>

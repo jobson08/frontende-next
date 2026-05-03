@@ -26,7 +26,7 @@ import { Avatar, AvatarFallback } from "../ui/avatar";
 import { useAuth } from "@/src/hooks/useAuth";
 import { useEscolinhaConfig } from "@/src/context/EscolinhaConfigContext";
 
-type UserType = "ADMIN" | "SUPERADMIN" | "ALUNO" | "RESPONSAVEL" | "FUNCIONARIO" | "CROSSFIT";
+type UserType = "ADMIN" | "SUPERADMIN"  | "FUNCIONARIO" | "TREINADOR";
 
 interface MenuItem {
   icon: any; // LucideIcon
@@ -60,7 +60,7 @@ export function Sidebar({ userType, userName, role }: SidebarProps) {
   let items: MenuItem[] = [];
 
   // Agora usa os valores dentro do if (sem chamar hook aqui)
-  if (userType === "ADMIN" || (userType === "FUNCIONARIO" && role === "admin")) {
+  if (userType === "ADMIN" ||  role === "admin") {
     const baseItems = [
       { icon: Home, label: "Dashboard", href: "/admin" },
       { icon: Users, label: "Alunos Futebol", href: "/aluno" },
@@ -92,20 +92,29 @@ export function Sidebar({ userType, userName, role }: SidebarProps) {
   }
 
   // === TREINADOR ===
-  else if (userType === "FUNCIONARIO" && (role === "treinador" || role === "TREINADOR")) {
+  else if (userType === "TREINADOR" || role === "treinador") {
   items = [
-    { icon: Home, label: "Meu Dashboard", href: "/treinador" },
-    { icon: Calendar, label: "Meus Treinos", href: "/treinos" },
+    { icon: Home, label: "Meu Dashboard", href: "/treinador/dashboard-treinador" },
     { icon: Users, label: "Meus Alunos", href: "/treinador/meus-alunos" },
+    { icon: Calendar, label: "Meus Treinos", href: "/treinador/planos-treinos" },
     { icon: Users, label: "Marcar Presença", href: "/treinador/marcar-presenca" },
     { icon: MessageSquare, label: "Mensagens", href: "/treinador/mensagens" },
+    { icon: Settings, label: "Configurações", href: "/treinador/config-treinador" }
   ];
 
     // Aulas Extras para treinador (se ativado)
     if (aulasExtrasAtivas) {
       items.splice(4, 0, { icon: Trophy, label: "Aulas Extras", href: "/treinador/aulas-extras" });
     }
-    items.push({ icon: MessageSquare, label: "Mensagens", href: "/treinador/mensagens" });
+  }
+
+  // ==================== FUNCIONÁRIO COMUM (opcional) ====================
+  else if (userType === "FUNCIONARIO") {
+    items = [
+      { icon: Home, label: "Dashboard", href: "/funcionario/dashboard-funcionario" },
+      { icon: Users, label: "Alunos", href: "/aluno" },
+      { icon: Calendar, label: "Treinos", href: "/treinos" },
+    ];
   }
 
   return (

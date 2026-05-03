@@ -14,7 +14,7 @@ import { Button } from "@/src/components/ui/button";
 import { Input } from "@/src/components/ui/input";
 import { Label } from "@/src/components/ui/label";
 import { Checkbox } from "@/src/components/ui/checkbox";
-import { toast } from "sonner";
+import { toast, Toaster } from "sonner";
 import { Mail, Lock, Loader2, Eye, EyeOff } from "lucide-react";
 
 // Schema de login
@@ -102,10 +102,10 @@ const LoginPage = () => {
           redirectTo = from?.includes("/dashboardtenats") ? from : "/admin";
           break;
         case "FUNCIONARIO":
-          redirectTo = from?.includes("/dashboarduser/funcionario-dashboard") ? from : "/dashboarduser/funcionario-dashboard";
+          redirectTo = from?.includes("/funcionario") ? from : "/funcionario/dashboard-funcionario";
           break;
         case "TREINADOR":
-          redirectTo = from?.includes("/treinador") ? from : "/treinador";
+          redirectTo = from?.includes("/treinador") ? from : "/treinador/dashboard-treinador";
           break;
         case "RESPONSAVEL":
           redirectTo = from?.includes("/dashboarduser/responsavel-dashboard") ? from : "/dashboarduser/responsavel-dashboard";
@@ -223,6 +223,7 @@ const LoginPage = () => {
           </form>
         </CardContent>
       </Card>
+      <Toaster position="top-right" richColors closeButton />
     </div>
   );
 };
