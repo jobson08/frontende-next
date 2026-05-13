@@ -1,12 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// src/app/treinos/novo-recorrente/page.tsx
 "use client";
 
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { toast, Toaster } from "sonner";
 
 import { Button } from "@/src/components/ui/button";
 import { Input } from "@/src/components/ui/input";
@@ -15,25 +16,23 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/ca
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/src/components/ui/select";
 import { Checkbox } from "@/src/components/ui/checkbox";
 import { Textarea } from "@/src/components/ui/textarea";
-import { toast } from "sonner";
+import { Loader2, ChevronLeft, Save } from "lucide-react";
 import Link from "next/link";
-import { ChevronLeft, Save, Loader2 } from "lucide-react";
 import api from "@/src/lib/api";
 
 const schema = z.object({
-  nome: z.string().min(3, "Nome obrigatório"),
-  categoria: z.string().min(1, "Categoria obrigatória"),
-  diasSemana: z.array(z.number()).min(1, "Selecione pelo menos um dia"),
-  horaInicio: z.string().regex(/^\d{2}:\d{2}$/, "Hora inválida"),
-  horaFim: z.string().regex(/^\d{2}:\d{2}$/, "Hora inválida"),
-  local: z.string().min(1, "Local obrigatório"),
-  funcionarioTreinadorId: z.string().min(1, "Treinador obrigatório"),
+  nome: z.string().min(3, "Nome do treino é obrigatório"),
+  categoria: z.string().min(1, "Categoria é obrigatória"),
+  horaInicio: z.string().regex(/^\d{2}:\d{2}$/, "Hora de início inválida"),
+  horaFim: z.string().regex(/^\d{2}:\d{2}$/, "Hora de fim inválida"),
+  local: z.string().min(1, "Local é obrigatório"),
+  treinadorId: z.string().min(1, "Treinador é obrigatório"),
   descricao: z.string().optional(),
 });
 
 type FormData = z.infer<typeof schema>;
 
-const diasSemanaOptions = [
+const diasDaSemana = [
   { value: 1, label: "Segunda-feira" },
   { value: 2, label: "Terça-feira" },
   { value: 3, label: "Quarta-feira" },
@@ -44,41 +43,54 @@ const diasSemanaOptions = [
 
 const NovoTreinoRecorrentePage = () => {
   const router = useRouter();
+  const [selectedDays, setSelectedDays] = useState<number[]>([]);
 
   const {
     register,
     handleSubmit,
-    control,
     setValue,
     watch,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { diasSemana: [] }
   });
 
-  // Busca treinadores com tratamento seguro
-  const { data: treinadoresResponse, isLoading: isLoadingTreinadores } = useQuery({
-    queryKey: ["funcionarios-treinadores"],
+  // Busca de Treinadores
+  const { data: treinadores = [], isLoading: loadingTreinadores } = useQuery({
+    queryKey: ["treinadores"],
     queryFn: async () => {
-      const res = await api.get("/tenant/funcionarios-treinadores");
-      return res.data;
+      const res = await api.get("/tenant/treinadores");
+      return res.data.data || [];
     },
   });
 
-  // Normaliza o retorno (pode vir como array direto ou { data: [] })
-  const treinadores = Array.isArray(treinadoresResponse) 
-    ? treinadoresResponse 
-    : treinadoresResponse?.data || [];
+  const createMutation = useMutation({
+    mutationFn: async (data: FormData) => {
+      const payload = {
+        ...data,
+        diasSemana: selectedDays,
+      };
 
-  const onSubmit = async (data: FormData) => {
-    try {
-      await api.post("/tenant/treinos-recorrentes", data);
-      toast.success("Treino recorrente criado com sucesso!");
+      const res = await api.post("/tenant/treinos-recorrentes", payload);
+      return res.data;
+    },
+
+    onSuccess: (response) => {
+      toast.success(response.message || "Treino recorrente criado com sucesso!");
       router.push("/treinos");
-    } catch (err: any) {
+    },
+
+    onError: (err: any) => {
       toast.error(err.response?.data?.error || "Erro ao criar treino recorrente");
+    },
+  });
+
+  const onSubmit = (data: FormData) => {
+    if (selectedDays.length === 0) {
+      toast.error("Selecione pelo menos um dia da semana");
+      return;
     }
+    createMutation.mutate(data);
   };
 
   return (
@@ -101,14 +113,13 @@ const NovoTreinoRecorrentePage = () => {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            
             <div className="space-y-2">
               <Label>Nome do Treino *</Label>
-              <Input placeholder="Técnica Individual Sub-9" {...register("nome")} />
+              <Input placeholder="Treino Sub-11" {...register("nome")} />
               {errors.nome && <p className="text-red-600 text-sm">{errors.nome.message}</p>}
             </div>
 
-            <div className="grid grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label>Categoria *</Label>
                 <Select onValueChange={(v) => setValue("categoria", v)}>
@@ -124,65 +135,66 @@ const NovoTreinoRecorrentePage = () => {
               </div>
 
               <div className="space-y-2">
-                <Label>Local *</Label>
-                <Input placeholder="Quadra Principal" {...register("local")} />
+                <Label>Treinador Responsável *</Label>
+                <Select onValueChange={(v) => setValue("treinadorId", v)} disabled={loadingTreinadores}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o treinador" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {treinadores.map((t: any) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.treinadorId && <p className="text-red-600 text-sm">{errors.treinadorId.message}</p>}
               </div>
             </div>
 
-            {/* Dias da Semana - Multi Seleção */}
+            {/* Dias da Semana */}
             <div className="space-y-3">
               <Label>Dias da Semana *</Label>
               <div className="grid grid-cols-2 gap-3">
-                {diasSemanaOptions.map((dia) => (
-                  <label key={dia.value} className="flex items-center gap-2 cursor-pointer p-2 hover:bg-gray-50 rounded">
+                {diasDaSemana.map((dia) => (
+                  <label 
+                    key={dia.value} 
+                    className="flex items-center gap-3 cursor-pointer p-3 border rounded-lg hover:bg-gray-50 transition-colors"
+                  >
                     <Checkbox
-                      checked={watch("diasSemana")?.includes(dia.value)}
+                      checked={selectedDays.includes(dia.value)}
                       onCheckedChange={(checked) => {
-                        const current = watch("diasSemana") || [];
                         if (checked) {
-                          setValue("diasSemana", [...current, dia.value]);
+                          setSelectedDays(prev => [...prev, dia.value]);
                         } else {
-                          setValue("diasSemana", current.filter(d => d !== dia.value));
+                          setSelectedDays(prev => prev.filter(d => d !== dia.value));
                         }
                       }}
                     />
-                    {dia.label}
+                    <span className="text-sm font-medium">{dia.label}</span>
                   </label>
                 ))}
               </div>
-              {errors.diasSemana && <p className="text-red-600 text-sm">{errors.diasSemana.message}</p>}
+              {selectedDays.length === 0 && (
+                <p className="text-red-600 text-sm">Selecione pelo menos um dia da semana</p>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label>Hora Início *</Label>
                 <Input type="time" {...register("horaInicio")} />
-                {errors.horaInicio && <p className="text-red-600 text-sm">{errors.horaInicio.message}</p>}
               </div>
               <div className="space-y-2">
                 <Label>Hora Fim *</Label>
                 <Input type="time" {...register("horaFim")} />
-                {errors.horaFim && <p className="text-red-600 text-sm">{errors.horaFim.message}</p>}
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label>Treinador *</Label>
-              <Select onValueChange={(v) => setValue("funcionarioTreinadorId", v)} disabled={isLoadingTreinadores}>
-                <SelectTrigger>
-                  <SelectValue placeholder={
-                    isLoadingTreinadores ? "Carregando treinadores..." : "Selecione o treinador"
-                  } />
-                </SelectTrigger>
-                <SelectContent>
-                  {treinadores.map((t: any) => (
-                    <SelectItem key={t.id} value={t.id}>
-                      {t.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {errors.funcionarioTreinadorId && <p className="text-red-600 text-sm">{errors.funcionarioTreinadorId.message}</p>}
+              <Label>Local *</Label>
+              <Input placeholder="Campo Principal" {...register("local")} />
+              {errors.local && <p className="text-red-600 text-sm">{errors.local.message}</p>}
             </div>
 
             <div className="space-y-2">
@@ -191,11 +203,11 @@ const NovoTreinoRecorrentePage = () => {
             </div>
 
             <div className="flex gap-4 pt-6">
-              <Button type="submit" className="flex-1" disabled={isSubmitting}>
+              <Button type="submit" disabled={isSubmitting} className="flex-1">
                 {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Criando...
+                    Criando Treino Recorrente...
                   </>
                 ) : (
                   <>
@@ -212,6 +224,8 @@ const NovoTreinoRecorrentePage = () => {
           </form>
         </CardContent>
       </Card>
+
+      <Toaster position="top-right" richColors closeButton />
     </div>
   );
 };

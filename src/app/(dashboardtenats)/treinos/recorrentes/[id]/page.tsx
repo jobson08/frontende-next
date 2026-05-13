@@ -39,7 +39,9 @@ interface TreinoRecorrente {
   local: string;
   descricao?: string | null;
   ativo: boolean;
-  funcionarioTreinador: { nome: string };
+  treinador: {
+    nome: string;
+  }
 }
 
 interface Aluno {
@@ -150,7 +152,7 @@ const TreinoRecorrenteDetalhePage = () => {
           </CardHeader>
           <CardContent>
             <p><strong>Local:</strong> {treino.local}</p>
-            <p><strong>Treinador:</strong> {treino.funcionarioTreinador.nome}</p>
+            <p><strong>Treinador:</strong> {treino.treinador.nome}</p>
           </CardContent>
         </Card>
       </div>

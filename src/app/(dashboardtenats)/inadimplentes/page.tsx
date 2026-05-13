@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/app/(dashboard)/inadimplentes/page.tsx
 "use client";
 
@@ -27,34 +28,40 @@ import {
   SelectValue,
 } from "@/src/components/ui/select";
 import { Button } from "@/src/components/ui/button";
+import { Input } from "@/src/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/src/components/ui/avatar";
-import { ArrowLeft, Phone, Mail, Send, AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, Phone, Mail, AlertTriangle, ChevronLeft, ChevronRight, Eye, Search } from "lucide-react";
 import Link from "next/link";
 import api from "@/src/lib/api";
+import { Pagination } from "@/src/components/common/Pagination";
 
 interface Inadimplente {
   id: string;
   aluno: string;
+  alunoId: string;
   responsavel: string;
   telefone: string;
   email: string;
   valorDevido: number;
   mesesAtraso: number;
   ultimaMensalidade: string;
-  alunoId: string;
-  modalidade: "futebol" | "crossfit";   // Adicionado
+  modalidade: "futebol" | "crossfit";
+  fotoUrl: string | null;
 }
 
 const InadimplentesPage = () => {
   const [anoSelecionado, setAnoSelecionado] = useState(new Date().getFullYear().toString());
-  const [paginaAtual, setPaginaAtual] = useState(1);
-  const itensPorPagina = 10;
+  const [searchTerm, setSearchTerm] = useState("");
+
+  // Paginação
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const { data: response, isLoading, error, refetch } = useQuery({
     queryKey: ["inadimplentes", anoSelecionado],
     queryFn: async () => {
       const res = await api.get("/tenant/inadimplentes", {
-        params: { ano: anoSelecionado },   // ← Mudado para 'ano'
+        params: { ano: anoSelecionado },
       });
       return res.data;
     },
@@ -64,12 +71,29 @@ const InadimplentesPage = () => {
   const inadimplentes: Inadimplente[] = response?.data || [];
   const totalDevido = response?.totalDevido || 0;
 
-  // Paginação
-  const totalPaginas = Math.ceil(inadimplentes.length / itensPorPagina);
-  const inicio = (paginaAtual - 1) * itensPorPagina;
-  const inadimplentesPaginados = inadimplentes.slice(inicio, inicio + itensPorPagina);
+  // Filtro de busca
+  const filteredInadimplentes = inadimplentes.filter((item) =>
+    item.aluno.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.responsavel.toLowerCase().includes(searchTerm.toLowerCase()) 
+   // item.categoria?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-  if ( isLoading) {
+  // Paginação
+ const totalItems = filteredInadimplentes.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedItems = filteredInadimplentes.slice(startIndex, startIndex + itemsPerPage);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleItemsPerPageChange = (value: number) => {
+    setItemsPerPage(value);
+    setCurrentPage(1);
+  };
+
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
@@ -95,60 +119,58 @@ const InadimplentesPage = () => {
 
   return (
     <div className="p-4 lg:p-8 space-y-6 md:space-y-8 min-h-screen bg-gray-50">
-      {/* Cabeçalho com Filtro por Ano */}
+      {/* Cabeçalho */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        {/*    <Button variant="outline" asChild>
-          <Link href="/financeiro" className="flex items-center gap-2">
-            <ArrowLeft className="h-4 w-4" />
-            Voltar ao Financeiro
-          </Link>
-        </Button>*/}
-
         <div className="text-center flex-1">
-          <h1 className="text-2xl sm:text-3xl font-bold">Inadimplentes</h1>
+          <h1 className="text-3xl font-bold">Inadimplentes</h1>
           <p className="text-sm sm:text-base text-gray-600 mt-1">
             Mensalidades pendentes — <span className="font-semibold text-orange-600">{anoSelecionado}</span>
           </p>
         </div>
 
-        {/* Filtro por Ano */}
         <Select value={anoSelecionado} onValueChange={setAnoSelecionado}>
           <SelectTrigger className="w-full sm:w-48">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             {Array.from({ length: 5 }, (_, i) => {
-              const year = new Date().getFullYear() - 2 + i; // Ex: 2023 até 2027
-              return {
-                value: year.toString(),
-                label: year.toString()
-              };
-            }).map((ano) => (
-              <SelectItem key={ano.value} value={ano.value}>
-                {ano.label}
-              </SelectItem>
-            ))}
+              const year = new Date().getFullYear() - 2 + i;
+              return (
+                <SelectItem key={year} value={year.toString()}>
+                  {year}
+                </SelectItem>
+              );
+            })}
           </SelectContent>
         </Select>
       </div>
+
       {/* Resumo */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-sm">Total Devido</CardTitle></CardHeader>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm">Total Devido</CardTitle>
+          </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-red-600">R$ {totalDevido.toLocaleString("pt-BR")}</div>
+            <div className="text-3xl font-bold text-red-600">
+              R$ {totalDevido.toLocaleString("pt-BR")}
+            </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-sm">Inadimplentes</CardTitle></CardHeader>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm">Inadimplentes</CardTitle>
+          </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-orange-600">{inadimplentes.length}</div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-sm">Média por Devedor</CardTitle></CardHeader>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm">Média por Devedor</CardTitle>
+          </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">
               R$ {inadimplentes.length > 0 ? Math.round(totalDevido / inadimplentes.length).toLocaleString("pt-BR") : "0"}
@@ -157,12 +179,24 @@ const InadimplentesPage = () => {
         </Card>
       </div>
 
-      {/* Tabela de Inadimplentes */}
+      {/* Tabela de Inadimplentes com Busca e Paginação */}
       <Card>
         <CardHeader>
-          <CardTitle>Lista de Inadimplentes</CardTitle>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <CardTitle>Lista de Inadimplentes</CardTitle>
+
+            <div className="relative w-full sm:w-80">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Buscar por aluno ou responsável..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+          </div>
           <CardDescription>
-            Mostrando {inadimplentesPaginados.length} de {inadimplentes.length} registros
+            Mostrando {paginatedItems.length} de {filteredInadimplentes.length} registros
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -179,23 +213,26 @@ const InadimplentesPage = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {inadimplentesPaginados.length === 0 ? (
+                {paginatedItems.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center py-12 text-gray-500">
-                      Nenhum inadimplente encontrado neste mês.
+                      Nenhum inadimplente encontrado.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  inadimplentesPaginados.map((devedor) => (
+                  paginatedItems.map((devedor) => (
                     <TableRow key={devedor.id}>
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-3">
-                          <Avatar className="h-10 w-10">
+                          <Avatar className="h-9 w-9">
+                            <AvatarImage src={devedor.fotoUrl|| undefined} />
                             <AvatarFallback className="bg-red-600 text-white text-sm">
                               {devedor.aluno.substring(0, 2).toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
-                          <span className="truncate">{devedor.aluno}</span>
+                          <Link href={`/aluno/${devedor.alunoId}`} className="hover:underline">
+                            {devedor.aluno}
+                          </Link>
                         </div>
                       </TableCell>
 
@@ -208,7 +245,7 @@ const InadimplentesPage = () => {
                               : "bg-purple-50 text-purple-700 border-purple-200"
                           }
                         >
-                          {devedor.modalidade === "futebol" ? "⚽" : "🏋️"}
+                          {devedor.modalidade === "futebol" ? "⚽ Futebol" : "🏋️ CrossFit"}
                         </Badge>
                       </TableCell>
 
@@ -220,22 +257,24 @@ const InadimplentesPage = () => {
                         R$ {devedor.valorDevido.toLocaleString("pt-BR")}
                       </TableCell>
 
-                      <TableCell className="hidden md:table-cell">
-                        <Badge variant="secondary">
+                      <TableCell className="hidden md:table-cell text-white">
+                        <Badge variant="destructive">
                           {devedor.mesesAtraso} {devedor.mesesAtraso === 1 ? "mês" : "meses"}
                         </Badge>
                       </TableCell>
 
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
+                          <Button size="sm" variant="outline" asChild>
+                            <Link href={`/aluno/${devedor.alunoId}`}>
+                              <Eye className="h-4 w-4" />
+                            </Link>
+                          </Button>
                           <Button size="sm" variant="outline" className="h-8 w-8 p-0">
                             <Phone className="h-4 w-4" />
                           </Button>
                           <Button size="sm" variant="outline" className="h-8 w-8 p-0">
                             <Mail className="h-4 w-4" />
-                          </Button>
-                          <Button size="sm" className="bg-orange-600 hover:bg-orange-700 h-8 px-4 text-xs">
-                            Cobrar
                           </Button>
                         </div>
                       </TableCell>
@@ -247,32 +286,15 @@ const InadimplentesPage = () => {
           </div>
 
           {/* Paginação */}
-          {totalPaginas > 1 && (
-            <div className="flex items-center justify-center gap-4 mt-6">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPaginaAtual((prev) => Math.max(prev - 1, 1))}
-                disabled={paginaAtual === 1}
-              >
-                <ChevronLeft className="h-4 w-4" />
-                Anterior
-              </Button>
-
-              <span className="text-sm text-gray-600">
-                Página {paginaAtual} de {totalPaginas}
-              </span>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPaginaAtual((prev) => Math.min(prev + 1, totalPaginas))}
-                disabled={paginaAtual === totalPaginas}
-              >
-                Próxima
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
+          {totalPages > 1 && (
+            <Pagination
+              currentPage={currentPage}
+              totalItems={totalItems}
+              itemsPerPage={itemsPerPage}
+              onPageChange={handlePageChange}
+              onItemsPerPageChange={handleItemsPerPageChange}
+              className="mt-6"
+            />
           )}
         </CardContent>
       </Card>

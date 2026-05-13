@@ -32,42 +32,6 @@ const DashboarTreinadordPage = () => {
         <p className="text-gray-600 text-lg mt-2">Tudo pronto para os treinos de hoje</p>
       </div>
 
-      {/* CARD PRÓXIMO TREINO */}
-      <Card className="border-2 border-blue-400 bg-linear-to-r from-blue-50 to-cyan-50">
-        <CardHeader>
-          <CardTitle className="text-2xl flex items-center gap-3">
-            <Calendar className="h-8 w-8 text-blue-600" />
-            Próximo Treino: {proximoTreino.hora}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4 text-lg">
-            <div>
-              <p className="font-medium">{proximoTreino.nome}</p>
-              <p className="text-gray-600">{proximoTreino.categoria}</p>
-            </div>
-            <div className="text-right">
-              <p className="font-medium">{proximoTreino.local}</p>
-              <p className="text-gray-600">15 alunos esperados</p>
-            </div>
-          </div>
-          <div className="flex gap-4">
-            <Button asChild size="lg" className="flex-1">
-              <Link href="/treinador/marcar-presenca">
-                <Users className="mr-2 h-5 w-5" />
-                Marcar Presença
-              </Link>
-            </Button>
-            <Button asChild size="lg" variant="outline" className="flex-1">
-              <Link href="/treinador/plano-treino">
-                <BookOpen className="mr-2 h-5 w-5" />
-                Ver Plano
-              </Link>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* RESUMO RÁPIDO */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <Card>
@@ -119,8 +83,45 @@ const DashboarTreinadordPage = () => {
         </Card>
       </div>
 
+        {/* CARD PRÓXIMO TREINO */}
+      <Card className="border-2 border-blue-400 bg-linear-to-r from-blue-50 to-cyan-50">
+        <CardHeader>
+          <CardTitle className="text-2xl flex items-center gap-3">
+            <Calendar className="h-8 w-8 text-blue-600" />
+            Próximo Treino: {proximoTreino.hora}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4 text-lg">
+            <div>
+              <p className="font-medium">{proximoTreino.nome}</p>
+              <p className="text-gray-600">{proximoTreino.categoria}</p>
+            </div>
+            <div className="text-right">
+              <p className="font-medium">{proximoTreino.local}</p>
+              <p className="text-gray-600">15 alunos esperados</p>
+            </div>
+          </div>
+          <div className="flex gap-4">
+            <Button asChild size="lg" className="flex-1">
+              <Link href="/treinador/marcar-presenca">
+                <Users className="mr-2 h-5 w-5" />
+                Marcar Presença
+              </Link>
+            </Button>
+            <Button asChild size="lg" variant="outline" className="flex-1">
+              <Link href="/treinador/plano-treino">
+                <BookOpen className="mr-2 h-5 w-5" />
+                Ver Plano
+              </Link>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+
       {/* AULAS EXTRAS HOJE */}
-    {/*}  {aulasExtrasAtivas && stats.aulasExtrasHoje > 0 && (
+    {/*  {aulasExtrasAtivas && stats.aulasExtrasHoje > 0 && (
         <Card className="border-2 border-yellow-400 bg-linear-to-r from-yellow-50 to-orange-50">
           <CardHeader>
             <CardTitle className="flex items-center gap-3 text-yellow-800">

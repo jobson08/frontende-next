@@ -22,7 +22,7 @@ interface Treino {
   data: string;
   horaInicio: string;
   horaFim: string;
-  funcionarioTreinador: { nome: string } | null;
+  treinador: { nome: string } | null;
   local: string;
 }
 
@@ -34,14 +34,27 @@ interface TreinoRecorrente {
   horaInicio: string;
   horaFim: string;
   local: string;
-  funcionarioTreinador: { nome: string };
+ treinador: { nome: string };
   ativo: boolean;
 }
 
-const formatDate = (dateStr: string) => {
+
+// Função de formatação de data melhorada
+const formatDate = (dateStr: string): string => {
   if (!dateStr) return "—";
-  const [year, month, day] = dateStr.split('-');
-  return `${day}/${month}/${year}`;
+
+  try {
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return dateStr; // fallback se não for data válida
+
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+
+    return `${day}/${month}/${year}`;
+  } catch {
+    return dateStr;
+  }
 };
 
 const TreinosPage = () => {
@@ -58,7 +71,7 @@ const TreinosPage = () => {
   const { data: treinosPorData = [], isLoading: loadingPorData } = useQuery<Treino[]>({
     queryKey: ["treinos-futebol"],
     queryFn: async () => {
-      const res = await api.get("/tenant/treinos-futebol");
+      const res = await api.get("/tenant/treinos");
       return res.data.data || [];
     },
   });
@@ -77,7 +90,7 @@ const TreinosPage = () => {
   // Filtros
   const filteredPorData = treinosPorData.filter(t => {
     const matchesSearch = t.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      t.funcionarioTreinador?.nome?.toLowerCase().includes(searchTerm.toLowerCase());
+      t.treinador?.nome?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategoria = filtroCategoria === "TODAS" || t.categoria === filtroCategoria;
     return matchesSearch && matchesCategoria;
   });
@@ -117,7 +130,7 @@ const TreinosPage = () => {
             </Link>
           </Button>
           <Button asChild variant="outline">
-            <Link href="/treinos/novo-recorrente">
+            <Link href="/treinos/novoTreinoRecorrentes">
               <Repeat className="mr-2 h-5 w-5" />
               Novo Recorrente
             </Link>
@@ -168,21 +181,22 @@ const TreinosPage = () => {
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {paginatedPorData.map((treino) => (
                 <Card key={treino.id} className="hover:shadow-xl transition-shadow">
-                  <CardHeader>
-                    <div className="flex justify-between">
-                      <Badge>{treino.categoria}</Badge>
-                      <span className="text-sm text-gray-500">{formatDate(treino.data)}</span>
-                    </div>
+                   <CardHeader>
+                    <Badge className="w-fit">{treino.categoria}</Badge>
                     <CardTitle className="text-xl">{treino.nome}</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
+                    <div className="flex items-center gap-3 text-sm">
+                      {/*<Calendar className="h-4 w-4" />*/}
+                      {formatDate(treino.data)}
+                    </div>
                     <div className="flex items-center gap-3 text-sm">
                       <Calendar className="h-4 w-4" />
                       {treino.horaInicio} - {treino.horaFim}
                     </div>
                     <div className="flex items-center gap-3 text-sm">
                       <Users className="h-4 w-4" />
-                      {treino.funcionarioTreinador?.nome || "—"}
+                      {treino.treinador?.nome || "—"}
                     </div>
                     <div className="text-sm font-medium">Local: {treino.local}</div>
 
@@ -267,7 +281,7 @@ const TreinosPage = () => {
                       <strong>Local:</strong> {treino.local}
                     </div>
                     <div className="text-sm">
-                      <strong>Treinador:</strong> {treino.funcionarioTreinador.nome}
+                      <strong>Treinador:</strong> {treino.treinador.nome}
                     </div>
 
                     <div className="pt-4 flex gap-2">

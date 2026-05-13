@@ -100,7 +100,7 @@ interface Treino {
   data: string;           // "YYYY-MM-DD"
   horaInicio: string;
   horaFim: string;
-  funcionarioTreinador?: {
+  treinador?: {
     nome: string;
   } | null;
   local: string;
@@ -126,20 +126,22 @@ const AdminDashboardPage = () => {
   const [pagamentoToPay, setPagamentoToPay] = useState<string | null>(null);
 
 // Formata data ISO ou string YYYY-MM-DD para DD/MM/YYYY (sem fuso)
-const formatDateBR = (dateStr: string | Date | null | undefined): string => {
+// Função de formatação de data melhorada
+const formatDate = (dateStr: string): string => {
   if (!dateStr) return "—";
 
-  // Use const aqui
-  const str = typeof dateStr === 'string' ? dateStr : dateStr.toISOString();
+  try {
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return dateStr; // fallback se não for data válida
 
-  // Pega apenas a parte YYYY-MM-DD
-  const match = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (match) {
-    const [, year, month, day] = match;
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+
     return `${day}/${month}/${year}`;
+  } catch {
+    return dateStr;
   }
-
-  return "—";
 };
   // Persistência do modo cards/tabela
   const [viewMode, setViewMode] = useState<"cards" | "table">(() => {
@@ -447,9 +449,9 @@ useQuery<DashboardData>({
                       <div className="min-w-0">
                         <p className="font-medium text-sm truncate">{aula.nome}</p>
                          <p className="text-sm font-medium text-gray-700">
-                          Prof: {aula.funcionarioTreinador?.nome || "—"} - h: {aula.horaInicio} - {aula.horaFim} </p>
+                          Prof: {aula.treinador?.nome || "—"} - h: {aula.horaInicio} - {aula.horaFim} </p>
                         <p className="text-xs text-gray-700">
-                         Catg: {aula.categoria} data {formatDateBR(aula.data)}
+                         Catg: {aula.categoria} data {formatDate(aula.data)}
                         </p>
                       </div>
                     </div>
@@ -472,7 +474,7 @@ useQuery<DashboardData>({
             )}
 
             <Button variant="outline" className="w-full mt-4" asChild>
-              <Link href="/aulas">
+              <Link href="/treinos">
                 Ver agenda completa
               </Link>
             </Button>
@@ -533,7 +535,7 @@ useQuery<DashboardData>({
               </Link>
             </Button>
             <Button asChild variant="outline" className="w-full">
-              <Link href="/funcionarios/novo">
+              <Link href="/funcionario/novo">
                 Novo Funcionário
               </Link>
             </Button>

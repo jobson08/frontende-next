@@ -19,7 +19,7 @@ import {
   Table as TableIcon,
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { toast, Toaster } from "sonner";
 import {
   Card,
   CardContent,
@@ -462,6 +462,9 @@ const FuncionariosPage = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      
+      <Toaster position="top-right" richColors closeButton duration={5000} />
+
     </div>
   );
 };
