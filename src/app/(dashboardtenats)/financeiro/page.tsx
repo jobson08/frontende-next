@@ -51,6 +51,21 @@ ChartJS.register(
   Filler
 );
 
+// ==================== FUNÇÃO DE FORMATAÇÃO DE REAL ====================
+const formatarReal = (valor: number): string => {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(valor);
+};
+
+// Função auxiliar para porcentagem
+const formatarPorcentagem = (valor: number): string => {
+  return `${Math.round(valor)}%`;
+};
+
 interface FinanceiroMensal {
   mes: string;
   receitaReal: number;
@@ -60,7 +75,7 @@ interface FinanceiroMensal {
   alunosTotais: number;
   statusMensalidades: { name: string; value: number }[];
   evolucaoMensal: { mes: string; receita: number }[];
-  evolucaoInadimplencia: { mes: string; valor: number }[];   // ← Novo campo
+  evolucaoInadimplencia: { mes: string; valor: number }[];
 }
 
 const FinanceiroPage = () => {
@@ -114,7 +129,7 @@ const FinanceiroPage = () => {
         callbacks: {
           label: (context: any) => {
             const value = context.parsed.y ?? 0;
-            return `R$ ${Number(value).toLocaleString("pt-BR")}`;
+            return formatarReal(value);
           },
         },
       },
@@ -123,15 +138,13 @@ const FinanceiroPage = () => {
       y: {
         beginAtZero: true,
         ticks: {
-          callback: (value: string | number) => {
-            return `R$ ${Number(value).toLocaleString("pt-BR")}`;
-          },
+          callback: (value: string | number) => formatarReal(Number(value)),
         },
       },
     },
-  } as const; // ← Isso ajuda o TypeScript
+  } as const;
 
-  if ( isLoading) {
+  if (isLoading) {
     return (
       <div className="flex min-h-[70vh] items-center justify-center">
         <div className="text-center">
@@ -189,10 +202,10 @@ const FinanceiroPage = () => {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-green-600">
-              R$ {dados.receitaReal.toLocaleString("pt-BR")}
+              {formatarReal(dados.receitaReal)}
             </div>
             <p className="text-sm text-gray-600 mt-1">
-              {porcentagemMeta}% da meta • R$ {dados.metaReceita.toLocaleString("pt-BR")}
+              {porcentagemMeta}% da meta • {formatarReal(dados.metaReceita)}
             </p>
           </CardContent>
         </Card>
@@ -204,77 +217,60 @@ const FinanceiroPage = () => {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-orange-600">
-                R$ {dados.inadimplencia.toLocaleString("pt-BR")}
+                {formatarReal(dados.inadimplencia)}
               </div>
               <p className="text-xs text-gray-600 mt-1">Clique para ver detalhes →</p>
             </CardContent>
           </Card>
         </Link>
 
-       {/* Alunos Pagantes - CORRIGIDO */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium">Alunos Pagantes Neste mês</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex gap-3 text-3xl font-bold text-emerald-600">
-              <p>Total: </p>
-              {dados.alunosPagantes}
+            <div className="text-3xl font-bold text-emerald-600">
+              {dados.alunosPagantes} / {dados.alunosTotais}
             </div>
             <p className="text-sm text-gray-600 mt-1">
               {dados.alunosTotais} alunos ativos
             </p>
-            {/*<div className="mt-2 text-xs text-gray-500">
-              {dados.alunosTotais > 0 
-                ? Math.round((dados.alunosPagantes / dados.alunosTotais) * 100) 
-                : 0}% pagaram em dia
-            </div>*/}
           </CardContent>
         </Card>
 
-          {/* Taxa de Adimplência - Substitua o card "Status Geral" */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  Adimplência
-                <Badge variant="secondary" className="text-xs">
-                  Este mês
-                </Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="text-center">
-              <div className="text-5xl font-bold text-emerald-600 mb-1">
-                {dados.alunosTotais > 0 
-                  ? Math.round((dados.alunosPagantes / dados.alunosTotais) * 100) 
-                  : 0}%
-              </div>
-              
-              <p className="text-sm text-gray-600">
-                {dados.alunosPagantes} pagaram de {dados.alunosTotais} alunos
-              </p>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              Adimplência
+              <Badge variant="secondary" className="text-xs">Este mês</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-center">
+            <div className="text-5xl font-bold text-emerald-600 mb-1">
+              {dados.alunosTotais > 0 
+                ? Math.round((dados.alunosPagantes / dados.alunosTotais) * 100) 
+                : 0}%
+            </div>
+            
+            <p className="text-sm text-gray-600">
+              {dados.alunosPagantes} pagaram de {dados.alunosTotais} alunos
+            </p>
 
-              <div className="mt-4 h-2 bg-gray-100 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-emerald-500 rounded-full transition-all"
-                  style={{ 
-                    width: `${dados.alunosTotais > 0 ? (dados.alunosPagantes / dados.alunosTotais) * 100 : 0}%` 
-                  }}
-                />
-              </div>
-
-              <p className="text-xs text-gray-500 mt-3">
-                {dados.alunosTotais > 0 
-                  ? `${dados.alunosTotais - dados.alunosPagantes} alunos pendentes/atrasados` 
-                  : 'Nenhum aluno cadastrado'}
-              </p>
-            </CardContent>
-          </Card>
-        
+            <div className="mt-4 h-2 bg-gray-100 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-emerald-500 rounded-full transition-all"
+                style={{ 
+                  width: `${dados.alunosTotais > 0 ? (dados.alunosPagantes / dados.alunosTotais) * 100 : 0}%` 
+                }}
+              />
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Gráficos */}
-        <div className="gap-6">
-         <Card>
+      <div className="gap-6">
+        <Card>
           <CardHeader>
             <CardTitle>Status das Mensalidades</CardTitle>
             <CardDescription>
@@ -306,7 +302,7 @@ const FinanceiroPage = () => {
         </Card>
       </div>
 
-     {/* Gráfico Avançado: Evolução da Receita + Inadimplência */}
+      {/* Gráfico Avançado */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -339,7 +335,7 @@ const FinanceiroPage = () => {
                   tension: 0.3,
                   fill: true,
                   borderWidth: 3,
-                  borderDash: [6, 4], // linha tracejada para destacar
+                  borderDash: [6, 4],
                   pointRadius: 4,
                   pointHoverRadius: 6,
                 },
@@ -348,41 +344,23 @@ const FinanceiroPage = () => {
             options={{
               responsive: true,
               maintainAspectRatio: false,
-              interaction: {
-                mode: 'index',
-                intersect: false,
-              },
+              interaction: { mode: 'index', intersect: false },
               plugins: {
-                legend: { 
-                  position: "bottom" as const,
-                  labels: {
-                    usePointStyle: true,
-                    padding: 25,
-                    font: { size: 13 },
-                  }
-                },
+                legend: { position: "bottom" as const },
                 tooltip: {
-                  backgroundColor: 'rgba(0, 0, 0, 0.85)',
-                  titleFont: { size: 14 },
-                  bodyFont: { size: 13 },
-                  padding: 12,
                   callbacks: {
                     label: (context: any) => {
                       const value = context.parsed.y ?? 0;
-                      return `${context.dataset.label}: R$ ${Number(value).toLocaleString("pt-BR")}`;
+                      return `${context.dataset.label}: ${formatarReal(value)}`;
                     },
                   },
                 },
               },
               scales: {
-                x: {
-                  grid: { color: 'rgba(0,0,0,0.05)' },
-                },
                 y: {
                   beginAtZero: true,
-                  grid: { color: 'rgba(0,0,0,0.05)' },
                   ticks: {
-                    callback: (value: string | number) => `R$ ${Number(value).toLocaleString("pt-BR")}`,
+                    callback: (value: string | number) => formatarReal(Number(value)),
                   },
                 },
               },

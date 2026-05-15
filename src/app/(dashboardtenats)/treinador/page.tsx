@@ -416,18 +416,17 @@ const TreinadorDashboardPage = () => {
               </TableBody>
             </Table>
 
-            <Pagination
-              currentPage={currentPage}
-              totalItems={totalItems}
-              itemsPerPage={itemsPerPage}
-              onPageChange={handlePageChange}
-              onItemsPerPageChange={handleItemsPerPageChange}
-              className="mt-6"
-            />
           </CardContent>
         </Card>
       )}
-
+      <Pagination
+        currentPage={currentPage}
+        totalItems={totalItems}
+        itemsPerPage={itemsPerPage}
+        onPageChange={handlePageChange}
+        onItemsPerPageChange={handleItemsPerPageChange}
+        className="mt-6"
+            />
       {/* AlertDialog de remoção */}
       <AlertDialog open={!!treinadorParaRemover} onOpenChange={() => setTreinadorParaRemover(null)}>
         <AlertDialogContent>

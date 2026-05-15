@@ -236,7 +236,7 @@ const FuncionariosPage = () => {
 
       {/* Conteúdo principal: Cards ou Tabela */}
       {viewMode === "cards" ? (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid  gap-6 md:grid-cols-2 lg:grid-cols-3">
           {paginatedItems.map((r) => (
             <Card key={r.id} className="hover:shadow-lg transition-shadow">
               <CardHeader className="pb-2">
@@ -320,6 +320,7 @@ const FuncionariosPage = () => {
           ))}
         </div>
       ) : (
+        /* ===================== TABELA ===================== */
         <Card>
           <CardContent>
             <Table>
@@ -427,19 +428,18 @@ const FuncionariosPage = () => {
                 ))}
               </TableBody>
             </Table>
-
-            <Pagination
-              currentPage={currentPage}
-              totalItems={totalItems}
-              itemsPerPage={itemsPerPage}
-              onPageChange={handlePageChange}
-              onItemsPerPageChange={handleItemsPerPageChange}
-              className="mt-6"
-            />
           </CardContent>
         </Card>
       )}
-
+      {/* ===================== PAGINAÇÃO SEMPRE VISÍVEL ===================== */}
+      <Pagination
+        currentPage={currentPage}
+        totalItems={totalItems}
+        itemsPerPage={itemsPerPage}
+        onPageChange={handlePageChange}
+        onItemsPerPageChange={handleItemsPerPageChange}
+        className="mt-6"
+      />
       {/* AlertDialog de remoção */}
       <AlertDialog open={!!funcionarioParaRemover} onOpenChange={() => setFuncionarioParaRemover(null)}>
         <AlertDialogContent>

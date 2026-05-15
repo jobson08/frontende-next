@@ -35,6 +35,16 @@ import Link from "next/link";
 import api from "@/src/lib/api";
 import { Pagination } from "@/src/components/common/Pagination";
 
+// ==================== FUNÇÃO DE FORMATAÇÃO DE REAL ====================
+const formatarReal = (valor: number): string => {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(valor);
+};
+
 interface Inadimplente {
   id: string;
   aluno: string;
@@ -74,20 +84,16 @@ const InadimplentesPage = () => {
   // Filtro de busca
   const filteredInadimplentes = inadimplentes.filter((item) =>
     item.aluno.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.responsavel.toLowerCase().includes(searchTerm.toLowerCase()) 
-   // item.categoria?.toLowerCase().includes(searchTerm.toLowerCase())
+    item.responsavel.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // Paginação
- const totalItems = filteredInadimplentes.length;
+  const totalItems = filteredInadimplentes.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedItems = filteredInadimplentes.slice(startIndex, startIndex + itemsPerPage);
 
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-  };
-
+  const handlePageChange = (page: number) => setCurrentPage(page);
   const handleItemsPerPageChange = (value: number) => {
     setItemsPerPage(value);
     setCurrentPage(1);
@@ -153,7 +159,7 @@ const InadimplentesPage = () => {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-red-600">
-              R$ {totalDevido.toLocaleString("pt-BR")}
+              {formatarReal(totalDevido)}
             </div>
           </CardContent>
         </Card>
@@ -173,7 +179,9 @@ const InadimplentesPage = () => {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">
-              R$ {inadimplentes.length > 0 ? Math.round(totalDevido / inadimplentes.length).toLocaleString("pt-BR") : "0"}
+              {inadimplentes.length > 0 
+                ? formatarReal(Math.round(totalDevido / inadimplentes.length)) 
+                : "R$ 0,00"}
             </div>
           </CardContent>
         </Card>
@@ -225,7 +233,7 @@ const InadimplentesPage = () => {
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-3">
                           <Avatar className="h-9 w-9">
-                            <AvatarImage src={devedor.fotoUrl|| undefined} />
+                            <AvatarImage src={devedor.fotoUrl || undefined} />
                             <AvatarFallback className="bg-red-600 text-white text-sm">
                               {devedor.aluno.substring(0, 2).toUpperCase()}
                             </AvatarFallback>
@@ -254,7 +262,7 @@ const InadimplentesPage = () => {
                       </TableCell>
 
                       <TableCell className="hidden md:table-cell font-medium text-red-600">
-                        R$ {devedor.valorDevido.toLocaleString("pt-BR")}
+                        {formatarReal(devedor.valorDevido)}
                       </TableCell>
 
                       <TableCell className="hidden md:table-cell text-white">
@@ -286,16 +294,14 @@ const InadimplentesPage = () => {
           </div>
 
           {/* Paginação */}
-          {totalPages > 1 && (
-            <Pagination
-              currentPage={currentPage}
-              totalItems={totalItems}
-              itemsPerPage={itemsPerPage}
-              onPageChange={handlePageChange}
-              onItemsPerPageChange={handleItemsPerPageChange}
-              className="mt-6"
-            />
-          )}
+          <Pagination
+            currentPage={currentPage}
+            totalItems={totalItems}
+            itemsPerPage={itemsPerPage}
+            onPageChange={handlePageChange}
+            onItemsPerPageChange={handleItemsPerPageChange}
+            className="mt-6"
+          />
         </CardContent>
       </Card>
     </div>

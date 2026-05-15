@@ -33,6 +33,16 @@ import { useEscolinhaConfig } from "@/src/context/EscolinhaConfigContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/src/components/ui/dialog";
 import dynamic from 'next/dynamic';
 
+const formatarReal = (valor: number | null | undefined): string => {
+  if (valor == null || isNaN(valor)) return "R$ 0,00";
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(valor);
+};
+
 const ImageUploader = dynamic(
   () => import("@/src/components/ImageUploader"), // Ajuste o caminho se necessário
   {
@@ -193,10 +203,15 @@ useEffect(() => {
       const resConfig = await api.get("/tenant/config/escolinha");
       const config = resConfig.data.data || {};
 
+    //  console.log("📥 Configuração carregada do banco:", config); // Debug
+
       geralForm.reset({
         nomeEscolinha: config.nome || "Escolinha",
-        mensagemBoasVindas: config.mensagemBoasVindas || "",
+        mensagemBoasVindas: config.mensagemBoasVindas || config.mensagem_boas_vindas || "", // aceita variações
       });
+
+      // Força atualização do campo (backup)
+      geralForm.setValue("mensagemBoasVindas", config.mensagemBoasVindas || "");
 
       // Carrega professores (funcionários treinadores)
       try {
@@ -296,7 +311,8 @@ useEffect(() => {
   };
 
   loadConfig();
-}, [geralForm, valoresForm, aulasExtrasForm, crossfitForm, pagamentoForm]);
+}, 
+[geralForm, valoresForm, aulasExtrasForm, crossfitForm, pagamentoForm]);
 
   // Salvamentos
   const salvarGeral = async (data: GeralFormData) => {
@@ -539,46 +555,53 @@ const salvarCrossfit = async () => {
             </CardHeader>
 
             <CardContent>
-              <form onSubmit={geralForm.handleSubmit(salvarGeral)} className="space-y-8">
-                {/* Logo da Escolinha - usando o componente reutilizável */}
-                <div suppressHydrationWarning={true} className="flex justify-center py-6 border-b">
-                 <ImageUploader
-                  currentImageUrl={logoPreview}
-                  entityName={geralForm.watch("nomeEscolinha") || "Escolinha"}
-                  uploadEndpoint="/tenant/upload/escolinha"
-                  deleteEndpoint="/tenant/upload/escolinha"
-                  onUploadSuccess={(url) => setLogoPreview(url)}
-                  onRemove={() => setLogoPreview(null)}
-                  size="lg"
-                  className="py-6 border-b"
-                />
-                <div className="space-y-2">
-                  <Label>Nome da Escolinha</Label>
-                  <Input {...geralForm.register("nomeEscolinha")} />
-                </div>
-              </div>
-              
-                <div className="space-y-2">
-                  <Label>Mensagem de Boas-vindas</Label>
-                  <Textarea rows={4} {...geralForm.register("mensagemBoasVindas")} />
-                </div>
+             <form onSubmit={geralForm.handleSubmit(salvarGeral)} className="space-y-8">
+        {/* Logo */}
+        <div suppressHydrationWarning={true} className="flex justify-center py-6 border-b">
+          <ImageUploader
+            currentImageUrl={logoPreview}
+            entityName={geralForm.watch("nomeEscolinha") || "Escolinha"}
+            uploadEndpoint="/tenant/upload/escolinha"
+            deleteEndpoint="/tenant/upload/escolinha"
+            onUploadSuccess={(url) => setLogoPreview(url)}
+            onRemove={() => setLogoPreview(null)}
+            size="lg"
+          />
+        </div>
 
-                <div className="flex justify-end">
-                  <Button 
-                    type="submit" 
-                    disabled={geralForm.formState.isSubmitting || isSaving}
-                  >
-                    {geralForm.formState.isSubmitting || isSaving ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Salvando...
-                      </>
-                    ) : (
-                      "Salvar Geral"
-                    )}
-                  </Button>
-                </div>
-              </form>
+        <div className="space-y-2">
+          <Label>Nome da Escolinha</Label>
+          <Input {...geralForm.register("nomeEscolinha")} />
+        </div>
+
+        <div className="space-y-2">
+          <Label>Mensagem de Boas-vindas</Label>
+          <Textarea 
+            rows={6} 
+            placeholder="Bem-vindo à nossa escolinha! Aqui você encontra..." 
+            {...geralForm.register("mensagemBoasVindas")} 
+          />
+          <p className="text-xs text-gray-500">
+            Esta mensagem aparecerá para os responsáveis e alunos no login.
+          </p>
+        </div>
+
+        <div className="flex justify-end">
+          <Button 
+            type="submit" 
+            disabled={geralForm.formState.isSubmitting || isSaving}
+          >
+            {geralForm.formState.isSubmitting || isSaving ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Salvando...
+              </>
+            ) : (
+              "Salvar Geral"
+            )}
+          </Button>
+        </div>
+      </form>
             </CardContent>
           </Card>
         </TabsContent>
@@ -598,12 +621,15 @@ const salvarCrossfit = async () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-4">
                   <Label className="text-lg font-semibold">Mensalidade Futebol</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    {...valoresForm.register("valorMensalidadeFutebol", { valueAsNumber: true })}
-                    className="text-xl font-bold h-10"
-                  />
+                  <div className="text-2xl font-bold text-green-600">
+                    {formatarReal(valoresForm.watch("valorMensalidadeFutebol"))}
+                  </div>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      {...valoresForm.register("valorMensalidadeFutebol", { valueAsNumber: true })}
+                      className="text-xl font-bold h-10"
+                    />
                   {valoresForm.formState.errors.valorMensalidadeFutebol && (
                     <p className="text-red-500 text-sm">
                       {valoresForm.formState.errors.valorMensalidadeFutebol.message}
@@ -984,7 +1010,7 @@ const salvarCrossfit = async () => {
                 <div className="flex flex-col items-center gap-4 py-6 border-b">
                   <Avatar className="h-40 w-40 ring-4 ring-red-100">
                     <AvatarImage src={crossfitBanner || undefined} />
-                    <AvatarFallback className="bg-gradient-to-br from-red-600 to-orange-600 text-white text-4xl font-bold">
+                    <AvatarFallback className="bg-linear-to-br from-red-600 to-orange-600 text-white text-4xl font-bold">
                       CF
                     </AvatarFallback>
                   </Avatar>
@@ -1021,13 +1047,16 @@ const salvarCrossfit = async () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Mensalidade Crossfit</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      placeholder="ex: 149"
-                      {...crossfitForm.register("valorMensalidadeCrossfit", { valueAsNumber: true })}
-                    />
+                    <Label className="text-lg font-semibold">Mensalidade CrossFit</Label>
+                      <div className="text-2xl font-bold text-green-600">
+                        {formatarReal(valoresForm.watch("valorMensalidadeCrossfit"))}
+                      </div>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="ex: 149"
+                          {...crossfitForm.register("valorMensalidadeCrossfit", { valueAsNumber: true })}
+                        />
                     {crossfitForm.formState.errors.valorMensalidadeCrossfit && (
                       <p className="text-red-500 text-sm">
                         {crossfitForm.formState.errors.valorMensalidadeCrossfit.message}

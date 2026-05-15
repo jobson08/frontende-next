@@ -231,18 +231,6 @@ const deleteMutation = useMutation({
           </Button>
         </div>
       </div>
-
-      {/* Busca */}
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-        <Input
-          placeholder="Buscar por nome, telefone ou responsável..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-10"
-        />
-      </div>
-
       {/* Cards de Totais */}
       <div className="grid gap-6 md:grid-cols-3">
         <Card>
@@ -286,7 +274,19 @@ const deleteMutation = useMutation({
           </CardContent>
         </Card>
       </div>
- {/* Alternância de visualização */}
+
+        {/* Busca */}
+      <div className="relative max-w-md">
+        <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+        <Input
+          placeholder="Buscar por nome, telefone ou responsável..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="pl-10"
+        />
+      </div>
+
+      {/* Alternância de visualização */}
           <div className="flex items-center gap-2s p-1 rounded-lg">
             <Button
               variant={viewMode === "cards" ? "default" : "ghost"}
@@ -314,7 +314,6 @@ const deleteMutation = useMutation({
           {paginatedItems.map((aluno) => {
             const idade = calcularIdade(aluno.dataNascimento);
             const isMaior = idade >= 18;
-
             return (
               <Card key={aluno.id} className="hover:shadow-lg transition-shadow">
                 <CardHeader className="pb-2">
@@ -421,13 +420,13 @@ const deleteMutation = useMutation({
                     <Badge className="text-xs bg-green-600 text-white">
                       Tem login
                     </Badge>
-                  )}
+                  )}         
                 </CardContent>
               </Card>
             );
           })}
         </div>
-      ) : (
+       ) : (
         <Card>
           <CardContent>
             <Table>
@@ -552,17 +551,20 @@ const deleteMutation = useMutation({
                 })}
               </TableBody>
             </Table>
-
-            <Pagination
-              currentPage={currentPage}
-              totalItems={totalItems}
-              itemsPerPage={itemsPerPage}
-              onPageChange={handlePageChange}
-              onItemsPerPageChange={handleItemsPerPageChange}
-              className="mt-6"
-            />
           </CardContent>
         </Card>
+      )}
+
+      {/* ===================== PAGINAÇÃO (FORA DOS BLOCOS) ===================== */}
+      {totalPages > 1 && (
+        <Pagination
+          currentPage={currentPage}
+          totalItems={totalItems}
+          itemsPerPage={itemsPerPage}
+          onPageChange={handlePageChange}
+          onItemsPerPageChange={handleItemsPerPageChange}
+          className="mt-6"
+        />
       )}
 
       {/* AlertDialog de remoção */}

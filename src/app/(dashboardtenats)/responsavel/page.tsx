@@ -435,8 +435,11 @@ const ResponsaveisPage = () => {
                 ))}
               </TableBody>
             </Table>
+          </CardContent>
+        </Card>
+      )}
 
-            <Pagination
+       <Pagination
               currentPage={currentPage}
               totalItems={totalItems}
               itemsPerPage={itemsPerPage}
@@ -444,9 +447,6 @@ const ResponsaveisPage = () => {
               onItemsPerPageChange={handleItemsPerPageChange}
               className="mt-6"
             />
-          </CardContent>
-        </Card>
-      )}
 
       {/* AlertDialog de remoção */}
       <AlertDialog open={!!responsavelParaRemover} onOpenChange={() => setResponsavelParaRemover(null)}>
