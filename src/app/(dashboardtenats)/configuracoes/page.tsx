@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/app/(dashboard)/configuracoes/page.tsx
 "use client";
@@ -92,7 +92,7 @@ const crossfitSchema = z.object({
   mostrarSidebar: z.boolean().default(false),
   nomeServicoCrossfit: z.string().min(3, "Nome do serviço obrigatório").optional(),
   valorMensalidadeCrossfit: z.number().positive("Valor obrigatório").optional(),
-  professorCrossfitId: z.string().uuid("Professor obrigatório").optional(),
+  treinadorId: z.string().uuid("Treinador obrigatório").optional(),
   limiteVagasCrossfit: z.number().int().positive().optional().default(15),
   descricao: z.string().optional(), // ← novo campo (opcional)
 });
@@ -128,7 +128,7 @@ export default function ConfiguracoesAdminPage() {
   const [crossfitBanner, setCrossfitBanner] = useState<string | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const crossfitInputRef = useRef<HTMLInputElement>(null);
-  const [professores, setProfessores] = useState<any[]>([]);
+  const [treinador, setTreinador] = useState<any[]>([]);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -179,7 +179,7 @@ const aulasExtrasForm = useForm<AulasExtrasForm>({
       mostrarSidebar: false,
       nomeServicoCrossfit: "",
       valorMensalidadeCrossfit: 0,
-      professorCrossfitId: "",
+      treinadorId: "",
       limiteVagasCrossfit: 15,
       descricao: "",
     }
@@ -213,15 +213,15 @@ useEffect(() => {
       // Força atualização do campo (backup)
       geralForm.setValue("mensagemBoasVindas", config.mensagemBoasVindas || "");
 
-      // Carrega professores (funcionários treinadores)
+      // Carrega treinador (funcionários treinadores)
       try {
-        const resProf = await api.get("/tenant/funcionarios"); // ajuste rota se for diferente
-        setProfessores(resProf.data.data || []);
-        console.log("Professores carregados:", resProf.data.data?.length || 0);
+        const resProf = await api.get("/tenant/treinadores"); // ajuste rota se for diferente
+        setTreinador(resProf.data.data || []);
+        console.log("treinador carregados:", resProf.data.data?.length || 0);
       } catch (err) {
-        console.error("Erro ao carregar professores:", err);
-        toast.error("Falha ao carregar lista de professores");
-        setProfessores([]);
+        console.error("Erro ao carregar treinador:", err);
+        toast.error("Falha ao carregar lista de treinador");
+        setTreinador([]);
       }
 
       // Carrega valores (mensalidade futebol, crossfit, vencimento)
@@ -246,7 +246,7 @@ useEffect(() => {
           mostrarSidebar: config.mostrarCrossfitSidebar ?? false,
           nomeServicoCrossfit: turmaPadrao?.nome || config.nomeServicoCrossfit || "",
           valorMensalidadeCrossfit: turmaPadrao?.valorMensalidade || config.valorMensalidadeCrossfit || 0,
-          professorCrossfitId: turmaPadrao?.professorId || config.professorCrossfitId || "",
+          treinadorId: turmaPadrao?.treinadorId || config.treinadorId || "",
           limiteVagasCrossfit: turmaPadrao?.vagasMax || config.limiteVagasCrossfit || 15,
         });
 
@@ -260,7 +260,7 @@ useEffect(() => {
           mostrarSidebar: config.mostrarCrossfitSidebar ?? false,
           nomeServicoCrossfit: config.nomeServicoCrossfit || "",
           valorMensalidadeCrossfit: config.valorMensalidadeCrossfit || 0,
-          professorCrossfitId: config.professorCrossfitId || "",
+          treinadorId: config.treinadorId || "",
           limiteVagasCrossfit: config.limiteVagasCrossfit || 15,
         });
       }
@@ -344,23 +344,6 @@ useEffect(() => {
   }
 };
   
-//SALVAR AULAS EXTRAS
-/*const salvarAulasExtras = async () => {
-  setIsSaving(true);
-  try {
-    const ativar = aulasExtrasForm.getValues("ativarAulasExtras");
-    await api.put("/tenant/config/aulas-extras/activation", { ativarAulasExtras: ativar });
-    toast.success("Ativação atualizada com sucesso!");
-    await refreshConfig();
-  } catch (err: any) {
-    toast.error("Erro ao atualizar ativação", {
-      description: err.response?.data?.error || "Tente novamente",
-    });
-  } finally {
-    setIsSaving(false);
-  }
-};*/
-
 //Modal Editar Aula Esxtra
 const openEditModal = (aula: any) => {
   setEditingAula(aula);
@@ -415,8 +398,8 @@ const salvarCrossfit = async () => {
       toast.error("Valor mensal deve ser maior que 0");
       return;
     }
-    if (!data.professorCrossfitId) {
-      toast.error("Selecione um Professor responsável");
+    if (!data.treinadorId) {
+      toast.error("Selecione um Treinador responsável");
       return;
     }
 
@@ -424,7 +407,7 @@ const salvarCrossfit = async () => {
     const payload = {
       nome: data.nomeServicoCrossfit.trim(),
       valorMensalidade: data.valorMensalidadeCrossfit,
-      professorId: data.professorCrossfitId,
+      treinadorId: data.treinadorId,
       vagasMax: data.limiteVagasCrossfit ?? 15,
       horario: "Horário padrão (editável na gestão)", // opcional
       descricao: data.descricao?.trim() || undefined,
@@ -458,7 +441,7 @@ const salvarCrossfit = async () => {
         ...data,
         nomeServicoCrossfit: turmaAtual.nome,
         valorMensalidadeCrossfit: turmaAtual.valorMensalidade,
-        professorCrossfitId: turmaAtual.professorId,
+        treinadorId: turmaAtual.treinadorId,
         limiteVagasCrossfit: turmaAtual.vagasMax,
       });
     }
@@ -1065,25 +1048,25 @@ const salvarCrossfit = async () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Professor responsável</Label>
+                    <Label>Treinador responsável</Label>
                     <Select
-                      value={crossfitForm.watch("professorCrossfitId") || ""}
-                      onValueChange={(value) => crossfitForm.setValue("professorCrossfitId", value)}
+                      value={crossfitForm.watch("treinadorId") || ""}
+                      onValueChange={(value) => crossfitForm.setValue("treinadorId", value)}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Selecione o professor" />
+                        <SelectValue placeholder="Selecione o treinador" />
                       </SelectTrigger>
                       <SelectContent>
-                        {professores.map((prof) => (
+                        {treinador.map((prof) => (
                           <SelectItem key={prof.id} value={prof.id}>
                             {prof.nome}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                    {crossfitForm.formState.errors.professorCrossfitId && (
+                    {crossfitForm.formState.errors.treinadorId && (
                       <p className="text-red-500 text-sm">
-                        {crossfitForm.formState.errors.professorCrossfitId.message}
+                        {crossfitForm.formState.errors.treinadorId.message}
                       </p>
                     )}
                   </div>

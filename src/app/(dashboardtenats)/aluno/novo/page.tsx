@@ -5,12 +5,11 @@ import { useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast, Toaster } from "sonner";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Camera, ChevronLeft, Loader2, Trash2, UserPlus } from "lucide-react";
-import dynamic from "next/dynamic";
 
 import { Button } from "@/src/components/ui/button";
 import { Input } from "@/src/components/ui/input";
@@ -18,24 +17,11 @@ import { Label } from "@/src/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/src/components/ui/select";
 import { Textarea } from "@/src/components/ui/textarea";
+import { Avatar, AvatarFallback, AvatarImage } from "@/src/components/ui/avatar";
 import api from "@/src/lib/api";
 import InputTelefone from "@/src/components/common/InputTelefone";
 import InputData from "@/src/components/common/InputData";
 import InputCPF from "@/src/components/common/InputCPF";
-import { Avatar, AvatarFallback, AvatarImage } from "@/src/components/ui/avatar";
-
-/*const ImageUploader = dynamic(
-  () => import("@/src/components/ImageUploader"), // Ajuste o caminho se necessário
-  {
-    ssr: false,
-    loading: () => (
-      <div className="flex flex-col items-center justify-center py-8">
-        <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mb-6" />
-        <p className="text-gray-500">Carregando uploader de imagem...</p>
-      </div>
-    ),
-  }
-);*/
 
 const formSchema = z.object({
   nome: z.string().min(3, "Nome completo é obrigatório"),
@@ -44,33 +30,30 @@ const formSchema = z.object({
   cpf: z.string().optional(),
   categoria: z.string().min(1, "Categoria é obrigatória"),
   responsavelId: z.string().optional(),
-  emailAluno: z.string().email("E-mail do aluno é obrigatório"),
+  email: z.string().email("E-mail do aluno é obrigatório"),
   observacoes: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
 
 const NovoAlunoPage = () => {
-const router = useRouter();
-  const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
+  const router = useRouter();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const {
     register,
     handleSubmit,
-   // setValue,
+    control,
     watch,
-    control,                    // ← Adicionado
     formState: { errors },
   } = useForm<FormData>({
     resolver: zodResolver(formSchema),
-    mode: "onChange",
   });
 
   const watchedName = watch("nome");
 
-  // Busca responsáveis
-  const { data: responsaveis = [], isLoading: loadingResponsaveis } = useQuery({
+  const { data: responsaveis = [] } = useQuery({
     queryKey: ["responsaveis"],
     queryFn: async () => {
       const res = await api.get("/tenant/responsaveis");
@@ -78,101 +61,94 @@ const router = useRouter();
     },
   });
 
-  
- // Mutation - Criação de Aluno Futebol (com foto)
-const createMutation = useMutation({ mutationFn: async (data: FormData) => {
-    const formData = new FormData();
+  // ==================== 1. Criar Aluno====================
+  const createAlunoMutation = useMutation({
+   mutationFn: async (data: FormData) => {
+      const formData = new FormData();
 
-    // Campos do aluno
-    formData.append("nome", data.nome.trim());
-    formData.append("dataNascimento", data.dataNascimento.split("/").reverse().join("-"));
-    formData.append("telefone", data.telefone.trim());
-    formData.append("cpf", data.cpf ? data.cpf.replace(/\D/g, "") : "");
-    formData.append("categoria", data.categoria.trim());
-    formData.append("responsavelId", data.responsavelId && data.responsavelId !== "none" ? data.responsavelId : "");
-    formData.append("email", data.emailAluno.trim().toLowerCase());
-    formData.append("status", "ATIVO");
-    formData.append("observacoes", data.observacoes?.trim() || "");
+      formData.append("nome", data.nome.trim());
+      formData.append("dataNascimento", data.dataNascimento.split('/').reverse().join('-'));
+      formData.append("telefone", data.telefone.trim());
+      formData.append("cpf", data.cpf ? data.cpf.replace(/\D/g, "") : "");
+      formData.append("categoria", data.categoria.trim());
+      formData.append("responsavelId", data.responsavelId && data.responsavelId !== "none" ? data.responsavelId : "");
+      formData.append("email", data.email.trim().toLowerCase());
+      formData.append("status", "ATIVO");
+      formData.append("observacoes", data.observacoes?.trim() || "");
 
-    // Foto (se selecionada)
-    if (selectedFile) {
-      formData.append("foto", selectedFile);
-      console.log("📸 Foto adicionada ao FormData:", selectedFile.name);
-    }
-
-    // Debug (pode remover depois)
-    console.log("📤 Enviando FormData para criação de aluno...");
-    for (const [key, value] of formData.entries()) {
-      if (value instanceof File) {
-        console.log(`   ${key} → [FILE] ${value.name} (${value.size} bytes)`);
-      } else {
-        console.log(`   ${key} → "${value}"`);
+      // Adiciona a foto se existir
+      if (selectedFile) {
+        formData.append("foto", selectedFile);
+        console.log("📸 Foto incluída no FormData:", selectedFile.name);
       }
-    }
 
-    const response = await api.post("/tenant/alunos", formData);
-    return response.data;
-  },
+      console.log("📤 Enviando FormData completo...");
+
+      const response = await api.post(
+    "/tenant/alunos",
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }
+  );
+
+  return response.data;
+    },
 
   onSuccess: (result) => {
-    toast.success("Aluno criado com sucesso!", {
-      description: (
-        <div className="space-y-3 text-sm">
-          <p>Aluno adicionado à escolinha.</p>
-          <div className="bg-gray-100 p-3 rounded-md border border-gray-300">
-            <p><strong>Nome:</strong> {result.nome}</p>
-            <p><strong>E-mail:</strong> {result.email}</p>
-            {result.senhaTemporaria && (
-              <p><strong>Senha temporária:</strong> {result.senhaTemporaria}</p>
-            )}
+      toast.success("Aluno criado com sucesso!", {
+        description: (
+          <div className="space-y-3 text-sm">
+            <p>Aluno adicionado à escolinha.</p>
+            <div className="bg-gray-100 p-3 rounded-md border border-gray-300">
+              <p><strong>Nome:</strong> {result.nome || "Não informado"}</p>
+              <p><strong>E-mail:</strong> {result.email || "Não gerado"}</p>
+              {result.senhaTemporaria && (
+                <p><strong>Senha temporária:</strong> {result.senhaTemporaria}</p>
+              )}
+            </div>
           </div>
-        </div>
-      ),
-      duration: 25000,
-      action: {
-        label: "Copiar senha",
-        onClick: () => {
-          if (result.senhaTemporaria) {
-            navigator.clipboard.writeText(result.senhaTemporaria);
-            toast("Senha copiada!");
-          }
+        ),
+        duration: 35000,
+        action: {
+          label: "Copiar senha",
+          onClick: () => {
+            if (result.senhaTemporaria) {
+              navigator.clipboard.writeText(result.senhaTemporaria);
+              toast("Senha copiada!");
+            }
+          },
         },
-      },
-    });
+      });
 
-    setTimeout(() => router.push("/aluno"), 1500);
-  },
+      setTimeout(() => router.push("/aluno"), 1800);
+    },
 
-  onError: (err: any) => {
-    const serverError = err.response?.data?.error || err.message || "Erro desconhecido";
-
-    console.error("❌ Erro ao criar aluno:", err.response?.data || err);
-
-    // Tratamento inteligente de erros
-    if (err.response?.status === 409) {
-      toast.error("E-mail já cadastrado", { description: serverError });
-    } else if (err.response?.status === 400) {
-      toast.error("Dados inválidos", { description: serverError });
-    } else {
-      toast.error("Erro ao cadastrar aluno", { description: serverError });
-    }
-  },
-});
-
-    const handleImageChange = (file: File | null, url?: string) => {
-  setSelectedFile(file);
-  if (url) setCurrentImageUrl(url);
-  console.log("📸 Imagem selecionada:", file?.name);
-};
-
-  const handleRemoveImage = () => {
-  setSelectedFile(null);
-  setCurrentImageUrl(null);
-  console.log("🗑️ Imagem removida");
-};
+    onError: (err: any) => {
+      console.error("❌ Erro completo:", err.response?.data || err);
+      toast.error(err.response?.data?.error || "Erro ao criar aluno");
+    },
+  });
 
   const onSubmit = (data: FormData) => {
-    createMutation.mutate(data);
+    createAlunoMutation.mutate(data);
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => setPreviewUrl(reader.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setSelectedFile(null);
+    setPreviewUrl(null);
   };
 
   return (
@@ -198,37 +174,25 @@ const createMutation = useMutation({ mutationFn: async (data: FormData) => {
         </CardHeader>
 
         <CardContent>
-          {createMutation.isPending && (
-            <div className="bg-blue-50 border border-blue-200 rounded-md p-4 text-center mb-6">
-              <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
-              <p className="text-blue-800">Criando aluno... Aguarde</p>
-            </div>
-          )}
-
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-            {/* ImageUploader */}
-            {/* Foto - Versão Simples e Eficiente */}
+            {/* Foto */}
+             {/* Foto */}
             <div className="flex flex-col items-center gap-4 py-6 border-b">
-              <div className="relative">
-                <Avatar className="h-32 w-32 ring-4 ring-blue-100">
-                  <AvatarImage src={currentImageUrl || undefined} />
-                  <AvatarFallback className="bg-linear-to-br from-blue-500 to-purple-600 text-white text-3xl font-bold">
-                    {watchedName ? watchedName.split(" ").map(n => n[0]).join("").toUpperCase() : "?"}
-                  </AvatarFallback>
-                </Avatar>
-              </div>
+              <Avatar className="h-32 w-32 ring-4 ring-blue-100">
+                <AvatarImage src={previewUrl || undefined} />
+                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-4xl font-bold">
+                  {watchedName ? watchedName.split(" ").map(n => n[0]).join("").toUpperCase() : "?"}
+                </AvatarFallback>
+              </Avatar>
 
               <div className="flex gap-3">
                 <Button type="button" variant="outline" onClick={() => document.getElementById("foto-input")?.click()}>
                   <Camera className="mr-2 h-4 w-4" />
-                  Adicionar foto
+                  Escolher Foto
                 </Button>
 
-                {currentImageUrl && (
-                  <Button type="button" variant="destructive" onClick={() => {
-                    setSelectedFile(null);
-                    setCurrentImageUrl(null);
-                  }}>
+                {previewUrl && (
+                  <Button type="button" variant="destructive" onClick={handleRemoveImage}>
                     <Trash2 className="mr-2 h-4 w-4" />
                     Remover
                   </Button>
@@ -239,109 +203,79 @@ const createMutation = useMutation({ mutationFn: async (data: FormData) => {
                 id="foto-input"
                 type="file"
                 accept="image/*"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    setSelectedFile(file);
-                    const reader = new FileReader();
-                    reader.onloadend = () => setCurrentImageUrl(reader.result as string);
-                    reader.readAsDataURL(file);
-                  }
-                }}
+                onChange={handleImageChange}
                 className="hidden"
               />
+              <p className="text-xs text-gray-500">A foto será enviada após a criação do aluno</p>
             </div>
 
-            {/* Campos do formulário */}
+            {/* Formulário */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="nome">Nome completo *</Label>
-                <Input id="nome" placeholder="Nome completo" {...register("nome")} />
+                <Label>Nome completo *</Label>
+                <Input placeholder="Nome completo" {...register("nome")} />
                 {errors.nome && <p className="text-sm text-red-600">{errors.nome.message}</p>}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="cpf">CPF</Label>
-                <InputCPF id="cpf" placeholder="000.000.000-00" {...register("cpf")} />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="dataNascimento">Data de nascimento *</Label>
-                <InputData
-                  id="dataNascimento"
-                  placeholder="dd/mm/aaaa"
-                  maxLength={10}
-                  {...register("dataNascimento")}
-                />
+                <Label>Data de nascimento *</Label>
+                <InputData placeholder="dd/mm/aaaa" {...register("dataNascimento")} />
                 {errors.dataNascimento && <p className="text-sm text-red-600">{errors.dataNascimento.message}</p>}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="telefone">Telefone *</Label>
-                <InputTelefone
-                  id="telefone"
-                  placeholder="(xx) xxxxx-xxxx"
-                  {...register("telefone")}
-                />
+                <Label>Telefone *</Label>
+                <InputTelefone {...register("telefone")} />
                 {errors.telefone && <p className="text-sm text-red-600">{errors.telefone.message}</p>}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="emailAluno">E-mail do aluno *</Label>
-                <Input
-                  id="emailAluno"
-                  type="email"
-                  placeholder="aluno@email.com"
-                  {...register("emailAluno")}
-                />
-                {errors.emailAluno && <p className="text-sm text-red-600">{errors.emailAluno.message}</p>}
+                <Label>CPF</Label>
+                <InputCPF {...register("cpf")} />
               </div>
 
-              {/* Categoria */}
               <div className="space-y-2">
-                <Label htmlFor="categoria">Categoria *</Label>
-            <Controller
-              name="categoria"
-              control={control}
-              render={({ field }) => (
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione a categoria" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Sub-9">Sub-9</SelectItem>
-                    <SelectItem value="Sub-11">Sub-11</SelectItem>
-                    <SelectItem value="Sub-13">Sub-13</SelectItem>
-                    <SelectItem value="Sub-15">Sub-15</SelectItem>
-                    <SelectItem value="Sub-17">Sub-17</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label>E-mail do aluno *</Label>
+                <Input type="email" placeholder="aluno@email.com" {...register("email")} />
+                {errors.email && <p className="text-sm text-red-600">{errors.email.message}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <Label>Categoria *</Label>
+                <Controller
+                  name="categoria"
+                  control={control}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a categoria" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Sub-9">Sub-9</SelectItem>
+                        <SelectItem value="Sub-11">Sub-11</SelectItem>
+                        <SelectItem value="Sub-13">Sub-13</SelectItem>
+                        <SelectItem value="Sub-15">Sub-15</SelectItem>
+                        <SelectItem value="Sub-17">Sub-17</SelectItem>
+                      </SelectContent>
+                    </Select>
                   )}
                 />
                 {errors.categoria && <p className="text-sm text-red-600">{errors.categoria.message}</p>}
               </div>
             </div>
 
-          {/* Responsável */}
-          <div className="space-y-6">
-            <h3 className="text-lg font-semibold border-b pb-2">Responsável (opcional)</h3>
             <div className="space-y-2">
-              <Label>Responsável existente</Label>
+              <Label>Responsável (opcional)</Label>
               <Controller
                 name="responsavelId"
                 control={control}
                 render={({ field }) => (
-                  <Select 
-                    onValueChange={field.onChange} 
-                    value={field.value || undefined}   // ← importante
-                  >
+                  <Select onValueChange={field.onChange} value={field.value || undefined}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione um responsável (opcional)" />
                     </SelectTrigger>
                     <SelectContent>
-                      {/* Opção "Nenhum" sem value vazio */}
                       <SelectItem value="none">Nenhum / Sem responsável</SelectItem>
-                      
                       {responsaveis.map((r: any) => (
                         <SelectItem key={r.id} value={r.id}>
                           {r.nome}
@@ -352,28 +286,18 @@ const createMutation = useMutation({ mutationFn: async (data: FormData) => {
                 )}
               />
             </div>
-          </div>
-            {/* Observações */}
+
             <div className="space-y-2">
-              <Label htmlFor="observacoes">Observações</Label>
-              <Textarea
-                id="observacoes"
-                placeholder="Alergias, restrições, informações importantes..."
-                {...register("observacoes")}
-              />
+              <Label>Observações</Label>
+              <Textarea placeholder="Alergias, restrições..." {...register("observacoes")} />
             </div>
 
-            {/* Botões */}
-            <div className="flex flex-col sm:flex-row gap-4 pt-8 border-t">
-              <Button
-                type="submit"
-                disabled={createMutation.isPending}
-                className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600"
-              >
-                {createMutation.isPending ? (
+            <div className="flex gap-4 pt-8">
+              <Button type="submit" disabled={createAlunoMutation.isPending} className="flex-1">
+                {createAlunoMutation.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Criando aluno...
+                    Criando Aluno...
                   </>
                 ) : (
                   "Criar Aluno"
@@ -391,6 +315,6 @@ const createMutation = useMutation({ mutationFn: async (data: FormData) => {
       <Toaster position="top-right" richColors closeButton />
     </div>
   );
-}
+};
 
 export default NovoAlunoPage;

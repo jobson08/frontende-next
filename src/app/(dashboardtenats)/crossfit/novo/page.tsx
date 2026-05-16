@@ -49,11 +49,11 @@ const NovoAlunoCrossfitPage = () => {
   const router = useRouter();
 
  // const [photoPreview, setPhotoPreview] = useState<string | null>(null);
-  const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
+   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+ // const fileInputRef = useRef<HTMLInputElement>(null);
   
   const {
     register,
@@ -67,22 +67,6 @@ const NovoAlunoCrossfitPage = () => {
 
   const watchedName = watch("nome");
 
-  /*const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setPhotoPreview(reader.result as string);
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const removePhoto = () => {
-    setPhotoPreview(null);
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  };*/
-
-//Mution criação aluno crossfit com foto
-
  const createMutation = useMutation({
     mutationFn: async (data: FormData) => {
       const formData = new FormData();
@@ -95,33 +79,25 @@ const NovoAlunoCrossfitPage = () => {
     formData.append("email", data.email.trim().toLowerCase());
     formData.append("status", "ATIVO");
     formData.append("observacoes", data.observacoes?.trim() || "");
-   // formData.append("password", senhaTemporaria)
 
      // === FOTO ===
     if (selectedFile) {
       formData.append("foto", selectedFile);
-      console.log("✅ Foto adicionada ao FormData:", selectedFile.name, selectedFile.size);
-    } else {
-      console.log("⚠️ Nenhuma foto selecionada");
-    }
+      console.log("✅ Foto adicionada ao FormData:", selectedFile.name, selectedFile.name);
+    } 
+    
+    console.log("📤 Enviando FormData completo...");
 
-    // Debug completo do FormData
-    console.log("📋 Conteúdo do FormData enviado:");
-    for (const [key, value] of formData.entries()) {
-      if (value instanceof File) {
-        console.log(`   ${key} → FILE: ${value.name} (${value.size} bytes)`);
-      } else {
-        console.log(`   ${key} → ${value}`);
-      }
-    }
-
-    const response = await api.post("/tenant/alunos-crossfit", formData, {
+    const response = await api.post("/tenant/alunos-crossfit", formData,
+    {
       headers: {
         "Content-Type": "multipart/form-data",
       },
-    });
+    }
+  );
 
     console.log("📥 Resposta do backend:", response.data);
+    
     return response.data;
   },
 
@@ -170,17 +146,20 @@ const NovoAlunoCrossfitPage = () => {
   },
 });
 
-   const handleImageChange = (file: File | null, url?: string) => {
-  setSelectedFile(file);
-  if (url) setCurrentImageUrl(url);
-  console.log("📸 Imagem selecionada:", file?.name);
-};
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => setPreviewUrl(reader.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleRemoveImage = () => {
-  setSelectedFile(null);
-  setCurrentImageUrl(null);
-  console.log("🗑️ Imagem removida");
-};
+    setSelectedFile(null);
+    setPreviewUrl(null);
+  };
 
 
   const onSubmit = (data: FormData) => {
@@ -212,29 +191,23 @@ const NovoAlunoCrossfitPage = () => {
         </CardHeader>
         <CardContent>
            <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-            {/* ImageUploader */}
-            {/* Foto - Versão Simples e Eficiente */}
+           {/* Foto */}
             <div className="flex flex-col items-center gap-4 py-6 border-b">
-              <div className="relative">
-                <Avatar className="h-32 w-32 ring-4 ring-blue-100">
-                  <AvatarImage src={currentImageUrl || undefined} />
-                  <AvatarFallback className="bg-linear-to-br from-blue-500 to-purple-600 text-white text-3xl font-bold">
-                    {watchedName ? watchedName.split(" ").map(n => n[0]).join("").toUpperCase() : "?"}
-                  </AvatarFallback>
-                </Avatar>
-              </div>
+              <Avatar className="h-32 w-32 ring-4 ring-blue-100">
+                <AvatarImage src={previewUrl || undefined} />
+                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-4xl font-bold">
+                  {watchedName ? watchedName.split(" ").map(n => n[0]).join("").toUpperCase() : "?"}
+                </AvatarFallback>
+              </Avatar>
 
               <div className="flex gap-3">
                 <Button type="button" variant="outline" onClick={() => document.getElementById("foto-input")?.click()}>
                   <Camera className="mr-2 h-4 w-4" />
-                  Adicionar foto
+                  Escolher Foto
                 </Button>
 
-                {currentImageUrl && (
-                  <Button type="button" variant="destructive" onClick={() => {
-                    setSelectedFile(null);
-                    setCurrentImageUrl(null);
-                  }}>
+                {previewUrl && (
+                  <Button type="button" variant="destructive" onClick={handleRemoveImage}>
                     <Trash2 className="mr-2 h-4 w-4" />
                     Remover
                   </Button>
@@ -245,17 +218,10 @@ const NovoAlunoCrossfitPage = () => {
                 id="foto-input"
                 type="file"
                 accept="image/*"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    setSelectedFile(file);
-                    const reader = new FileReader();
-                    reader.onloadend = () => setCurrentImageUrl(reader.result as string);
-                    reader.readAsDataURL(file);
-                  }
-                }}
+                onChange={handleImageChange}
                 className="hidden"
               />
+              <p className="text-xs text-gray-500">A foto será enviada após a criação do aluno</p>
             </div>
 
             {/* Nome Completo */}

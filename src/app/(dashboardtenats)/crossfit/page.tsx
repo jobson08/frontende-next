@@ -20,7 +20,7 @@ const CrossfitGestaoPage = () => {
   const [turmas, setTurmas] = useState<any[]>([]);
   const [inscricoes, setInscricoes] = useState<any[]>([]);
   const [alunos, setAlunos] = useState<any[]>([]);
-  const [professores, setProfessores] = useState<any[]>([]);
+  const [treinador, setTreinador] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isTurmaModalOpen, setIsTurmaModalOpen] = useState(false);
   const [isEditTurmaModalOpen, setIsEditTurmaModalOpen] = useState(false);
@@ -35,7 +35,7 @@ const CrossfitGestaoPage = () => {
   const [valorTurma, setValorTurma] = useState(0);
   const [vagasMaxTurma, setVagasMaxTurma] = useState(15);
   const [descricaoTurma, setDescricaoTurma] = useState("");
-  const [professorTurmaId, setProfessorTurmaId] = useState("");
+  const [treinadorTurmaId, setTreinadorTurmaId] = useState("");
 
   // Form states para nova inscrição
   const [selectedAlunoId, setSelectedAlunoId] = useState("");
@@ -47,15 +47,15 @@ const CrossfitGestaoPage = () => {
       try {
         setIsLoading(true);
 
-        const [resTurmas, resAlunos, resProfessores] = await Promise.all([
+        const [resTurmas, resAlunos, resTreinador] = await Promise.all([
           api.get("/tenant/crossfit/turmas"),
           api.get("/tenant/alunos-crossfit"),
-          api.get("/tenant/funcionarios"),
+          api.get("/tenant/treinadores"),
         ]);
 
         setTurmas(resTurmas.data.data || []);
         setAlunos(resAlunos.data.data || []);
-        setProfessores(resProfessores.data.data || []);
+        setTreinador(resTreinador.data.data || []);
       } catch (err) {
         toast.error("Erro ao carregar dados");
         console.error(err);
@@ -84,7 +84,7 @@ const CrossfitGestaoPage = () => {
     setValorTurma(0);
     setVagasMaxTurma(15);
     setDescricaoTurma("");
-    setProfessorTurmaId("");
+    setTreinadorTurmaId("");
     setIsTurmaModalOpen(true);
     setEditingTurma(null); // limpa edição
   };
@@ -97,14 +97,14 @@ const CrossfitGestaoPage = () => {
     setValorTurma(turma.valorMensalidade);
     setVagasMaxTurma(turma.vagasMax);
     setDescricaoTurma(turma.descricao || "");
-    setProfessorTurmaId(turma.professorId);
+    setTreinadorTurmaId(turma.treinadorId);
     setIsEditTurmaModalOpen(true);
   };
 
   // Salvar nova ou editar turma
   const salvarTurma = async () => {
-    if (!nomeTurma.trim() || valorTurma <= 0 || !professorTurmaId) {
-      toast.error("Preencha nome, valor e professor");
+    if (!nomeTurma.trim() || valorTurma <= 0 || !treinadorTurmaId) {
+      toast.error("Preencha nome, valor e treinador");
       return;
     }
 
@@ -116,7 +116,7 @@ const CrossfitGestaoPage = () => {
         valorMensalidade: valorTurma,
         vagasMax: vagasMaxTurma,
         descricao: descricaoTurma.trim() || undefined,
-        professorId: professorTurmaId,
+        treinadorId: treinadorTurmaId,
       };
 
       if (editingTurma) {
@@ -282,7 +282,7 @@ const CrossfitGestaoPage = () => {
                 </div>
               </CardTitle>
               <CardDescription>
-                Valor mensal: R$ {turma.valorMensalidade.toFixed(2)} | Horário: {turma.horario || "-"} | Professor: {turma.professor?.nome || "Não definido"}
+                Valor mensal: R$ {turma.valorMensalidade.toFixed(2)} | Horário: {turma.horario || "-"} | Professor: {turma.treinador?.nome || "Não definido"}
               </CardDescription>
             </CardHeader>
           </Card>
@@ -325,13 +325,13 @@ const CrossfitGestaoPage = () => {
               <Input id="vagas" type="number" className="col-span-3" value={vagasMaxTurma} onChange={e => setVagasMaxTurma(Number(e.target.value))} />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="professor" className="text-right">Professor</Label>
-              <Select value={professorTurmaId} onValueChange={setProfessorTurmaId}>
+              <Label htmlFor="treinador" className="text-right">Professor</Label>
+              <Select value={treinadorTurmaId} onValueChange={setTreinadorTurmaId}>
                 <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Selecione o professor" />
+                  <SelectValue placeholder="Selecione o treinador" />
                 </SelectTrigger>
                 <SelectContent>
-                  {professores.map(prof => (
+                  {treinador.map(prof => (
                     <SelectItem key={prof.id} value={prof.id}>{prof.nome}</SelectItem>
                   ))}
                 </SelectContent>
@@ -380,7 +380,7 @@ const CrossfitGestaoPage = () => {
 
             <div className="md:col-span-2">
               <Label>Observação</Label>
-              <Textarea value={observacaoInscricao} onChange={e => setObservacaoInscricao(e.target.value)} placeholder="Observações do professor..." />
+              <Textarea value={observacaoInscricao} onChange={e => setObservacaoInscricao(e.target.value)} placeholder="Observações do treinador..." />
             </div>
 
             <div className="md:col-span-2 flex justify-end">
