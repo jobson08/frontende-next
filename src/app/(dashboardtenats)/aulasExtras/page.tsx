@@ -20,7 +20,7 @@ const AulasExtrasPage = () => {
 const [aulas, setAulas] = useState<any[]>([]);
   const [inscricoes, setInscricoes] = useState<any[]>([]);
   const [alunos, setAlunos] = useState<any[]>([]);
-  const [professores, setProfessores] = useState<any[]>([]);
+  const [treinador, setTreinador] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAulaModalOpen, setIsAulaModalOpen] = useState(false);
   const [isInscricaoModalOpen, setIsInscricaoModalOpen] = useState(false);
@@ -36,7 +36,7 @@ const [aulas, setAulas] = useState<any[]>([]);
 
   // Estados do modal de inscrição
   const [selectedAlunoId, setSelectedAlunoId] = useState("");
-  const [selectedProfessorId, setSelectedProfessorId] = useState("");
+  const [selectTreinadoId, setSelectedProfessorId] = useState("");
   const [dataAula, setDataAula] = useState("");
   const [status, setStatus] = useState("inscrito");
   const [observacao, setObservacao] = useState("");
@@ -50,15 +50,15 @@ const [aulas, setAulas] = useState<any[]>([]);
       try {
         setIsLoading(true);
 
-        const [resAulas, resAlunos, resProfessores] = await Promise.all([
+        const [resAulas, resAlunos, resTreinador] = await Promise.all([
           api.get("/tenant/config/aulas-extras"),
           api.get("/tenant/alunos"),
-          api.get("/tenant/funcionarios"),
+          api.get("/tenant/treinadores"),
         ]);
 
         setAulas(resAulas.data.data || []);
         setAlunos(resAlunos.data.data || []);
-        setProfessores(resProfessores.data.data || []);
+        setTreinador(resTreinador.data.data || []);
       } catch (err) {
         toast.error("Erro ao carregar dados");
         console.error(err);
@@ -154,8 +154,8 @@ const [aulas, setAulas] = useState<any[]>([]);
 
   // Salvar nova inscrição
   const salvarInscricao = async () => {
-    if (!selectedAula?.id || !selectedAlunoId || !selectedProfessorId) {
-      toast.error("Selecione aula, aluno e professor");
+    if (!selectedAula?.id || !selectedAlunoId || !selectTreinadoId) {
+      toast.error("Selecione aula, aluno e treinador");
       return;
     }
 
@@ -173,7 +173,7 @@ const [aulas, setAulas] = useState<any[]>([]);
     const payload = {
       aulaExtraId: selectedAula.id,
       alunoId: selectedAlunoId,
-      funcionarioTreinadorId: selectedProfessorId,
+      treinadorId: selectTreinadoId,
       dataAula: formattedDataAula,
       status: status || "inscrito",
       observacao: observacao.trim() || undefined,
@@ -381,12 +381,12 @@ const [aulas, setAulas] = useState<any[]>([]);
 
             <div>
               <Label>Professor / Treinador</Label>
-              <Select value={selectedProfessorId} onValueChange={setSelectedProfessorId}>
+              <Select value={selectTreinadoId} onValueChange={setSelectedProfessorId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione um professor" />
+                  <SelectValue placeholder="Selecione um treinador" />
                 </SelectTrigger>
                 <SelectContent>
-                  {professores.map(prof => (
+                  {treinador.map(prof => (
                     <SelectItem key={prof.id} value={prof.id}>{prof.nome}</SelectItem>
                   ))}
                 </SelectContent>
@@ -416,7 +416,7 @@ const [aulas, setAulas] = useState<any[]>([]);
 
             <div className="md:col-span-2">
               <Label>Observação</Label>
-              <Textarea value={observacao} onChange={(e) => setObservacao(e.target.value)} placeholder="Observações do professor..." />
+              <Textarea value={observacao} onChange={(e) => setObservacao(e.target.value)} placeholder="Observações do treinador..." />
             </div>
 
             <div className="md:col-span-2 flex justify-end">
@@ -436,7 +436,7 @@ const [aulas, setAulas] = useState<any[]>([]);
                 <TableHeader>
                   <TableRow>
                     <TableHead>Aluno</TableHead>
-                    <TableHead>Professor</TableHead>
+                    <TableHead>Treinador</TableHead>
                     {/*<TableHead>Data</TableHead>*/}
                     <TableHead>Status</TableHead>
                     <TableHead>Observação</TableHead>
@@ -447,7 +447,7 @@ const [aulas, setAulas] = useState<any[]>([]);
                   {inscricoes.map((inscricao) => (
                     <TableRow key={inscricao.id}>
                       <TableCell>{inscricao.aluno?.nome}</TableCell>
-                      <TableCell>{inscricao.funcionarioTreinador?.nome}</TableCell>
+                      <TableCell>{inscricao.treinador?.nome}</TableCell>
                     {/*  <TableCell>{inscricao.dataAula ? new Date(inscricao.dataAula).toLocaleString() : "-"}</TableCell>*/}
                       <TableCell>{inscricao.status}</TableCell>
                       <TableCell className="max-w-xs truncate">{inscricao.observacao || "-"}</TableCell>

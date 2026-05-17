@@ -46,15 +46,13 @@ type FormData = z.infer<typeof novoFuncionarioSchema>;
 
 const NovoFuncionarioPage = () => {
   const router = useRouter();
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const {
     register,
     handleSubmit,
-    setValue,
     watch,
     control,
     formState: { errors },
@@ -168,27 +166,18 @@ const NovoFuncionarioPage = () => {
   // Handler para seleção de imagem
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
-
-    setSelectedFile(file);
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setCurrentImageUrl(reader.result as string);
-    };
-    reader.readAsDataURL(file);
-
-    console.log("📸 Imagem selecionada:", file.name);
+    if (file) {
+      setSelectedFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => setPreviewUrl(reader.result as string);
+      reader.readAsDataURL(file);
+    }
   };
 
   // Remover imagem
   const handleRemoveImage = () => {
     setSelectedFile(null);
-    setCurrentImageUrl(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-    console.log("🗑️ Imagem removida");
+    setPreviewUrl(null);
   };
 
   const onSubmit = (data: FormData) => {
@@ -219,35 +208,23 @@ const NovoFuncionarioPage = () => {
 
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            {/* Upload de Foto */}
+            {/* Foto */}
             <div className="flex flex-col items-center gap-4 py-6 border-b">
-              <div className="relative">
-                <Avatar className="h-32 w-32 ring-4 ring-blue-100">
-                  <AvatarImage src={currentImageUrl || undefined} />
-                  <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-3xl font-bold">
-                    {watchedName
-                      ? watchedName.split(" ").map((n) => n[0]).join("").toUpperCase()
-                      : "?"}
-                  </AvatarFallback>
-                </Avatar>
-              </div>
+              <Avatar className="h-32 w-32 ring-4 ring-blue-100">
+                <AvatarImage src={previewUrl || undefined} />
+                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-4xl font-bold">
+                  {watchedName ? watchedName.split(" ").map(n => n[0]).join("").toUpperCase() : "?"}
+                </AvatarFallback>
+              </Avatar>
 
               <div className="flex gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => fileInputRef.current?.click()}
-                >
+                <Button type="button" variant="outline" onClick={() => document.getElementById("foto-input")?.click()}>
                   <Camera className="mr-2 h-4 w-4" />
-                  Adicionar foto
+                  Escolher Foto
                 </Button>
 
-                {currentImageUrl && (
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    onClick={handleRemoveImage}
-                  >
+                {previewUrl && (
+                  <Button type="button" variant="destructive" onClick={handleRemoveImage}>
                     <Trash2 className="mr-2 h-4 w-4" />
                     Remover
                   </Button>
@@ -255,13 +232,13 @@ const NovoFuncionarioPage = () => {
               </div>
 
               <input
-                ref={fileInputRef}
                 id="foto-input"
                 type="file"
                 accept="image/*"
                 onChange={handleImageChange}
                 className="hidden"
               />
+              <p className="text-xs text-gray-500">A foto será enviada após a criação do aluno</p>
             </div>
 
             {/* Nome */}

@@ -45,20 +45,18 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 
 const NovoResponsavelPage = () => {
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter(); // ← adicionado para redirecionar
   
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  
-  const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const {
     register,
     handleSubmit,
     setValue,
     watch,
-    control,
     formState: { errors },
   } = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -71,44 +69,30 @@ const NovoResponsavelPage = () => {
       const formData = new FormData();
 
       formData.append("nome", data.nome.trim());
+      formData.append("telefone", data.telefone.trim());
+      formData.append("cpf", data.cpf ? data.cpf.replace(/\D/g, "") : "");
       formData.append("email", data.email.trim().toLowerCase());
+      formData.append("observacoes", data.observacoes?.trim() || "");
 
-      // Campos opcionai
-      if (data.telefone?.trim()) {
-        formData.append("telefone", data.telefone.trim());
-      }
-      if (data.cpf?.trim()) {
-        formData.append("cpf", data.cpf.replace(/\D/g, ""));
-      }
-      if (data.observacoes?.trim()) {
-        formData.append("observacoes", data.observacoes.trim());
-      }
-
-      // Foto
+      // Adiciona a foto se existir
       if (selectedFile) {
         formData.append("foto", selectedFile);
-        console.log("✅ Foto adicionada:", selectedFile.name);
-      } else {
-        console.log("⚠️ Nenhuma foto selecionada");
+        console.log("📸 Foto incluída no FormData:", selectedFile.name);
       }
 
-      // Debug do FormData
-      console.log("📋 FormData enviado:");
-      for (const [key, value] of formData.entries()) {
-        if (value instanceof File) {
-          console.log(`   ${key} → FILE: ${value.name} (${value.size} bytes)`);
-        } else {
-          console.log(`   ${key} → ${value}`);
-        }
-      }
+      console.log("📤 Enviando FormData completo...");
 
-      const response = await api.post("/tenant/responsaveis", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
+      const response = await api.post(
+    "/tenant/responsaveis",
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }
+  );
 
-      return response.data;
+  return response.data;
     },
 
     onSuccess: (result) => {
@@ -158,38 +142,29 @@ const NovoResponsavelPage = () => {
     },
   });
 
+   const onSubmit = (data: FormData) => {
+    createMutation.mutate(data);
+  };
+
+
   // Handler para seleção de imagem
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
-
-    setSelectedFile(file);
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setCurrentImageUrl(reader.result as string);
-    };
-    reader.readAsDataURL(file);
-
-    console.log("📸 Imagem selecionada:", file.name);
+    if (file) {
+      setSelectedFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => setPreviewUrl(reader.result as string);
+      reader.readAsDataURL(file);
+    }
   };
 
   // Remover imagem
   const handleRemoveImage = () => {
     setSelectedFile(null);
-    setCurrentImageUrl(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-    console.log("🗑️ Imagem removida");
+    setPreviewUrl(null);
   };
 
-  const onSubmit = (data: FormData) => {
-    createMutation.mutate(data);
-  };
-
-
-  return (
+   return (
     <div className="p-4 lg:p-8 max-w-4xl mx-auto space-y-8">
       {/* Cabeçalho */}
       <div className="flex items-center gap-4 mb-8">
@@ -210,35 +185,23 @@ const NovoResponsavelPage = () => {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-                        {/* Upload de Foto */}
+             {/* Foto */}
             <div className="flex flex-col items-center gap-4 py-6 border-b">
-              <div className="relative">
-                <Avatar className="h-32 w-32 ring-4 ring-blue-100">
-                  <AvatarImage src={currentImageUrl || undefined} />
-                  <AvatarFallback className="bg-linear-to-br from-blue-500 to-purple-600 text-white text-3xl font-bold">
-                    {watchedName
-                      ? watchedName.split(" ").map((n) => n[0]).join("").toUpperCase()
-                      : "?"}
-                  </AvatarFallback>
-                </Avatar>
-              </div>
+              <Avatar className="h-32 w-32 ring-4 ring-blue-100">
+                <AvatarImage src={previewUrl || undefined} />
+                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-4xl font-bold">
+                  {watchedName ? watchedName.split(" ").map(n => n[0]).join("").toUpperCase() : "?"}
+                </AvatarFallback>
+              </Avatar>
 
               <div className="flex gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => fileInputRef.current?.click()}
-                >
+                <Button type="button" variant="outline" onClick={() => document.getElementById("foto-input")?.click()}>
                   <Camera className="mr-2 h-4 w-4" />
-                  Adicionar foto
+                  Escolher Foto
                 </Button>
 
-                {currentImageUrl && (
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    onClick={handleRemoveImage}
-                  >
+                {previewUrl && (
+                  <Button type="button" variant="destructive" onClick={handleRemoveImage}>
                     <Trash2 className="mr-2 h-4 w-4" />
                     Remover
                   </Button>
@@ -246,13 +209,13 @@ const NovoResponsavelPage = () => {
               </div>
 
               <input
-                ref={fileInputRef}
                 id="foto-input"
                 type="file"
                 accept="image/*"
                 onChange={handleImageChange}
                 className="hidden"
               />
+              <p className="text-xs text-gray-500">A foto será enviada após a criação do aluno</p>
             </div>
 
             {/* Nome Completo */}
@@ -308,12 +271,8 @@ const NovoResponsavelPage = () => {
 
             {/* Botões */}
             <div className="flex flex-col sm:flex-row gap-4 pt-6">
-              <Button 
-                type="submit" 
-                disabled={isSubmitting} 
-                className="flex-1 bg-linear-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
-              >
-                {isSubmitting ? (
+             <Button type="submit" disabled={createMutation.isPending} className="flex-1">
+                {createMutation.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Criando responsável...

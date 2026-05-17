@@ -35,6 +35,7 @@ type FormData = z.infer<typeof formSchema>;
 const NovoTreinadorPage = () => {
   const router = useRouter();
  
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -56,15 +57,34 @@ const NovoTreinadorPage = () => {
 
   const createMutation = useMutation({
     mutationFn: async (data: FormData) => {
-     const payload = {
-        ...data,
-        email: data.email.toLowerCase().trim(),
-        
-      };
-      
+      const formData = new FormData();
 
-      const response = await api.post("/tenant/treinadores", payload);
-      return response.data;
+
+      formData.append("nome", data.nome.trim());
+      formData.append("dataNascimento", data.dataNascimento.split('/').reverse().join('-'));
+      formData.append("telefone", data.telefone.trim());
+      formData.append("email", data.email.trim().toLowerCase());
+      formData.append("observacoes", data.observacoes?.trim() || "");
+
+      // Adiciona a foto se existir
+      if (selectedFile) {
+        formData.append("foto", selectedFile);
+        console.log("📸 Foto incluída no FormData:", selectedFile.name);
+      }
+
+      console.log("📤 Enviando FormData completo...");
+
+      const response = await api.post(
+    "/tenant/treinadores",
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }
+  );
+
+  return response.data;
     },
 
     onSuccess: (result) => {
@@ -104,27 +124,26 @@ const NovoTreinadorPage = () => {
     },
   });
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setSelectedFile(file);
-
-    const reader = new FileReader();
-    reader.onloadend = () => setCurrentImageUrl(reader.result as string);
-    reader.readAsDataURL(file);
-  };
-
-  const handleRemoveImage = () => {
-    setSelectedFile(null);
-    setCurrentImageUrl(null);
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  };
-
   const onSubmit = (data: FormData) => {
     createMutation.mutate(data);
   };
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => setPreviewUrl(reader.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+
+
+
+  const handleRemoveImage = () => {
+    setSelectedFile(null);
+    setPreviewUrl(null);
+  };
   return (
     <div className="p-4 lg:p-8 max-w-4xl mx-auto space-y-8">
       <div className="flex items-center gap-4 mb-8">
@@ -145,24 +164,22 @@ const NovoTreinadorPage = () => {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            {/* Upload de Foto */}
+           {/* Foto */}
             <div className="flex flex-col items-center gap-4 py-6 border-b">
-              <div className="relative">
-                <Avatar className="h-32 w-32 ring-4 ring-blue-100">
-                  <AvatarImage src={currentImageUrl || undefined} />
-                  <AvatarFallback className="bg-linear-to-br from-blue-500 to-purple-600 text-white text-3xl font-bold">
-                    {watchedName ? watchedName.split(" ").map((n) => n[0]).join("").toUpperCase() : "?"}
-                  </AvatarFallback>
-                </Avatar>
-              </div>
+              <Avatar className="h-32 w-32 ring-4 ring-blue-100">
+                <AvatarImage src={previewUrl || undefined} />
+                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-4xl font-bold">
+                  {watchedName ? watchedName.split(" ").map(n => n[0]).join("").toUpperCase() : "?"}
+                </AvatarFallback>
+              </Avatar>
 
               <div className="flex gap-3">
-                <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
+                <Button type="button" variant="outline" onClick={() => document.getElementById("foto-input")?.click()}>
                   <Camera className="mr-2 h-4 w-4" />
-                  Adicionar foto
+                  Escolher Foto
                 </Button>
 
-                {currentImageUrl && (
+                {previewUrl && (
                   <Button type="button" variant="destructive" onClick={handleRemoveImage}>
                     <Trash2 className="mr-2 h-4 w-4" />
                     Remover
@@ -171,13 +188,13 @@ const NovoTreinadorPage = () => {
               </div>
 
               <input
-                ref={fileInputRef}
                 id="foto-input"
                 type="file"
                 accept="image/*"
                 onChange={handleImageChange}
                 className="hidden"
               />
+              <p className="text-xs text-gray-500">A foto será enviada após a criação do aluno</p>
             </div>
 
             {/* Nome Completo */}
@@ -231,12 +248,8 @@ const NovoTreinadorPage = () => {
 
             {/* Botões */}
             <div className="flex flex-col sm:flex-row gap-4 pt-6">
-              <Button
-                type="submit"
-                disabled={isSubmitting}
-                className="flex-1 bg-linear-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
-              >
-                {isSubmitting ? (
+             <Button type="submit" disabled={createMutation.isPending} className="flex-1">
+                {createMutation.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Criando treinador...
