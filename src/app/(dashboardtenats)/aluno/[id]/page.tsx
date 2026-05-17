@@ -129,27 +129,34 @@ interface PagamentoAluno {
 }
 
 const AlunoDetalhePage = () => {
-  const { id } = useParams();
+const { id } = useParams();
   const router = useRouter();
   const queryClient = useQueryClient();
 
+  // ==================== ESTADOS ====================
   const [pagamentoModalOpen, setPagamentoModalOpen] = useState(false);
+  const [markPaidOpen, setMarkPaidOpen] = useState(false);
+
+  // Estados separados para evitar conflito
+  const [deleteAlunoDialogOpen, setDeleteAlunoDialogOpen] = useState(false);
+  const [deletePagamentoDialogOpen, setDeletePagamentoDialogOpen] = useState(false);
+
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [pagamentoToDelete, setPagamentoToDelete] = useState<string | null>(null);
+  const [pagamentoToMark, setPagamentoToMark] = useState<string | null>(null);
+  const [metodoSelecionado, setMetodoSelecionado] = useState("DINHEIRO");
+
   const [valorPagamento, setValorPagamento] = useState<number>(150);
   const [dataPagamento, setDataPagamento] = useState(new Date().toISOString().split("T")[0]);
   const [metodoPagamento, setMetodoPagamento] = useState("DINHEIRO");
   const [observacaoPagamento, setObservacaoPagamento] = useState("");
   const [gerarProximo, setGerarProximo] = useState(true);
-  const [mesReferenciaInput, setMesReferenciaInput] = useState(format(new Date(), 'yyyy-MM')); // ex: "2026-02"
+  const [mesReferenciaInput, setMesReferenciaInput] = useState(format(new Date(), 'yyyy-MM'));
 
-// Paginação da tabela de pagamentos
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
-  // Estados para exclusão
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [pagamentoToDelete, setPagamentoToDelete] = useState<string | null>(null);
-
-  // Busca detalhes do aluno
+  // ==================== QUERIES ====================
   const { data: aluno, isLoading, error } = useQuery<AlunoDetalhe>({
     queryKey: ["aluno", id],
     queryFn: async () => {
@@ -159,111 +166,93 @@ const AlunoDetalhePage = () => {
     enabled: !!id,
   });
 
-  // Busca histórico de pagamentos do aluno ← ESSA É A LINHA QUE DEFINE "pagamentos"
-const { 
-  data: pagamentos = [], 
-  isLoading: isLoadingPagamentos 
-} = useQuery<PagamentoAluno[]>({
-  queryKey: ["pagamentos-aluno", id],
-  queryFn: async () => {
-    const res = await api.get(`/tenant/alunos/${id}/pagamentos`);
-    return res.data.data || [];
-  },
-  enabled: !!id,
-});
+  const { data: pagamentos = [], isLoading: isLoadingPagamentos } = useQuery<PagamentoAluno[]>({
+    queryKey: ["pagamentos-aluno", id],
+    queryFn: async () => {
+      const res = await api.get(`/tenant/alunos/${id}/pagamentos`);
+      return res.data.data || [];
+    },
+    enabled: !!id,
+  });
 
-  // Mutation para criar pagamento
-const criarPagamentoMutation = useMutation({
-  mutationFn: async () => {
-    // Primeiro dia do mês escolhido no input type="month"
-    const [year, month] = mesReferenciaInput.split('-');
-    const mesReferenciaPrimeiroDia = `${year}-${month}-01`; // ex: "2026-02-01"
+  // ==================== MUTATIONS ====================
+  const criarPagamentoMutation = useMutation({
+    mutationFn: async () => { /* ... seu código existente */ },
+    onSuccess: () => { /* ... */ },
+    onError: (err: any) => { /* ... */ },
+  });
 
-    const payload = {
-      mesReferencia: mesReferenciaPrimeiroDia,
-      dataVencimento: dataPagamento, // dia exato escolhido no input date
-      valor: valorPagamento,
-      dataPagamento: dataPagamento ? dataPagamento : null,
-      metodo: metodoPagamento,
-      observacao: observacaoPagamento.trim() || undefined,
-      gerarProximo,
-    };
+  const marcarComoPagoMutation = useMutation({
+    mutationFn: async ({ pagamentoId, metodo }: { pagamentoId: string; metodo: string }) => {
+      await api.put(`/tenant/pagamentos/${pagamentoId}/marcar-pago`, { metodo });
+    },
+    onSuccess: () => {
+      toast.success("Pagamento marcado como pago!");
+      queryClient.invalidateQueries({ queryKey: ["pagamentos-aluno", id] });
+    },
+  });
 
-    console.log("Payload enviado:", payload);
+  const deletarPagamentoMutation = useMutation({
+    mutationFn: async (pagamentoId: string) => {
+      await api.delete(`/tenant/alunos/${id}/pagamentos/${pagamentoId}`);
+    },
+    onSuccess: () => {
+      toast.success("Pagamento excluído com sucesso!");
+      queryClient.invalidateQueries({ queryKey: ["pagamentos-aluno", id] });
+    },
+  });
 
-    await api.post(`/tenant/alunos/${id}/pagamentos`, payload);
-  },
-  onSuccess: () => {
-    toast.success("Pagamento registrado com sucesso!");
-    queryClient.invalidateQueries({ queryKey: ["aluno", id] });
-    queryClient.invalidateQueries({ queryKey: ["pagamentos-aluno", id] });
-    setPagamentoModalOpen(false);
-
-    setValorPagamento(150);
-    setDataPagamento(new Date().toISOString().split("T")[0]);
-    setMetodoPagamento("DINHEIRO");
-    setObservacaoPagamento("");
-    setGerarProximo(true);
-    setMesReferenciaInput(format(new Date(), 'yyyy-MM')); // reset
-  },
-  onError: (err: any) => {
-    console.error("Erro completo:", err.response?.data);
-    toast.error("Erro ao registrar pagamento", {
-      description: err.response?.data?.error || err.message || "Verifique os dados",
-    });
-  },
-});
-
-// Mutation para marcar pagamento como pago (reutiliza o endpoint existente)
-const marcarComoPagoMutation = useMutation({
-  mutationFn: async ({ pagamentoId, metodo }: { pagamentoId: string; metodo: string }) => {
-    await api.put(`/tenant/pagamentos/${pagamentoId}/marcar-pago`, { metodo });
-  },
-  onSuccess: () => {
-    toast.success("Pagamento lançado/marcado como pago com sucesso!");
-    queryClient.invalidateQueries({ queryKey: ["pagamentos-aluno", id] });
-  },
-  onError: (err: any) => {
-    toast.error("Erro ao lançar pagamento", {
-      description: err.response?.data?.error || "Tente novamente",
-    });
-  },
-});
-
-// Mutation para deletar pagamento
-const deletarPagamentoMutation = useMutation({
- mutationFn: async (pagamentoId: string) => {
-    // Caminho correto baseado no seu padrão: /alunos/:alunoId/pagamentos/:pagamentoId
-    await api.delete(`/tenant/alunos/${id}/pagamentos/${pagamentoId}`);
-  },
-  onSuccess: () => {
-    toast.success("Pagamento excluído com sucesso!");
-    queryClient.invalidateQueries({ queryKey: ["pagamentos-aluno", id] });
-  },
-  onError: (err: any) => {
-    console.error("Erro ao excluir:", err);
-    toast.error("Erro ao excluir pagamento", {
-      description: err.response?.data?.error || err.message || "Verifique se o pagamento existe e está pendente",
-    });
-  },
-});
-
-  // Função para abrir diálogo de exclusão
-  const handleDeleteClick = (pagamentoId: string) => {
-    setPagamentoToDelete(pagamentoId);
-    setDeleteDialogOpen(true);
+  // ==================== FUNÇÕES ====================
+  const handleDeleteAluno = () => {
+    if (!aluno) return;
+    setDeleteAlunoDialogOpen(true);
   };
 
-  // Função para confirmar exclusão
- const confirmDelete = () => {
-if (pagamentoToDelete) {
-    deletarPagamentoMutation.mutate(pagamentoToDelete);  // só passa o pagamentoId
-  }
-  setDeleteDialogOpen(false);
-  setPagamentoToDelete(null);
-};
+  const confirmarExclusaoAluno = async () => {
+    setIsDeleting(true);
+    try {
+      await api.delete(`/tenant/alunos/${id}`);
+      toast.success("Aluno excluído com sucesso!");
+      router.push("/aluno");
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || "Erro ao excluir aluno");
+    } finally {
+      setIsDeleting(false);
+      setDeleteAlunoDialogOpen(false);
+    }
+  };
 
-  // Agora sim: lógica de paginação DEPOIS da query
+  const handleDeleteClick = (pagamentoId: string) => {
+    setPagamentoToDelete(pagamentoId);
+    setDeletePagamentoDialogOpen(true);
+  };
+
+  const confirmDeletePagamento = () => {
+    if (pagamentoToDelete) {
+      deletarPagamentoMutation.mutate(pagamentoToDelete);
+    }
+    setDeletePagamentoDialogOpen(false);
+    setPagamentoToDelete(null);
+  };
+
+  const handleMarkAsPaidClick = (pagamentoId: string) => {
+    setPagamentoToMark(pagamentoId);
+    setMetodoSelecionado("DINHEIRO");
+    setMarkPaidOpen(true);
+  };
+
+  const confirmMarkAsPaid = () => {
+    if (pagamentoToMark) {
+      marcarComoPagoMutation.mutate({
+        pagamentoId: pagamentoToMark,
+        metodo: metodoSelecionado,
+      });
+    }
+    setMarkPaidOpen(false);
+    setPagamentoToMark(null);
+  };
+
+  // ==================== PAGINAÇÃO ====================
   const totalPagamentos = pagamentos.length;
   const totalPages = Math.ceil(totalPagamentos / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -275,29 +264,8 @@ if (pagamentoToDelete) {
     setCurrentPage(1);
   };
 
-  // Estado para o modal de escolha de método
-const [markPaidOpen, setMarkPaidOpen] = useState(false);
-const [pagamentoToMark, setPagamentoToMark] = useState<string | null>(null);
-const [metodoSelecionado, setMetodoSelecionado] = useState("DINHEIRO");
-
-const handleMarkAsPaidClick = (pagamentoId: string) => {
-  setPagamentoToMark(pagamentoId);
-  setMetodoSelecionado("DINHEIRO"); // valor padrão
-  setMarkPaidOpen(true);
-};
-
-const confirmMarkAsPaid = () => {
-  if (pagamentoToMark) {
-    marcarComoPagoMutation.mutate({
-      pagamentoId: pagamentoToMark,
-      metodo: metodoSelecionado,
-    });
-  }
-  setMarkPaidOpen(false);
-  setPagamentoToMark(null);
-};
-
-if (isLoading || isLoadingPagamentos) {
+  // ==================== RENDER ====================
+  if (isLoading || isLoadingPagamentos) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh]">
         <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
@@ -311,7 +279,6 @@ if (isLoading || isLoadingPagamentos) {
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-red-600">
         <AlertCircle className="h-16 w-16" />
         <h2 className="mt-4 text-2xl font-bold">Aluno não encontrado</h2>
-        <p className="mt-2 text-gray-600">{(error as Error)?.message || "ID inválido ou aluno removido"}</p>
         <Button className="mt-6" asChild>
           <Link href="/aluno">Voltar para lista</Link>
         </Button>
@@ -376,11 +343,73 @@ if (isLoading || isLoadingPagamentos) {
                   Editar Aluno
                 </Link>
               </Button>
+
+            <Button 
+              size="lg" 
+              variant="destructive" 
+              onClick={handleDeleteAluno}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Excluindo...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Excluir Aluno
+                </>
+              )}
+            </Button>
             </div>
           </div>
         </CardContent>
       </Card>
+{/* ==================== ALERTA DE EXCLUSÃO DO ALUNO ==================== */}
+      <AlertDialog open={deleteAlunoDialogOpen} onOpenChange={setDeleteAlunoDialogOpen}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                <Trash2 className="h-5 w-5 text-red-600" />
+              </div>
+              <AlertDialogTitle className="text-xl">Confirmar exclusão?</AlertDialogTitle>
+            </div>
 
+            <AlertDialogDescription className="text-base leading-relaxed mt-4">
+              Tem certeza que deseja excluir o aluno{" "}
+              <strong className="text-red-600">{aluno?.nome}</strong>?
+              <br /><br />
+              Esta ação é <strong>irreversível</strong>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-700 my-4">
+            • Todos os dados do aluno serão removidos<br />
+            • A foto será deletada do Cloudinary<br />
+            • O acesso do usuário será removido
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700"
+              onClick={confirmarExclusaoAluno}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Excluindo...
+                </>
+              ) : (
+                "Sim, excluir aluno"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       {/* Dados Pessoais */}
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
@@ -771,34 +800,28 @@ if (isLoading || isLoadingPagamentos) {
           </AlertDialogContent>
         </AlertDialog>     
 
-        {/*Modal Confirmação de Exclusão */}
-          <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Excluir Pagamento</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Tem certeza que deseja excluir este pagamento? Esta ação não pode ser desfeita.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction 
-                  className="bg-red-600 hover:bg-red-700"
-                  onClick={confirmDelete}
-                  disabled={deletarPagamentoMutation.isPending}
-                >
-                  {deletarPagamentoMutation.isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Excluindo...
-                    </>
-                  ) : (
-                    "Excluir"
-                  )}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+        {/* ==================== ALERTA DE EXCLUSÃO DE PAGAMENTO ==================== */}
+      <AlertDialog open={deletePagamentoDialogOpen} onOpenChange={setDeletePagamentoDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Pagamento</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir este pagamento? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              className="bg-red-600 hover:bg-red-700"
+              onClick={confirmDeletePagamento}
+              disabled={deletarPagamentoMutation.isPending}
+            >
+              {deletarPagamentoMutation.isPending ? "Excluindo..." : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+        
     </div>
   );
 };
