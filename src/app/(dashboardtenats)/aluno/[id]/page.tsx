@@ -337,7 +337,7 @@ const { id } = useParams();
               </div>
             </div>
             <div className="ml-auto flex gap-3">
-              <Button size="lg" asChild>
+              <Button className='bg-blue-600 hover:bg-blue-700' size="lg" asChild>
                 <Link href={`/aluno/${aluno.id}/editar`}>
                   <Edit className="mr-2 h-5 w-5" />
                   Editar Aluno

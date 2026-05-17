@@ -336,7 +336,7 @@ const deleteMutation = useMutation({
                       </div>
                     </div>
 
-                    <DropdownMenu>
+                   {/* <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon">
                           <MoreVertical className="h-4 w-4" />
@@ -380,7 +380,7 @@ const deleteMutation = useMutation({
                           </AlertDialogContent>
                         </AlertDialog>
                       </DropdownMenuContent>
-                    </DropdownMenu>
+                    </DropdownMenu>*/}
                   </div>
                 </CardHeader>
 
@@ -415,12 +415,18 @@ const deleteMutation = useMutation({
                       {aluno.status}
                     </Badge>
                   </div>
-
-                  {aluno.userId && (
+               {/*mostra se o aluno tem login */}
+                 {/*} {aluno.userId && (
                     <Badge className="text-xs bg-green-600 text-white">
                       Tem login
                     </Badge>
-                  )}         
+                  )}  */} 
+                     <Button className='bg-blue-600 hover:bg-blue-700' asChild>
+                        <Link href={`/aluno/${aluno.id}`}>
+                          <Edit className="mr-2 h-5 w-5" />
+                          Detalhe
+                        </Link>
+                      </Button>   
                 </CardContent>
               </Card>
             );
@@ -500,7 +506,13 @@ const deleteMutation = useMutation({
                       </TableCell>
 
                       <TableCell className="text-right">
-                        <DropdownMenu>
+                        <Button className='bg-blue-600 hover:bg-blue-700' asChild>
+                        <Link href={`/aluno/${aluno.id}`}>
+                          <Edit className="mr-2 h-5 w-5" />
+                          Detalhe
+                        </Link>
+                      </Button>
+                      {/*  <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon">
                               <MoreVertical className="h-4 w-4" />
@@ -544,7 +556,7 @@ const deleteMutation = useMutation({
                               </AlertDialogContent>
                             </AlertDialog>
                           </DropdownMenuContent>
-                        </DropdownMenu>
+                        </DropdownMenu>*/}
                       </TableCell>
                     </TableRow>
                   );
@@ -567,28 +579,6 @@ const deleteMutation = useMutation({
         />
       )}
 
-      {/* AlertDialog de remoção */}
-      <AlertDialog open={!!alunoParaRemover} onOpenChange={() => setAlunoParaRemover(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar remoção?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja remover <strong>{alunoParaRemover?.nome}</strong>?
-              <br />
-              Essa ação não pode ser desfeita.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-red-600 hover:bg-red-700"
-              onClick={confirmarRemocao}
-            >
-              Sim, remover
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 };
